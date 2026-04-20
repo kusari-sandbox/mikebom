@@ -1,0 +1,4161 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:deb/debian/apt@2.8.3?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:apt:2.8.3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "apt",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:apt:2.8.3:*:*:*:*:*:*:* | cpe:2.3:a:apt:apt:2.8.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/apt@2.8.3?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.8.3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/base-files@13ubuntu10.4?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:base-files:13ubuntu10.4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "base-files",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:base-files:13ubuntu10.4:*:*:*:*:*:*:* | cpe:2.3:a:base-files:base-files:13ubuntu10.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/base-files@13ubuntu10.4?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "13ubuntu10.4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/base-passwd@3.6.3build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:base-passwd:3.6.3build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "base-passwd",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:base-passwd:3.6.3build1:*:*:*:*:*:*:* | cpe:2.3:a:base-passwd:base-passwd:3.6.3build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/base-passwd@3.6.3build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.6.3build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/bash@5.2.21-2ubuntu4?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:bash:5.2.21-2ubuntu4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "bash",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:bash:5.2.21-2ubuntu4:*:*:*:*:*:*:* | cpe:2.3:a:bash:bash:5.2.21-2ubuntu4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/bash@5.2.21-2ubuntu4?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "5.2.21-2ubuntu4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/bsdutils@1:2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:bsdutils:1\\:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "bsdutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:bsdutils:1\\:2.39.3-9ubuntu6.5:*:*:*:*:*:*:* | cpe:2.3:a:bsdutils:bsdutils:1\\:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/bsdutils@1:2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:2.39.3-9ubuntu6.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/coreutils@9.4-3ubuntu6.2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:coreutils:9.4-3ubuntu6.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "coreutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:coreutils:9.4-3ubuntu6.2:*:*:*:*:*:*:* | cpe:2.3:a:coreutils:coreutils:9.4-3ubuntu6.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/coreutils@9.4-3ubuntu6.2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "9.4-3ubuntu6.2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/dash@0.5.12-6ubuntu5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:dash:0.5.12-6ubuntu5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "dash",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:dash:0.5.12-6ubuntu5:*:*:*:*:*:*:* | cpe:2.3:a:dash:dash:0.5.12-6ubuntu5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/dash@0.5.12-6ubuntu5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "0.5.12-6ubuntu5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/debconf@1.5.86ubuntu1?arch=all&distro=noble",
+      "cpe": "cpe:2.3:a:debian:debconf:1.5.86ubuntu1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "debconf",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:debconf:1.5.86ubuntu1:*:*:*:*:*:*:* | cpe:2.3:a:debconf:debconf:1.5.86ubuntu1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/debconf@1.5.86ubuntu1?arch=all&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.5.86ubuntu1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/debianutils@5.17build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:debianutils:5.17build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "debianutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:debianutils:5.17build1:*:*:*:*:*:*:* | cpe:2.3:a:debianutils:debianutils:5.17build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/debianutils@5.17build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "5.17build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/diffutils@1:3.10-1build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:diffutils:1\\:3.10-1build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "diffutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:diffutils:1\\:3.10-1build1:*:*:*:*:*:*:* | cpe:2.3:a:diffutils:diffutils:1\\:3.10-1build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/diffutils@1:3.10-1build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:3.10-1build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/dpkg@1.22.6ubuntu6.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:dpkg:1.22.6ubuntu6.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "dpkg",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:dpkg:1.22.6ubuntu6.5:*:*:*:*:*:*:* | cpe:2.3:a:dpkg:dpkg:1.22.6ubuntu6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/dpkg@1.22.6ubuntu6.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.22.6ubuntu6.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/e2fsprogs@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:e2fsprogs:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "e2fsprogs",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:e2fsprogs:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:* | cpe:2.3:a:e2fsprogs:e2fsprogs:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/e2fsprogs@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.47.0-2.4~exp1ubuntu4.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/findutils@4.9.0-5build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:findutils:4.9.0-5build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "findutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:findutils:4.9.0-5build1:*:*:*:*:*:*:* | cpe:2.3:a:findutils:findutils:4.9.0-5build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/findutils@4.9.0-5build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "4.9.0-5build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/gcc-14-base@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:gcc-14-base:14.2.0-4ubuntu2\\~24.04.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "gcc-14-base",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:gcc-14-base:14.2.0-4ubuntu2\\~24.04.1:*:*:*:*:*:*:* | cpe:2.3:a:gcc-14-base:gcc-14-base:14.2.0-4ubuntu2\\~24.04.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/gcc-14-base@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "14.2.0-4ubuntu2~24.04.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/gpgv@2.4.4-2ubuntu17.4?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:gpgv:2.4.4-2ubuntu17.4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "gpgv",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:gpgv:2.4.4-2ubuntu17.4:*:*:*:*:*:*:* | cpe:2.3:a:gpgv:gpgv:2.4.4-2ubuntu17.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/gpgv@2.4.4-2ubuntu17.4?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.4.4-2ubuntu17.4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/grep@3.11-4build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:grep:3.11-4build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "grep",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:grep:3.11-4build1:*:*:*:*:*:*:* | cpe:2.3:a:grep:grep:3.11-4build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/grep@3.11-4build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.11-4build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/gzip@1.12-1ubuntu3.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:gzip:1.12-1ubuntu3.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "gzip",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:gzip:1.12-1ubuntu3.1:*:*:*:*:*:*:* | cpe:2.3:a:gzip:gzip:1.12-1ubuntu3.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/gzip@1.12-1ubuntu3.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.12-1ubuntu3.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/hostname@3.23%2Bnmu2ubuntu2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:hostname:3.23\\+nmu2ubuntu2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "hostname",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:hostname:3.23\\+nmu2ubuntu2:*:*:*:*:*:*:* | cpe:2.3:a:hostname:hostname:3.23\\+nmu2ubuntu2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/hostname@3.23%2Bnmu2ubuntu2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.23+nmu2ubuntu2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/init-system-helpers@1.66ubuntu1?arch=all&distro=noble",
+      "cpe": "cpe:2.3:a:debian:init-system-helpers:1.66ubuntu1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "init-system-helpers",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:init-system-helpers:1.66ubuntu1:*:*:*:*:*:*:* | cpe:2.3:a:init-system-helpers:init-system-helpers:1.66ubuntu1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/init-system-helpers@1.66ubuntu1?arch=all&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.66ubuntu1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libacl1@2.3.2-1build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libacl1:2.3.2-1build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libacl1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libacl1:2.3.2-1build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libacl1:libacl1:2.3.2-1build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libacl1@2.3.2-1build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.3.2-1build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libapt-pkg6.0t64@2.8.3?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libapt-pkg6.0t64:2.8.3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libapt-pkg6.0t64",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libapt-pkg6.0t64:2.8.3:*:*:*:*:*:*:* | cpe:2.3:a:libapt-pkg6.0t64:libapt-pkg6.0t64:2.8.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libapt-pkg6.0t64@2.8.3?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.8.3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libassuan0@2.5.6-1build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libassuan0:2.5.6-1build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libassuan0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libassuan0:2.5.6-1build1:*:*:*:*:*:*:* | cpe:2.3:a:libassuan0:libassuan0:2.5.6-1build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libassuan0@2.5.6-1build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.5.6-1build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libattr1@1:2.5.2-1build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libattr1:1\\:2.5.2-1build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libattr1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libattr1:1\\:2.5.2-1build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libattr1:libattr1:1\\:2.5.2-1build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libattr1@1:2.5.2-1build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:2.5.2-1build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libaudit-common@1:3.1.2-2.1build1.1?arch=all&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libaudit-common:1\\:3.1.2-2.1build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libaudit-common",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libaudit-common:1\\:3.1.2-2.1build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libaudit-common:libaudit-common:1\\:3.1.2-2.1build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libaudit-common@1:3.1.2-2.1build1.1?arch=all&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:3.1.2-2.1build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libaudit1@1:3.1.2-2.1build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libaudit1:1\\:3.1.2-2.1build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libaudit1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libaudit1:1\\:3.1.2-2.1build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libaudit1:libaudit1:1\\:3.1.2-2.1build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libaudit1@1:3.1.2-2.1build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:3.1.2-2.1build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libblkid1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libblkid1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libblkid1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libblkid1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:* | cpe:2.3:a:libblkid1:libblkid1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libblkid1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.39.3-9ubuntu6.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libbz2-1.0@1.0.8-5.1build0.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libbz2-1.0:1.0.8-5.1build0.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libbz2-1.0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libbz2-1.0:1.0.8-5.1build0.1:*:*:*:*:*:*:* | cpe:2.3:a:libbz2-1.0:libbz2-1.0:1.0.8-5.1build0.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libbz2-1.0@1.0.8-5.1build0.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.0.8-5.1build0.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libc-bin@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libc-bin:2.39-0ubuntu8.7:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libc-bin",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libc-bin:2.39-0ubuntu8.7:*:*:*:*:*:*:* | cpe:2.3:a:libc-bin:libc-bin:2.39-0ubuntu8.7:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libc-bin@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.39-0ubuntu8.7"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libc6:2.39-0ubuntu8.7:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libc6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libc6:2.39-0ubuntu8.7:*:*:*:*:*:*:* | cpe:2.3:a:libc6:libc6:2.39-0ubuntu8.7:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.39-0ubuntu8.7"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libcap-ng0@0.8.4-2build2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libcap-ng0:0.8.4-2build2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libcap-ng0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libcap-ng0:0.8.4-2build2:*:*:*:*:*:*:* | cpe:2.3:a:libcap-ng0:libcap-ng0:0.8.4-2build2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libcap-ng0@0.8.4-2build2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "0.8.4-2build2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libcap2@1:2.66-5ubuntu2.2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libcap2:1\\:2.66-5ubuntu2.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libcap2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libcap2:1\\:2.66-5ubuntu2.2:*:*:*:*:*:*:* | cpe:2.3:a:libcap2:libcap2:1\\:2.66-5ubuntu2.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libcap2@1:2.66-5ubuntu2.2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:2.66-5ubuntu2.2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libcom-err2@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libcom-err2:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libcom-err2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libcom-err2:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:* | cpe:2.3:a:libcom-err2:libcom-err2:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libcom-err2@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.47.0-2.4~exp1ubuntu4.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libcrypt1@1:4.4.36-4build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libcrypt1:1\\:4.4.36-4build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libcrypt1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libcrypt1:1\\:4.4.36-4build1:*:*:*:*:*:*:* | cpe:2.3:a:libcrypt1:libcrypt1:1\\:4.4.36-4build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libcrypt1@1:4.4.36-4build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:4.4.36-4build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libdb5.3t64@5.3.28%2Bdfsg2-7?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libdb5.3t64:5.3.28\\+dfsg2-7:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libdb5.3t64",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libdb5.3t64:5.3.28\\+dfsg2-7:*:*:*:*:*:*:* | cpe:2.3:a:libdb5.3t64:libdb5.3t64:5.3.28\\+dfsg2-7:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libdb5.3t64@5.3.28%2Bdfsg2-7?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "5.3.28+dfsg2-7"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libdebconfclient0@0.271ubuntu3?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libdebconfclient0:0.271ubuntu3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libdebconfclient0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libdebconfclient0:0.271ubuntu3:*:*:*:*:*:*:* | cpe:2.3:a:libdebconfclient0:libdebconfclient0:0.271ubuntu3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libdebconfclient0@0.271ubuntu3?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "0.271ubuntu3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libext2fs2t64@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libext2fs2t64:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libext2fs2t64",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libext2fs2t64:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:* | cpe:2.3:a:libext2fs2t64:libext2fs2t64:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libext2fs2t64@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.47.0-2.4~exp1ubuntu4.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libffi8@3.4.6-1build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libffi8:3.4.6-1build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libffi8",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libffi8:3.4.6-1build1:*:*:*:*:*:*:* | cpe:2.3:a:libffi8:libffi8:3.4.6-1build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libffi8@3.4.6-1build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.4.6-1build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgcc-s1@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libgcc-s1:14.2.0-4ubuntu2\\~24.04.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgcc-s1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgcc-s1:14.2.0-4ubuntu2\\~24.04.1:*:*:*:*:*:*:* | cpe:2.3:a:libgcc-s1:libgcc-s1:14.2.0-4ubuntu2\\~24.04.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgcc-s1@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "14.2.0-4ubuntu2~24.04.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgcrypt20@1.10.3-2build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libgcrypt20:1.10.3-2build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgcrypt20",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgcrypt20:1.10.3-2build1:*:*:*:*:*:*:* | cpe:2.3:a:libgcrypt20:libgcrypt20:1.10.3-2build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgcrypt20@1.10.3-2build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.10.3-2build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgmp10@2:6.3.0%2Bdfsg-2ubuntu6.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libgmp10:2\\:6.3.0\\+dfsg-2ubuntu6.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgmp10",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgmp10:2\\:6.3.0\\+dfsg-2ubuntu6.1:*:*:*:*:*:*:* | cpe:2.3:a:libgmp10:libgmp10:2\\:6.3.0\\+dfsg-2ubuntu6.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgmp10@2:6.3.0%2Bdfsg-2ubuntu6.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2:6.3.0+dfsg-2ubuntu6.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgnutls30t64@3.8.3-1.1ubuntu3.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libgnutls30t64:3.8.3-1.1ubuntu3.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgnutls30t64",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgnutls30t64:3.8.3-1.1ubuntu3.5:*:*:*:*:*:*:* | cpe:2.3:a:libgnutls30t64:libgnutls30t64:3.8.3-1.1ubuntu3.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgnutls30t64@3.8.3-1.1ubuntu3.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.8.3-1.1ubuntu3.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgpg-error0@1.47-3build2.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libgpg-error0:1.47-3build2.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgpg-error0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgpg-error0:1.47-3build2.1:*:*:*:*:*:*:* | cpe:2.3:a:libgpg-error0:libgpg-error0:1.47-3build2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgpg-error0@1.47-3build2.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.47-3build2.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libhogweed6t64@3.9.1-2.2build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libhogweed6t64:3.9.1-2.2build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libhogweed6t64",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libhogweed6t64:3.9.1-2.2build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libhogweed6t64:libhogweed6t64:3.9.1-2.2build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libhogweed6t64@3.9.1-2.2build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.9.1-2.2build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libidn2-0@2.3.7-2build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libidn2-0:2.3.7-2build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libidn2-0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libidn2-0:2.3.7-2build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libidn2-0:libidn2-0:2.3.7-2build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libidn2-0@2.3.7-2build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.3.7-2build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/liblz4-1@1.9.4-1build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:liblz4-1:1.9.4-1build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "liblz4-1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:liblz4-1:1.9.4-1build1.1:*:*:*:*:*:*:* | cpe:2.3:a:liblz4-1:liblz4-1:1.9.4-1build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/liblz4-1@1.9.4-1build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.9.4-1build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/liblzma5@5.6.1%2Breally5.4.5-1ubuntu0.2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:liblzma5:5.6.1\\+really5.4.5-1ubuntu0.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "liblzma5",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:liblzma5:5.6.1\\+really5.4.5-1ubuntu0.2:*:*:*:*:*:*:* | cpe:2.3:a:liblzma5:liblzma5:5.6.1\\+really5.4.5-1ubuntu0.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/liblzma5@5.6.1%2Breally5.4.5-1ubuntu0.2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "5.6.1+really5.4.5-1ubuntu0.2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libmd0@1.1.0-2build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libmd0:1.1.0-2build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libmd0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libmd0:1.1.0-2build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libmd0:libmd0:1.1.0-2build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libmd0@1.1.0-2build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.1.0-2build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libmount1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libmount1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libmount1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libmount1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:* | cpe:2.3:a:libmount1:libmount1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libmount1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.39.3-9ubuntu6.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libncursesw6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libncursesw6:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libncursesw6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libncursesw6:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:* | cpe:2.3:a:libncursesw6:libncursesw6:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libncursesw6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "6.4+20240113-1ubuntu2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libnettle8t64@3.9.1-2.2build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libnettle8t64:3.9.1-2.2build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libnettle8t64",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libnettle8t64:3.9.1-2.2build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libnettle8t64:libnettle8t64:3.9.1-2.2build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libnettle8t64@3.9.1-2.2build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.9.1-2.2build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libnpth0t64@1.6-3.1build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libnpth0t64:1.6-3.1build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libnpth0t64",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libnpth0t64:1.6-3.1build1:*:*:*:*:*:*:* | cpe:2.3:a:libnpth0t64:libnpth0t64:1.6-3.1build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libnpth0t64@1.6-3.1build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.6-3.1build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libp11-kit0@0.25.3-4ubuntu2.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libp11-kit0:0.25.3-4ubuntu2.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libp11-kit0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libp11-kit0:0.25.3-4ubuntu2.1:*:*:*:*:*:*:* | cpe:2.3:a:libp11-kit0:libp11-kit0:0.25.3-4ubuntu2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libp11-kit0@0.25.3-4ubuntu2.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "0.25.3-4ubuntu2.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpam-modules-bin@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libpam-modules-bin:1.5.3-5ubuntu5.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpam-modules-bin",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpam-modules-bin:1.5.3-5ubuntu5.5:*:*:*:*:*:*:* | cpe:2.3:a:libpam-modules-bin:libpam-modules-bin:1.5.3-5ubuntu5.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpam-modules-bin@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.5.3-5ubuntu5.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpam-modules@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libpam-modules:1.5.3-5ubuntu5.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpam-modules",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpam-modules:1.5.3-5ubuntu5.5:*:*:*:*:*:*:* | cpe:2.3:a:libpam-modules:libpam-modules:1.5.3-5ubuntu5.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpam-modules@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.5.3-5ubuntu5.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpam-runtime@1.5.3-5ubuntu5.5?arch=all&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libpam-runtime:1.5.3-5ubuntu5.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpam-runtime",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpam-runtime:1.5.3-5ubuntu5.5:*:*:*:*:*:*:* | cpe:2.3:a:libpam-runtime:libpam-runtime:1.5.3-5ubuntu5.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpam-runtime@1.5.3-5ubuntu5.5?arch=all&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.5.3-5ubuntu5.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpam0g@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libpam0g:1.5.3-5ubuntu5.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpam0g",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpam0g:1.5.3-5ubuntu5.5:*:*:*:*:*:*:* | cpe:2.3:a:libpam0g:libpam0g:1.5.3-5ubuntu5.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpam0g@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.5.3-5ubuntu5.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpcre2-8-0@10.42-4ubuntu2.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libpcre2-8-0:10.42-4ubuntu2.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpcre2-8-0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpcre2-8-0:10.42-4ubuntu2.1:*:*:*:*:*:*:* | cpe:2.3:a:libpcre2-8-0:libpcre2-8-0:10.42-4ubuntu2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpcre2-8-0@10.42-4ubuntu2.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "10.42-4ubuntu2.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libproc2-0@2:4.0.4-4ubuntu3.2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libproc2-0:2\\:4.0.4-4ubuntu3.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libproc2-0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libproc2-0:2\\:4.0.4-4ubuntu3.2:*:*:*:*:*:*:* | cpe:2.3:a:libproc2-0:libproc2-0:2\\:4.0.4-4ubuntu3.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libproc2-0@2:4.0.4-4ubuntu3.2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2:4.0.4-4ubuntu3.2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libseccomp2@2.5.5-1ubuntu3.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libseccomp2:2.5.5-1ubuntu3.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libseccomp2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libseccomp2:2.5.5-1ubuntu3.1:*:*:*:*:*:*:* | cpe:2.3:a:libseccomp2:libseccomp2:2.5.5-1ubuntu3.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libseccomp2@2.5.5-1ubuntu3.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.5.5-1ubuntu3.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libselinux1@3.5-2ubuntu2.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libselinux1:3.5-2ubuntu2.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libselinux1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libselinux1:3.5-2ubuntu2.1:*:*:*:*:*:*:* | cpe:2.3:a:libselinux1:libselinux1:3.5-2ubuntu2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libselinux1@3.5-2ubuntu2.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.5-2ubuntu2.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsemanage-common@3.5-1build5?arch=all&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libsemanage-common:3.5-1build5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsemanage-common",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsemanage-common:3.5-1build5:*:*:*:*:*:*:* | cpe:2.3:a:libsemanage-common:libsemanage-common:3.5-1build5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsemanage-common@3.5-1build5?arch=all&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.5-1build5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsemanage2@3.5-1build5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libsemanage2:3.5-1build5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsemanage2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsemanage2:3.5-1build5:*:*:*:*:*:*:* | cpe:2.3:a:libsemanage2:libsemanage2:3.5-1build5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsemanage2@3.5-1build5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.5-1build5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsepol2@3.5-2build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libsepol2:3.5-2build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsepol2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsepol2:3.5-2build1:*:*:*:*:*:*:* | cpe:2.3:a:libsepol2:libsepol2:3.5-2build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsepol2@3.5-2build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.5-2build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsmartcols1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libsmartcols1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsmartcols1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsmartcols1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:* | cpe:2.3:a:libsmartcols1:libsmartcols1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsmartcols1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.39.3-9ubuntu6.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libss2@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libss2:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libss2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libss2:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:* | cpe:2.3:a:libss2:libss2:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libss2@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.47.0-2.4~exp1ubuntu4.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libssl3t64@3.0.13-0ubuntu3.7?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libssl3t64:3.0.13-0ubuntu3.7:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libssl3t64",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libssl3t64:3.0.13-0ubuntu3.7:*:*:*:*:*:*:* | cpe:2.3:a:libssl3t64:libssl3t64:3.0.13-0ubuntu3.7:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libssl3t64@3.0.13-0ubuntu3.7?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.0.13-0ubuntu3.7"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libstdc%2B%2B6@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libstdc\\+\\+6:14.2.0-4ubuntu2\\~24.04.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libstdc++6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libstdc\\+\\+6:14.2.0-4ubuntu2\\~24.04.1:*:*:*:*:*:*:* | cpe:2.3:a:libstdc\\+\\+6:libstdc\\+\\+6:14.2.0-4ubuntu2\\~24.04.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libstdc%2B%2B6@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "14.2.0-4ubuntu2~24.04.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsystemd0@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libsystemd0:255.4-1ubuntu8.14:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsystemd0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsystemd0:255.4-1ubuntu8.14:*:*:*:*:*:*:* | cpe:2.3:a:libsystemd0:libsystemd0:255.4-1ubuntu8.14:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsystemd0@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "255.4-1ubuntu8.14"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libtasn1-6@4.19.0-3ubuntu0.24.04.2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libtasn1-6:4.19.0-3ubuntu0.24.04.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libtasn1-6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libtasn1-6:4.19.0-3ubuntu0.24.04.2:*:*:*:*:*:*:* | cpe:2.3:a:libtasn1-6:libtasn1-6:4.19.0-3ubuntu0.24.04.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libtasn1-6@4.19.0-3ubuntu0.24.04.2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "4.19.0-3ubuntu0.24.04.2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libtinfo6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libtinfo6:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libtinfo6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libtinfo6:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:* | cpe:2.3:a:libtinfo6:libtinfo6:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libtinfo6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "6.4+20240113-1ubuntu2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libudev1@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libudev1:255.4-1ubuntu8.14:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libudev1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libudev1:255.4-1ubuntu8.14:*:*:*:*:*:*:* | cpe:2.3:a:libudev1:libudev1:255.4-1ubuntu8.14:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libudev1@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "255.4-1ubuntu8.14"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libunistring5@1.1-2build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libunistring5:1.1-2build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libunistring5",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libunistring5:1.1-2build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libunistring5:libunistring5:1.1-2build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libunistring5@1.1-2build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.1-2build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libuuid1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libuuid1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libuuid1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libuuid1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:* | cpe:2.3:a:libuuid1:libuuid1:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libuuid1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.39.3-9ubuntu6.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libxxhash0@0.8.2-2build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libxxhash0:0.8.2-2build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libxxhash0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libxxhash0:0.8.2-2build1:*:*:*:*:*:*:* | cpe:2.3:a:libxxhash0:libxxhash0:0.8.2-2build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libxxhash0@0.8.2-2build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "0.8.2-2build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libzstd1@1.5.5%2Bdfsg2-2build1.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:libzstd1:1.5.5\\+dfsg2-2build1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libzstd1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libzstd1:1.5.5\\+dfsg2-2build1.1:*:*:*:*:*:*:* | cpe:2.3:a:libzstd1:libzstd1:1.5.5\\+dfsg2-2build1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libzstd1@1.5.5%2Bdfsg2-2build1.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.5.5+dfsg2-2build1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/login@1:4.13%2Bdfsg1-4ubuntu3.2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:login:1\\:4.13\\+dfsg1-4ubuntu3.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "login",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:login:1\\:4.13\\+dfsg1-4ubuntu3.2:*:*:*:*:*:*:* | cpe:2.3:a:login:login:1\\:4.13\\+dfsg1-4ubuntu3.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/login@1:4.13%2Bdfsg1-4ubuntu3.2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:4.13+dfsg1-4ubuntu3.2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/logsave@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:logsave:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "logsave",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:logsave:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:* | cpe:2.3:a:logsave:logsave:1.47.0-2.4\\~exp1ubuntu4.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/logsave@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.47.0-2.4~exp1ubuntu4.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/mawk@1.3.4.20240123-1build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:mawk:1.3.4.20240123-1build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "mawk",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:mawk:1.3.4.20240123-1build1:*:*:*:*:*:*:* | cpe:2.3:a:mawk:mawk:1.3.4.20240123-1build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/mawk@1.3.4.20240123-1build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.3.4.20240123-1build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/mount@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:mount:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "mount",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:mount:2.39.3-9ubuntu6.5:*:*:*:*:*:*:* | cpe:2.3:a:mount:mount:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/mount@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.39.3-9ubuntu6.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/ncurses-base@6.4%2B20240113-1ubuntu2?arch=all&distro=noble",
+      "cpe": "cpe:2.3:a:debian:ncurses-base:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "ncurses-base",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:ncurses-base:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:* | cpe:2.3:a:ncurses-base:ncurses-base:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/ncurses-base@6.4%2B20240113-1ubuntu2?arch=all&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "6.4+20240113-1ubuntu2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/ncurses-bin@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:ncurses-bin:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "ncurses-bin",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:ncurses-bin:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:* | cpe:2.3:a:ncurses-bin:ncurses-bin:6.4\\+20240113-1ubuntu2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/ncurses-bin@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "6.4+20240113-1ubuntu2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/passwd@1:4.13%2Bdfsg1-4ubuntu3.2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:passwd:1\\:4.13\\+dfsg1-4ubuntu3.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "passwd",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:passwd:1\\:4.13\\+dfsg1-4ubuntu3.2:*:*:*:*:*:*:* | cpe:2.3:a:passwd:passwd:1\\:4.13\\+dfsg1-4ubuntu3.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/passwd@1:4.13%2Bdfsg1-4ubuntu3.2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:4.13+dfsg1-4ubuntu3.2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/perl-base@5.38.2-3.2ubuntu0.2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:perl-base:5.38.2-3.2ubuntu0.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "perl-base",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:perl-base:5.38.2-3.2ubuntu0.2:*:*:*:*:*:*:* | cpe:2.3:a:perl-base:perl-base:5.38.2-3.2ubuntu0.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/perl-base@5.38.2-3.2ubuntu0.2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "5.38.2-3.2ubuntu0.2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/procps@2:4.0.4-4ubuntu3.2?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:procps:2\\:4.0.4-4ubuntu3.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "procps",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:procps:2\\:4.0.4-4ubuntu3.2:*:*:*:*:*:*:* | cpe:2.3:a:procps:procps:2\\:4.0.4-4ubuntu3.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/procps@2:4.0.4-4ubuntu3.2?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2:4.0.4-4ubuntu3.2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/sed@4.9-2build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:sed:4.9-2build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "sed",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:sed:4.9-2build1:*:*:*:*:*:*:* | cpe:2.3:a:sed:sed:4.9-2build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/sed@4.9-2build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "4.9-2build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/sensible-utils@0.0.22?arch=all&distro=noble",
+      "cpe": "cpe:2.3:a:debian:sensible-utils:0.0.22:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "sensible-utils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:sensible-utils:0.0.22:*:*:*:*:*:*:* | cpe:2.3:a:sensible-utils:sensible-utils:0.0.22:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/sensible-utils@0.0.22?arch=all&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "0.0.22"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/sysvinit-utils@3.08-6ubuntu3?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:sysvinit-utils:3.08-6ubuntu3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "sysvinit-utils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:sysvinit-utils:3.08-6ubuntu3:*:*:*:*:*:*:* | cpe:2.3:a:sysvinit-utils:sysvinit-utils:3.08-6ubuntu3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/sysvinit-utils@3.08-6ubuntu3?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "3.08-6ubuntu3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/tar@1.35%2Bdfsg-3build1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:tar:1.35\\+dfsg-3build1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "tar",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:tar:1.35\\+dfsg-3build1:*:*:*:*:*:*:* | cpe:2.3:a:tar:tar:1.35\\+dfsg-3build1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/tar@1.35%2Bdfsg-3build1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1.35+dfsg-3build1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/ubuntu-keyring@2023.11.28.1?arch=all&distro=noble",
+      "cpe": "cpe:2.3:a:debian:ubuntu-keyring:2023.11.28.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "ubuntu-keyring",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:ubuntu-keyring:2023.11.28.1:*:*:*:*:*:*:* | cpe:2.3:a:ubuntu-keyring:ubuntu-keyring:2023.11.28.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/ubuntu-keyring@2023.11.28.1?arch=all&distro=noble",
+      "supplier": {
+        "name": "Dimitri John Ledkov <dimitri.ledkov@canonical.com>"
+      },
+      "type": "library",
+      "version": "2023.11.28.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/unminimize@0.2.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:unminimize:0.2.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "unminimize",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:unminimize:0.2.1:*:*:*:*:*:*:* | cpe:2.3:a:unminimize:unminimize:0.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/unminimize@0.2.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Utkarsh Gupta <utkarsh@ubuntu.com>"
+      },
+      "type": "library",
+      "version": "0.2.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/util-linux@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:util-linux:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "util-linux",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:util-linux:2.39.3-9ubuntu6.5:*:*:*:*:*:*:* | cpe:2.3:a:util-linux:util-linux:2.39.3-9ubuntu6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/util-linux@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "2.39.3-9ubuntu6.5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/zlib1g@1:1.3.dfsg-3.1ubuntu2.1?arch=arm64&distro=noble",
+      "cpe": "cpe:2.3:a:debian:zlib1g:1\\:1.3.dfsg-3.1ubuntu2.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "zlib1g",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:zlib1g:1\\:1.3.dfsg-3.1ubuntu2.1:*:*:*:*:*:*:* | cpe:2.3:a:zlib1g:zlib1g:1\\:1.3.dfsg-3.1ubuntu2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/ubuntu-24.04-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/zlib1g@1:1.3.dfsg-3.1ubuntu2.1?arch=arm64&distro=noble",
+      "supplier": {
+        "name": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+      },
+      "type": "library",
+      "version": "1:1.3.dfsg-3.1ubuntu2.1"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "pkg:deb/debian/apt@2.8.3?arch=arm64&distro=noble",
+        "pkg:deb/debian/base-files@13ubuntu10.4?arch=arm64&distro=noble",
+        "pkg:deb/debian/base-passwd@3.6.3build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/bash@5.2.21-2ubuntu4?arch=arm64&distro=noble",
+        "pkg:deb/debian/bsdutils@1:2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/coreutils@9.4-3ubuntu6.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/dash@0.5.12-6ubuntu5?arch=arm64&distro=noble",
+        "pkg:deb/debian/debconf@1.5.86ubuntu1?arch=all&distro=noble",
+        "pkg:deb/debian/debianutils@5.17build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/diffutils@1:3.10-1build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/dpkg@1.22.6ubuntu6.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/e2fsprogs@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/findutils@4.9.0-5build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/gcc-14-base@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/gpgv@2.4.4-2ubuntu17.4?arch=arm64&distro=noble",
+        "pkg:deb/debian/grep@3.11-4build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/gzip@1.12-1ubuntu3.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/hostname@3.23%2Bnmu2ubuntu2?arch=arm64&distro=noble",
+        "pkg:deb/debian/init-system-helpers@1.66ubuntu1?arch=all&distro=noble",
+        "pkg:deb/debian/libacl1@2.3.2-1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libapt-pkg6.0t64@2.8.3?arch=arm64&distro=noble",
+        "pkg:deb/debian/libassuan0@2.5.6-1build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libattr1@1:2.5.2-1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libaudit-common@1:3.1.2-2.1build1.1?arch=all&distro=noble",
+        "pkg:deb/debian/libaudit1@1:3.1.2-2.1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libblkid1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libbz2-1.0@1.0.8-5.1build0.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc-bin@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcap-ng0@0.8.4-2build2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcap2@1:2.66-5ubuntu2.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcom-err2@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcrypt1@1:4.4.36-4build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libdb5.3t64@5.3.28%2Bdfsg2-7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libdebconfclient0@0.271ubuntu3?arch=arm64&distro=noble",
+        "pkg:deb/debian/libext2fs2t64@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libffi8@3.4.6-1build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgcc-s1@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgcrypt20@1.10.3-2build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgmp10@2:6.3.0%2Bdfsg-2ubuntu6.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgnutls30t64@3.8.3-1.1ubuntu3.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgpg-error0@1.47-3build2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libhogweed6t64@3.9.1-2.2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libidn2-0@2.3.7-2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/liblz4-1@1.9.4-1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/liblzma5@5.6.1%2Breally5.4.5-1ubuntu0.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libmd0@1.1.0-2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libmount1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libncursesw6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libnettle8t64@3.9.1-2.2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libnpth0t64@1.6-3.1build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libp11-kit0@0.25.3-4ubuntu2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libpam-modules-bin@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libpam-modules@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libpam-runtime@1.5.3-5ubuntu5.5?arch=all&distro=noble",
+        "pkg:deb/debian/libpam0g@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libpcre2-8-0@10.42-4ubuntu2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libproc2-0@2:4.0.4-4ubuntu3.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libseccomp2@2.5.5-1ubuntu3.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libselinux1@3.5-2ubuntu2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsemanage-common@3.5-1build5?arch=all&distro=noble",
+        "pkg:deb/debian/libsemanage2@3.5-1build5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsepol2@3.5-2build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsmartcols1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libss2@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libssl3t64@3.0.13-0ubuntu3.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libstdc%2B%2B6@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsystemd0@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+        "pkg:deb/debian/libtasn1-6@4.19.0-3ubuntu0.24.04.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libtinfo6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libudev1@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+        "pkg:deb/debian/libunistring5@1.1-2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libuuid1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libxxhash0@0.8.2-2build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libzstd1@1.5.5%2Bdfsg2-2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/login@1:4.13%2Bdfsg1-4ubuntu3.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/logsave@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/mawk@1.3.4.20240123-1build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/mount@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/ncurses-base@6.4%2B20240113-1ubuntu2?arch=all&distro=noble",
+        "pkg:deb/debian/ncurses-bin@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+        "pkg:deb/debian/passwd@1:4.13%2Bdfsg1-4ubuntu3.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/perl-base@5.38.2-3.2ubuntu0.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/procps@2:4.0.4-4ubuntu3.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/sed@4.9-2build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/sensible-utils@0.0.22?arch=all&distro=noble",
+        "pkg:deb/debian/sysvinit-utils@3.08-6ubuntu3?arch=arm64&distro=noble",
+        "pkg:deb/debian/tar@1.35%2Bdfsg-3build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/ubuntu-keyring@2023.11.28.1?arch=all&distro=noble",
+        "pkg:deb/debian/unminimize@0.2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/util-linux@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/zlib1g@1:1.3.dfsg-3.1ubuntu2.1?arch=arm64&distro=noble"
+      ]
+    },
+    {
+      "aggregate": "incomplete_first_party_only",
+      "assemblies": [
+        "project@0.0.0"
+      ],
+      "properties": [
+        {
+          "name": "mikebom:ring-buffer-overflows",
+          "value": "0"
+        },
+        {
+          "name": "mikebom:events-dropped",
+          "value": "0"
+        },
+        {
+          "name": "mikebom:uprobe-attach-failures",
+          "value": "0"
+        },
+        {
+          "name": "mikebom:kprobe-attach-failures",
+          "value": "0"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [
+        "pkg:deb/debian/base-passwd@3.6.3build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/gpgv@2.4.4-2ubuntu17.4?arch=arm64&distro=noble",
+        "pkg:deb/debian/libapt-pkg6.0t64@2.8.3?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgcc-s1@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgnutls30t64@3.8.3-1.1ubuntu3.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libseccomp2@2.5.5-1ubuntu3.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libstdc%2B%2B6@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsystemd0@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+        "pkg:deb/debian/ubuntu-keyring@2023.11.28.1?arch=all&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/apt@2.8.3?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcrypt1@1:4.4.36-4build1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/base-files@13ubuntu10.4?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libdebconfclient0@0.271ubuntu3?arch=arm64&distro=noble",
+        "pkg:deb/debian/libselinux1@3.5-2ubuntu2.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/base-passwd@3.6.3build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/base-files@13ubuntu10.4?arch=arm64&distro=noble",
+        "pkg:deb/debian/debianutils@5.17build1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/bash@5.2.21-2ubuntu4?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/bsdutils@1:2.39.3-9ubuntu6.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/coreutils@9.4-3ubuntu6.2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/debianutils@5.17build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/dpkg@1.22.6ubuntu6.5?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/dash@0.5.12-6ubuntu5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/debconf@1.5.86ubuntu1?arch=all&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/debianutils@5.17build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/diffutils@1:3.10-1build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/tar@1.35%2Bdfsg-3build1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/dpkg@1.22.6ubuntu6.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/logsave@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/e2fsprogs@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/findutils@4.9.0-5build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/gcc-14-base@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libassuan0@2.5.6-1build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libbz2-1.0@1.0.8-5.1build0.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgcrypt20@1.10.3-2build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgpg-error0@1.47-3build2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libnpth0t64@1.6-3.1build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/zlib1g@1:1.3.dfsg-3.1ubuntu2.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/gpgv@2.4.4-2ubuntu17.4?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/grep@3.11-4build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/dpkg@1.22.6ubuntu6.5?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/gzip@1.12-1ubuntu3.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/hostname@3.23%2Bnmu2ubuntu2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/init-system-helpers@1.66ubuntu1?arch=all&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libacl1@2.3.2-1build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libbz2-1.0@1.0.8-5.1build0.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgcc-s1@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgcrypt20@1.10.3-2build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/liblz4-1@1.9.4-1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/liblzma5@5.6.1%2Breally5.4.5-1ubuntu0.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libstdc%2B%2B6@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsystemd0@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+        "pkg:deb/debian/libudev1@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+        "pkg:deb/debian/libxxhash0@0.8.2-2build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libzstd1@1.5.5%2Bdfsg2-2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/zlib1g@1:1.3.dfsg-3.1ubuntu2.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libapt-pkg6.0t64@2.8.3?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgpg-error0@1.47-3build2.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libassuan0@2.5.6-1build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libattr1@1:2.5.2-1build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/libaudit-common@1:3.1.2-2.1build1.1?arch=all&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libaudit-common@1:3.1.2-2.1build1.1?arch=all&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcap-ng0@0.8.4-2build2?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libaudit1@1:3.1.2-2.1build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libblkid1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libbz2-1.0@1.0.8-5.1build0.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libc-bin@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libgcc-s1@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libcap-ng0@0.8.4-2build2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libcap2@1:2.66-5ubuntu2.2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libcom-err2@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libcrypt1@1:4.4.36-4build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libdb5.3t64@5.3.28%2Bdfsg2-7?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libdebconfclient0@0.271ubuntu3?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libext2fs2t64@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libffi8@3.4.6-1build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/gcc-14-base@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libgcc-s1@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgpg-error0@1.47-3build2.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libgcrypt20@1.10.3-2build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libgmp10@2:6.3.0%2Bdfsg-2ubuntu6.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgmp10@2:6.3.0%2Bdfsg-2ubuntu6.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libhogweed6t64@3.9.1-2.2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libidn2-0@2.3.7-2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libnettle8t64@3.9.1-2.2build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libp11-kit0@0.25.3-4ubuntu2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libtasn1-6@4.19.0-3ubuntu0.24.04.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libunistring5@1.1-2build1.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libgnutls30t64@3.8.3-1.1ubuntu3.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libgpg-error0@1.47-3build2.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgmp10@2:6.3.0%2Bdfsg-2ubuntu6.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libnettle8t64@3.9.1-2.2build1.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libhogweed6t64@3.9.1-2.2build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libunistring5@1.1-2build1.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libidn2-0@2.3.7-2build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/liblz4-1@1.9.4-1build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/liblzma5@5.6.1%2Breally5.4.5-1ubuntu0.2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libmd0@1.1.0-2build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libblkid1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libselinux1@3.5-2ubuntu2.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libmount1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libtinfo6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libncursesw6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libnettle8t64@3.9.1-2.2build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libnpth0t64@1.6-3.1build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libffi8@3.4.6-1build1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libp11-kit0@0.25.3-4ubuntu2.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libaudit1@1:3.1.2-2.1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcrypt1@1:4.4.36-4build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libpam0g@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libselinux1@3.5-2ubuntu2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsystemd0@255.4-1ubuntu8.14?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libpam-modules-bin@1.5.3-5ubuntu5.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/libpam-modules@1.5.3-5ubuntu5.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/debconf@1.5.86ubuntu1?arch=all&distro=noble",
+        "pkg:deb/debian/libpam-modules@1.5.3-5ubuntu5.5?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libpam-runtime@1.5.3-5ubuntu5.5?arch=all&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/debconf@1.5.86ubuntu1?arch=all&distro=noble",
+        "pkg:deb/debian/libaudit1@1:3.1.2-2.1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libpam0g@1.5.3-5ubuntu5.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libpcre2-8-0@10.42-4ubuntu2.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsystemd0@255.4-1ubuntu8.14?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libproc2-0@2:4.0.4-4ubuntu3.2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libseccomp2@2.5.5-1ubuntu3.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libpcre2-8-0@10.42-4ubuntu2.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libselinux1@3.5-2ubuntu2.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/libsemanage-common@3.5-1build5?arch=all&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libaudit1@1:3.1.2-2.1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libbz2-1.0@1.0.8-5.1build0.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libselinux1@3.5-2ubuntu2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsemanage-common@3.5-1build5?arch=all&distro=noble",
+        "pkg:deb/debian/libsepol2@3.5-2build1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libsemanage2@3.5-1build5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libsepol2@3.5-2build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libsmartcols1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcom-err2@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libss2@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libssl3t64@3.0.13-0ubuntu3.7?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/gcc-14-base@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgcc-s1@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libstdc%2B%2B6@14.2.0-4ubuntu2~24.04.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcap2@1:2.66-5ubuntu2.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libgcrypt20@1.10.3-2build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/liblz4-1@1.9.4-1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/liblzma5@5.6.1%2Breally5.4.5-1ubuntu0.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libzstd1@1.5.5%2Bdfsg2-2build1.1?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libsystemd0@255.4-1ubuntu8.14?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libtasn1-6@4.19.0-3ubuntu0.24.04.2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libtinfo6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcap2@1:2.66-5ubuntu2.2?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libudev1@255.4-1ubuntu8.14?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libunistring5@1.1-2build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libuuid1@2.39.3-9ubuntu6.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libxxhash0@0.8.2-2build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/libzstd1@1.5.5%2Bdfsg2-2build1.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/login@1:4.13%2Bdfsg1-4ubuntu3.2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/logsave@1.47.0-2.4~exp1ubuntu4.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/mawk@1.3.4.20240123-1build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/mount@2.39.3-9ubuntu6.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/ncurses-base@6.4%2B20240113-1ubuntu2?arch=all&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/ncurses-bin@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libaudit1@1:3.1.2-2.1build1.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libcrypt1@1:4.4.36-4build1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libpam-modules@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libpam0g@1.5.3-5ubuntu5.5?arch=arm64&distro=noble",
+        "pkg:deb/debian/libselinux1@3.5-2ubuntu2.1?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsemanage2@3.5-1build5?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/passwd@1:4.13%2Bdfsg1-4ubuntu3.2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/perl-base@5.38.2-3.2ubuntu0.2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/init-system-helpers@1.66ubuntu1?arch=all&distro=noble",
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble",
+        "pkg:deb/debian/libncursesw6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libproc2-0@2:4.0.4-4ubuntu3.2?arch=arm64&distro=noble",
+        "pkg:deb/debian/libsystemd0@255.4-1ubuntu8.14?arch=arm64&distro=noble",
+        "pkg:deb/debian/libtinfo6@6.4%2B20240113-1ubuntu2?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/procps@2:4.0.4-4ubuntu3.2?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/sed@4.9-2build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/sensible-utils@0.0.22?arch=all&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/sysvinit-utils@3.08-6ubuntu3?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/tar@1.35%2Bdfsg-3build1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/ubuntu-keyring@2023.11.28.1?arch=all&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/unminimize@0.2.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/util-linux@2.39.3-9ubuntu6.5?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.39-0ubuntu8.7?arch=arm64&distro=noble"
+      ],
+      "ref": "pkg:deb/debian/zlib1g@1:1.3.dfsg-3.1ubuntu2.1?arch=arm64&distro=noble"
+    },
+    {
+      "dependsOn": [],
+      "ref": "project@0.0.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "project@0.0.0",
+      "name": "project",
+      "type": "application",
+      "version": "0.0.0"
+    },
+    "lifecycles": [
+      {
+        "phase": "operations"
+      }
+    ],
+    "properties": [
+      {
+        "name": "mikebom:generation-context",
+        "value": "filesystem-scan"
+      }
+    ],
+    "timestamp": "2026-04-20T15:10:05Z",
+    "tools": {
+      "components": [
+        {
+          "name": "mikebom",
+          "publisher": "mikebom contributors",
+          "type": "application",
+          "version": "0.1.0"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:cb4adacc-1878-4b59-a294-8fa1ceb81787",
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": []
+}

@@ -1,0 +1,25 @@
+[workspace]
+members = ["mikebom-cli", "mikebom-common", "xtask"]
+exclude = ["mikebom-ebpf"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
+clap = { version = "4", features = ["derive", "env"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# mikebom-ebpf is built separately via xtask (different target triple)
+# and is NOT a workspace member — it uses #![no_std] + nightly + bpf target

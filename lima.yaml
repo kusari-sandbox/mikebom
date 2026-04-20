@@ -1,0 +1,77 @@
+# Lima VM configuration for mikebom eBPF development on macOS
+# Usage: limactl start ./lima.yaml
+# Shell: limactl shell mikebom
+#
+# This VM provides a Linux environment with:
+# - Kernel 5.8+ (required for BPF ring buffers)
+# - Rust stable + nightly toolchains
+# - CAP_BPF / root access for eBPF program loading
+# - Shared workspace mount for seamless development
+
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+    arch: "x86_64"
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+
+cpus: 4
+memory: "8GiB"
+disk: "30GiB"
+
+mounts:
+  - location: "~"
+    writable: true
+
+containerd:
+  system: false
+  user: false
+
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      # Install build dependencies
+      apt-get update -qq
+      apt-get install -y -qq \
+        build-essential \
+        pkg-config \
+        libssl-dev \
+        linux-tools-common \
+        linux-tools-generic \
+        clang \
+        llvm \
+        curl
+
+      # Verify kernel supports eBPF ring buffers (5.8+)
+      KVER=$(uname -r | cut -d. -f1-2)
+      echo "Kernel version: $KVER"
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      # Install Rust (stable + nightly)
+      if ! command -v rustup &>/dev/null; then
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      fi
+
+      source "$HOME/.cargo/env"
+      rustup toolchain install stable
+      rustup toolchain install nightly
+      rustup component add rust-src --toolchain nightly
+
+      # Add BPF target for nightly
+      rustup target add --toolchain nightly bpfel-unknown-none
+
+      echo "Rust toolchains ready:"
+      rustup show
+
+probes:
+  - script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      test -f /home/*.linux/.cargo/bin/rustup
+    hint: "Waiting for Rust toolchain installation to complete"

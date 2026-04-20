@@ -1,0 +1,32 @@
+# Rust build artifacts
+target/
+debug/
+release/
+*.rs.bk
+*.rlib
+
+# eBPF build artifacts
+mikebom-ebpf/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env*
+*.log
+
+# Profiling
+*.prof*
+perf.data*
+flamegraph.svg
+
+# Generated SBOM output from dev/test runs
+mikebom.cdx.json

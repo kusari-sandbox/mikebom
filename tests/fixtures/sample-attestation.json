@@ -1,0 +1,171 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "test-build-output",
+      "digest": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "predicateType": "https://mikebom.dev/attestation/build-trace/v1",
+  "predicate": {
+    "metadata": {
+      "tool": { "name": "mikebom", "version": "0.1.0" },
+      "trace_start": "2026-04-15T10:00:00.000Z",
+      "trace_end": "2026-04-15T10:02:30.000Z",
+      "target_process": {
+        "pid": 12345,
+        "command": "cargo build --release",
+        "cgroup_id": 999
+      },
+      "host": {
+        "os": "linux",
+        "kernel_version": "6.8.0-generic",
+        "arch": "x86_64"
+      },
+      "generation_context": "build-time-trace"
+    },
+    "network_trace": {
+      "connections": [
+        {
+          "id": "sock_1001_1713171612345",
+          "protocol": "https",
+          "process": { "pid": 12345, "tid": 12350, "comm": "cargo" },
+          "destination": {
+            "ip": "108.138.64.96",
+            "port": 443,
+            "hostname": "crates.io"
+          },
+          "tls": { "sni": "crates.io", "captured_via": "openssl_uprobe" },
+          "request": {
+            "method": "GET",
+            "path": "/api/v1/crates/serde/1.0.197/download",
+            "host_header": "crates.io"
+          },
+          "response": {
+            "status_code": 200,
+            "content_length": 82451,
+            "content_hash": {
+              "algorithm": "sha256",
+              "value": "3fb1c873e1b9b056a4dc4c0c198b24c3ffa59243c322bfd971d2d5ef4f463ee1"
+            }
+          },
+          "timing": {
+            "start": "2026-04-15T10:00:01.100Z",
+            "end": "2026-04-15T10:00:01.550Z"
+          },
+          "bytes_sent": 342,
+          "bytes_received": 82451
+        },
+        {
+          "id": "sock_1002_1713171612456",
+          "protocol": "https",
+          "process": { "pid": 12345, "tid": 12351, "comm": "cargo" },
+          "destination": {
+            "ip": "108.138.64.96",
+            "port": 443,
+            "hostname": "crates.io"
+          },
+          "tls": { "sni": "crates.io", "captured_via": "openssl_uprobe" },
+          "request": {
+            "method": "GET",
+            "path": "/api/v1/crates/tokio/1.38.0/download",
+            "host_header": "crates.io"
+          },
+          "response": {
+            "status_code": 200,
+            "content_length": 245120,
+            "content_hash": {
+              "algorithm": "sha256",
+              "value": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+            }
+          },
+          "timing": {
+            "start": "2026-04-15T10:00:02.200Z",
+            "end": "2026-04-15T10:00:02.900Z"
+          },
+          "bytes_sent": 340,
+          "bytes_received": 245120
+        },
+        {
+          "id": "sock_1003_1713171612789",
+          "protocol": "https",
+          "process": { "pid": 12345, "tid": 12352, "comm": "cargo" },
+          "destination": {
+            "ip": "151.101.1.132",
+            "port": 443,
+            "hostname": "static.crates.io"
+          },
+          "tls": { "sni": "static.crates.io", "captured_via": "openssl_uprobe" },
+          "request": {
+            "method": "GET",
+            "path": "/crates/anyhow/anyhow-1.0.86.crate",
+            "host_header": "static.crates.io"
+          },
+          "response": {
+            "status_code": 200,
+            "content_length": 34567,
+            "content_hash": {
+              "algorithm": "sha256",
+              "value": "b3d1cf9998f860df16e50a2ba4e3929f21e530675b7489a18df8bbab104c0b6c"
+            }
+          },
+          "timing": {
+            "start": "2026-04-15T10:00:03.000Z",
+            "end": "2026-04-15T10:00:03.300Z"
+          },
+          "bytes_sent": 280,
+          "bytes_received": 34567
+        }
+      ],
+      "summary": {
+        "total_connections": 3,
+        "unique_hosts": ["crates.io", "static.crates.io"],
+        "unique_ips": ["108.138.64.96", "151.101.1.132"],
+        "protocol_counts": { "https": 3 },
+        "total_bytes_received": 362138
+      }
+    },
+    "file_access": {
+      "operations": [
+        {
+          "path": "/home/user/.cargo/registry/cache/crates.io-6f17d22bba15001f/serde-1.0.197.crate",
+          "operation": "write",
+          "process": { "pid": 12345, "tid": 12350, "comm": "cargo" },
+          "content_hash": {
+            "algorithm": "sha256",
+            "value": "3fb1c873e1b9b056a4dc4c0c198b24c3ffa59243c322bfd971d2d5ef4f463ee1"
+          },
+          "size": 82451,
+          "timestamp": "2026-04-15T10:00:01.600Z"
+        },
+        {
+          "path": "/home/user/.cargo/registry/cache/crates.io-6f17d22bba15001f/tokio-1.38.0.crate",
+          "operation": "write",
+          "process": { "pid": 12345, "tid": 12351, "comm": "cargo" },
+          "content_hash": {
+            "algorithm": "sha256",
+            "value": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+          },
+          "size": 245120,
+          "timestamp": "2026-04-15T10:00:03.000Z"
+        }
+      ],
+      "summary": {
+        "total_operations": 2,
+        "unique_paths": 2,
+        "operations_by_type": { "write": 2 }
+      }
+    },
+    "trace_integrity": {
+      "ring_buffer_overflows": 0,
+      "events_dropped": 0,
+      "uprobe_attach_failures": [],
+      "kprobe_attach_failures": [],
+      "partial_captures": [],
+      "bloom_filter_capacity": 65536,
+      "bloom_filter_false_positive_rate": 0.01
+    }
+  }
+}

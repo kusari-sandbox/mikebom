@@ -1,0 +1,18 @@
+[package]
+name = "mikebom-ebpf"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "mikebom-ebpf"
+path = "src/main.rs"
+
+[dependencies]
+aya-ebpf = "0.1"
+aya-log-ebpf = "0.1"
+mikebom-common = { path = "../mikebom-common", default-features = false }
+
+[profile.release]
+panic = "abort"
+lto = true
+opt-level = 2

@@ -1,0 +1,50 @@
+FROM rust:1.87-bookworm
+
+# eBPF build dependencies, plus tools the demo scripts drive.
+RUN apt-get update && apt-get install -y \
+    clang \
+    llvm \
+    libelf-dev \
+    linux-headers-generic \
+    pkg-config \
+    libssl-dev \
+    curl \
+    ca-certificates \
+    jq \
+    dpkg-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install nightly toolchain for eBPF target and bpf-linker
+RUN rustup toolchain install nightly \
+    && rustup component add rust-src --toolchain nightly \
+    && cargo +nightly install bpf-linker
+
+# Install syft + trivy from pinned GitHub release tarballs (no curl|sh).
+ARG SYFT_VERSION=1.17.0
+ARG TRIVY_VERSION=0.69.3
+RUN set -eux; \
+    arch=$(uname -m); \
+    case "$arch" in \
+      x86_64)  syft_arch=amd64; trivy_arch=64bit ;; \
+      aarch64) syft_arch=arm64; trivy_arch=ARM64 ;; \
+      *) echo "unsupported arch $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL -o /tmp/syft.tgz \
+      "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_${syft_arch}.tar.gz"; \
+    tar -xzf /tmp/syft.tgz -C /usr/local/bin syft; \
+    curl -fsSL -o /tmp/trivy.tgz \
+      "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${trivy_arch}.tar.gz"; \
+    tar -xzf /tmp/trivy.tgz -C /usr/local/bin trivy; \
+    rm -f /tmp/syft.tgz /tmp/trivy.tgz
+
+WORKDIR /mikebom
+COPY . .
+
+# Build eBPF kernel programs first
+RUN cargo run --package xtask -- ebpf 2>&1 || echo "eBPF build result: $?"
+
+# Build the userspace binary
+RUN cargo build --release 2>&1
+
+# Run tests
+RUN cargo test --workspace 2>&1

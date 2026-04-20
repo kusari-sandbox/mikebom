@@ -1,0 +1,55 @@
+[package]
+name = "mikebom"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "mikebom"
+path = "src/main.rs"
+
+[dependencies]
+mikebom-common = { path = "../mikebom-common", features = ["std", "aya-user"] }
+
+flate2 = "1"
+serde_yaml = "0.9"
+tar = "0.4"
+tempfile = "3"
+toml = "0.8"
+uuid = { version = "1", features = ["v4"] }
+
+base64 = "0.22"
+
+# Milestone 003 — pure-Rust-only deps. See specs/003-multi-ecosystem-expansion/
+# tasks.md T001 for the feature-pinning rationale (Principle I: zero C).
+# Any feature change here must be cross-checked with
+# `cargo tree -p mikebom -e normal | rg -i 'libz|zlib|c-bindings|libsqlite3'`
+# and the `no_c_dependencies_in_tree` regression test.
+object = { version = "0.36", default-features = false, features = ["read", "std", "elf", "macho", "pe", "coff"] }
+quick-xml = { version = "0.31", default-features = false }
+zip = { version = "0.6", default-features = false, features = ["deflate-miniz"] }
+# Milestone 004 US1 — pure-Rust .rpm v3/v4 header parser. Dependency
+# audit (T002 per research.md R1): transitive tree must be C-clean.
+# Verified with `cargo tree -p rpm` — no libz-sys / bzip2-sys / etc.
+rpm = { version = "0.22", default-features = false, features = [] }
+
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile = "3"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+aya = "0.13"
+aya-log = "0.2"
+libc = "0.2"

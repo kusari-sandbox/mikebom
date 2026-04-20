@@ -1,0 +1,3980 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:deb/debian/adduser@3.134?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:adduser:3.134:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "adduser",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:adduser:3.134:*:*:*:*:*:*:* | cpe:2.3:a:adduser:adduser:3.134:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/adduser@3.134?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "Debian Adduser Developers <adduser@packages.debian.org>"
+      },
+      "type": "library",
+      "version": "3.134"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/apt@2.6.1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:apt:2.6.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "apt",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:apt:2.6.1:*:*:*:*:*:*:* | cpe:2.3:a:apt:apt:2.6.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/apt@2.6.1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "APT Development Team <deity@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "2.6.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/base-files@12.4%2Bdeb12u13?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:base-files:12.4\\+deb12u13:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "base-files",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:base-files:12.4\\+deb12u13:*:*:*:*:*:*:* | cpe:2.3:a:base-files:base-files:12.4\\+deb12u13:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/base-files@12.4%2Bdeb12u13?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Santiago Vila <sanvila@debian.org>"
+      },
+      "type": "library",
+      "version": "12.4+deb12u13"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/base-passwd@3.6.1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:base-passwd:3.6.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "base-passwd",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:base-passwd:3.6.1:*:*:*:*:*:*:* | cpe:2.3:a:base-passwd:base-passwd:3.6.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/base-passwd@3.6.1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Colin Watson <cjwatson@debian.org>"
+      },
+      "type": "library",
+      "version": "3.6.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/bash@5.2.15-2%2Bb10?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:bash:5.2.15-2\\+b10:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "bash",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:bash:5.2.15-2\\+b10:*:*:*:*:*:*:* | cpe:2.3:a:bash:bash:5.2.15-2\\+b10:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/bash@5.2.15-2%2Bb10?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Matthias Klose <doko@debian.org>"
+      },
+      "type": "library",
+      "version": "5.2.15-2+b10"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/bsdutils@1:2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:bsdutils:1\\:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "bsdutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:bsdutils:1\\:2.38.1-5\\+deb12u3:*:*:*:*:*:*:* | cpe:2.3:a:bsdutils:bsdutils:1\\:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/bsdutils@1:2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "util-linux packagers <util-linux@packages.debian.org>"
+      },
+      "type": "library",
+      "version": "1:2.38.1-5+deb12u3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/coreutils@9.1-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:coreutils:9.1-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "coreutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:coreutils:9.1-1:*:*:*:*:*:*:* | cpe:2.3:a:coreutils:coreutils:9.1-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/coreutils@9.1-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Michael Stone <mstone@debian.org>"
+      },
+      "type": "library",
+      "version": "9.1-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/dash@0.5.12-2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:dash:0.5.12-2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "dash",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:dash:0.5.12-2:*:*:*:*:*:*:* | cpe:2.3:a:dash:dash:0.5.12-2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/dash@0.5.12-2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Andrej Shadura <andrewsh@debian.org>"
+      },
+      "type": "library",
+      "version": "0.5.12-2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/debconf@1.5.82?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:debconf:1.5.82:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "debconf",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:debconf:1.5.82:*:*:*:*:*:*:* | cpe:2.3:a:debconf:debconf:1.5.82:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/debconf@1.5.82?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "Debconf Developers <debconf-devel@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "1.5.82"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:debian-archive-keyring:2023.3\\+deb12u2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "debian-archive-keyring",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:debian-archive-keyring:2023.3\\+deb12u2:*:*:*:*:*:*:* | cpe:2.3:a:debian-archive-keyring:debian-archive-keyring:2023.3\\+deb12u2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "Debian Release Team <packages@release.debian.org>"
+      },
+      "type": "library",
+      "version": "2023.3+deb12u2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/debianutils@5.7-0.5~deb12u1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:debianutils:5.7-0.5\\~deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "debianutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:debianutils:5.7-0.5\\~deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:debianutils:debianutils:5.7-0.5\\~deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/debianutils@5.7-0.5~deb12u1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Clint Adams <clint@debian.org>"
+      },
+      "type": "library",
+      "version": "5.7-0.5~deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/diffutils@1:3.8-4?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:diffutils:1\\:3.8-4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "diffutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:diffutils:1\\:3.8-4:*:*:*:*:*:*:* | cpe:2.3:a:diffutils:diffutils:1\\:3.8-4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/diffutils@1:3.8-4?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Santiago Vila <sanvila@debian.org>"
+      },
+      "type": "library",
+      "version": "1:3.8-4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/dpkg@1.21.22?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:dpkg:1.21.22:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "dpkg",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:dpkg:1.21.22:*:*:*:*:*:*:* | cpe:2.3:a:dpkg:dpkg:1.21.22:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/dpkg@1.21.22?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Dpkg Developers <debian-dpkg@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "1.21.22"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/e2fsprogs@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:e2fsprogs:1.47.0-2\\+b2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "e2fsprogs",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:e2fsprogs:1.47.0-2\\+b2:*:*:*:*:*:*:* | cpe:2.3:a:e2fsprogs:e2fsprogs:1.47.0-2\\+b2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/e2fsprogs@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Theodore Y. Ts'o <tytso@mit.edu>"
+      },
+      "type": "library",
+      "version": "1.47.0-2+b2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/findutils@4.9.0-4?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:findutils:4.9.0-4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "findutils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:findutils:4.9.0-4:*:*:*:*:*:*:* | cpe:2.3:a:findutils:findutils:4.9.0-4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/findutils@4.9.0-4?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Andreas Metzler <ametzler@debian.org>"
+      },
+      "type": "library",
+      "version": "4.9.0-4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:gcc-12-base:12.2.0-14\\+deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "gcc-12-base",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:gcc-12-base:12.2.0-14\\+deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:gcc-12-base:gcc-12-base:12.2.0-14\\+deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GCC Maintainers <debian-gcc@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "12.2.0-14+deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/gpgv@2.2.40-1.1%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:gpgv:2.2.40-1.1\\+deb12u2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "gpgv",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:gpgv:2.2.40-1.1\\+deb12u2:*:*:*:*:*:*:* | cpe:2.3:a:gpgv:gpgv:2.2.40-1.1\\+deb12u2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/gpgv@2.2.40-1.1%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GnuPG Maintainers <pkg-gnupg-maint@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "2.2.40-1.1+deb12u2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/grep@3.8-5?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:grep:3.8-5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "grep",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:grep:3.8-5:*:*:*:*:*:*:* | cpe:2.3:a:grep:grep:3.8-5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/grep@3.8-5?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Anibal Monsalve Salazar <anibal@debian.org>"
+      },
+      "type": "library",
+      "version": "3.8-5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/gzip@1.12-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:gzip:1.12-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "gzip",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:gzip:1.12-1:*:*:*:*:*:*:* | cpe:2.3:a:gzip:gzip:1.12-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/gzip@1.12-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Milan Kupcevic <milan@debian.org>"
+      },
+      "type": "library",
+      "version": "1.12-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/hostname@3.23%2Bnmu1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:hostname:3.23\\+nmu1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "hostname",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:hostname:3.23\\+nmu1:*:*:*:*:*:*:* | cpe:2.3:a:hostname:hostname:3.23\\+nmu1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/hostname@3.23%2Bnmu1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Michael Meskes <meskes@debian.org>"
+      },
+      "type": "library",
+      "version": "3.23+nmu1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/init-system-helpers@1.65.2%2Bdeb12u1?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:init-system-helpers:1.65.2\\+deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "init-system-helpers",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:init-system-helpers:1.65.2\\+deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:init-system-helpers:init-system-helpers:1.65.2\\+deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/init-system-helpers@1.65.2%2Bdeb12u1?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "Debian systemd Maintainers <pkg-systemd-maintainers@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "1.65.2+deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libacl1@2.3.1-3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libacl1:2.3.1-3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libacl1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libacl1:2.3.1-3:*:*:*:*:*:*:* | cpe:2.3:a:libacl1:libacl1:2.3.1-3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libacl1@2.3.1-3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Guillem Jover <guillem@debian.org>"
+      },
+      "type": "library",
+      "version": "2.3.1-3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libapt-pkg6.0@2.6.1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libapt-pkg6.0:2.6.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libapt-pkg6.0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libapt-pkg6.0:2.6.1:*:*:*:*:*:*:* | cpe:2.3:a:libapt-pkg6.0:libapt-pkg6.0:2.6.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libapt-pkg6.0@2.6.1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "APT Development Team <deity@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "2.6.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libattr1@1:2.5.1-4?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libattr1:1\\:2.5.1-4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libattr1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libattr1:1\\:2.5.1-4:*:*:*:*:*:*:* | cpe:2.3:a:libattr1:libattr1:1\\:2.5.1-4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libattr1@1:2.5.1-4?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Guillem Jover <guillem@debian.org>"
+      },
+      "type": "library",
+      "version": "1:2.5.1-4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libaudit-common@1:3.0.9-1?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libaudit-common:1\\:3.0.9-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libaudit-common",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libaudit-common:1\\:3.0.9-1:*:*:*:*:*:*:* | cpe:2.3:a:libaudit-common:libaudit-common:1\\:3.0.9-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libaudit-common@1:3.0.9-1?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "Laurent Bigonville <bigon@debian.org>"
+      },
+      "type": "library",
+      "version": "1:3.0.9-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libaudit1:1\\:3.0.9-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libaudit1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libaudit1:1\\:3.0.9-1:*:*:*:*:*:*:* | cpe:2.3:a:libaudit1:libaudit1:1\\:3.0.9-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Laurent Bigonville <bigon@debian.org>"
+      },
+      "type": "library",
+      "version": "1:3.0.9-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libblkid1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libblkid1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libblkid1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libblkid1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:* | cpe:2.3:a:libblkid1:libblkid1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libblkid1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "util-linux packagers <util-linux@packages.debian.org>"
+      },
+      "type": "library",
+      "version": "2.38.1-5+deb12u3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libbz2-1.0@1.0.8-5%2Bb1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libbz2-1.0:1.0.8-5\\+b1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libbz2-1.0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libbz2-1.0:1.0.8-5\\+b1:*:*:*:*:*:*:* | cpe:2.3:a:libbz2-1.0:libbz2-1.0:1.0.8-5\\+b1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libbz2-1.0@1.0.8-5%2Bb1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Anibal Monsalve Salazar <anibal@debian.org>"
+      },
+      "type": "library",
+      "version": "1.0.8-5+b1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libc-bin:2.36-9\\+deb12u13:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libc-bin",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libc-bin:2.36-9\\+deb12u13:*:*:*:*:*:*:* | cpe:2.3:a:libc-bin:libc-bin:2.36-9\\+deb12u13:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "GNU Libc Maintainers <debian-glibc@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "2.36-9+deb12u13"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libc6:2.36-9\\+deb12u13:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libc6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libc6:2.36-9\\+deb12u13:*:*:*:*:*:*:* | cpe:2.3:a:libc6:libc6:2.36-9\\+deb12u13:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "GNU Libc Maintainers <debian-glibc@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "2.36-9+deb12u13"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libcap-ng0@0.8.3-1%2Bb3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libcap-ng0:0.8.3-1\\+b3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libcap-ng0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libcap-ng0:0.8.3-1\\+b3:*:*:*:*:*:*:* | cpe:2.3:a:libcap-ng0:libcap-ng0:0.8.3-1\\+b3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libcap-ng0@0.8.3-1%2Bb3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Håvard F. Aasen <havard.f.aasen@pfft.no>"
+      },
+      "type": "library",
+      "version": "0.8.3-1+b3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libcap2@1:2.66-4%2Bdeb12u2%2Bb2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libcap2:1\\:2.66-4\\+deb12u2\\+b2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libcap2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libcap2:1\\:2.66-4\\+deb12u2\\+b2:*:*:*:*:*:*:* | cpe:2.3:a:libcap2:libcap2:1\\:2.66-4\\+deb12u2\\+b2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libcap2@1:2.66-4%2Bdeb12u2%2Bb2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Christian Kastner <ckk@debian.org>"
+      },
+      "type": "library",
+      "version": "1:2.66-4+deb12u2+b2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libcom-err2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libcom-err2:1.47.0-2\\+b2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libcom-err2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libcom-err2:1.47.0-2\\+b2:*:*:*:*:*:*:* | cpe:2.3:a:libcom-err2:libcom-err2:1.47.0-2\\+b2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libcom-err2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Theodore Y. Ts'o <tytso@mit.edu>"
+      },
+      "type": "library",
+      "version": "1.47.0-2+b2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libcrypt1@1:4.4.33-2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libcrypt1:1\\:4.4.33-2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libcrypt1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libcrypt1:1\\:4.4.33-2:*:*:*:*:*:*:* | cpe:2.3:a:libcrypt1:libcrypt1:1\\:4.4.33-2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libcrypt1@1:4.4.33-2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Marco d'Itri <md@linux.it>"
+      },
+      "type": "library",
+      "version": "1:4.4.33-2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libdb5.3@5.3.28%2Bdfsg2-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libdb5.3:5.3.28\\+dfsg2-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libdb5.3",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libdb5.3:5.3.28\\+dfsg2-1:*:*:*:*:*:*:* | cpe:2.3:a:libdb5.3:libdb5.3:5.3.28\\+dfsg2-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libdb5.3@5.3.28%2Bdfsg2-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Bastian Germann <bage@debian.org>"
+      },
+      "type": "library",
+      "version": "5.3.28+dfsg2-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libdebconfclient0@0.270?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libdebconfclient0:0.270:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libdebconfclient0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libdebconfclient0:0.270:*:*:*:*:*:*:* | cpe:2.3:a:libdebconfclient0:libdebconfclient0:0.270:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libdebconfclient0@0.270?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian Install System Team <debian-boot@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "0.270"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libext2fs2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libext2fs2:1.47.0-2\\+b2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libext2fs2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libext2fs2:1.47.0-2\\+b2:*:*:*:*:*:*:* | cpe:2.3:a:libext2fs2:libext2fs2:1.47.0-2\\+b2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libext2fs2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Theodore Y. Ts'o <tytso@mit.edu>"
+      },
+      "type": "library",
+      "version": "1.47.0-2+b2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libffi8@3.4.4-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libffi8:3.4.4-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libffi8",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libffi8:3.4.4-1:*:*:*:*:*:*:* | cpe:2.3:a:libffi8:libffi8:3.4.4-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libffi8@3.4.4-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GCC Maintainers <debian-gcc@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "3.4.4-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libgcc-s1:12.2.0-14\\+deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgcc-s1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgcc-s1:12.2.0-14\\+deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:libgcc-s1:libgcc-s1:12.2.0-14\\+deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GCC Maintainers <debian-gcc@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "12.2.0-14+deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgcrypt20@1.10.1-3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libgcrypt20:1.10.1-3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgcrypt20",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgcrypt20:1.10.1-3:*:*:*:*:*:*:* | cpe:2.3:a:libgcrypt20:libgcrypt20:1.10.1-3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgcrypt20@1.10.1-3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GnuTLS Maintainers <pkg-gnutls-maint@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "1.10.1-3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgmp10@2:6.2.1%2Bdfsg1-1.1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libgmp10:2\\:6.2.1\\+dfsg1-1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgmp10",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgmp10:2\\:6.2.1\\+dfsg1-1.1:*:*:*:*:*:*:* | cpe:2.3:a:libgmp10:libgmp10:2\\:6.2.1\\+dfsg1-1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgmp10@2:6.2.1%2Bdfsg1-1.1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian Science Team <debian-science-maintainers@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "2:6.2.1+dfsg1-1.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u6?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libgnutls30:3.7.9-2\\+deb12u6:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgnutls30",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgnutls30:3.7.9-2\\+deb12u6:*:*:*:*:*:*:* | cpe:2.3:a:libgnutls30:libgnutls30:3.7.9-2\\+deb12u6:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u6?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GnuTLS Maintainers <pkg-gnutls-maint@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "3.7.9-2+deb12u6"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libgpg-error0@1.46-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libgpg-error0:1.46-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libgpg-error0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libgpg-error0:1.46-1:*:*:*:*:*:*:* | cpe:2.3:a:libgpg-error0:libgpg-error0:1.46-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libgpg-error0@1.46-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GnuPG Maintainers <pkg-gnupg-maint@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "1.46-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libhogweed6@3.8.1-2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libhogweed6:3.8.1-2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libhogweed6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libhogweed6:3.8.1-2:*:*:*:*:*:*:* | cpe:2.3:a:libhogweed6:libhogweed6:3.8.1-2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libhogweed6@3.8.1-2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Magnus Holmgren <holmgren@debian.org>"
+      },
+      "type": "library",
+      "version": "3.8.1-2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libidn2-0@2.3.3-1%2Bb1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libidn2-0:2.3.3-1\\+b1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libidn2-0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libidn2-0:2.3.3-1\\+b1:*:*:*:*:*:*:* | cpe:2.3:a:libidn2-0:libidn2-0:2.3.3-1\\+b1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libidn2-0@2.3.3-1%2Bb1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian Libidn team <help-libidn@gnu.org>"
+      },
+      "type": "library",
+      "version": "2.3.3-1+b1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/liblz4-1@1.9.4-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:liblz4-1:1.9.4-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "liblz4-1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:liblz4-1:1.9.4-1:*:*:*:*:*:*:* | cpe:2.3:a:liblz4-1:liblz4-1:1.9.4-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/liblz4-1@1.9.4-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Nobuhiro Iwamatsu <iwamatsu@debian.org>"
+      },
+      "type": "library",
+      "version": "1.9.4-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/liblzma5@5.4.1-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:liblzma5:5.4.1-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "liblzma5",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:liblzma5:5.4.1-1:*:*:*:*:*:*:* | cpe:2.3:a:liblzma5:liblzma5:5.4.1-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/liblzma5@5.4.1-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Sebastian Andrzej Siewior <sebastian@breakpoint.cc>"
+      },
+      "type": "library",
+      "version": "5.4.1-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libmd0@1.0.4-2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libmd0:1.0.4-2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libmd0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libmd0:1.0.4-2:*:*:*:*:*:*:* | cpe:2.3:a:libmd0:libmd0:1.0.4-2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libmd0@1.0.4-2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Guillem Jover <guillem@debian.org>"
+      },
+      "type": "library",
+      "version": "1.0.4-2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libmount1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libmount1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libmount1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libmount1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:* | cpe:2.3:a:libmount1:libmount1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libmount1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "util-linux packagers <util-linux@packages.debian.org>"
+      },
+      "type": "library",
+      "version": "2.38.1-5+deb12u3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libnettle8@3.8.1-2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libnettle8:3.8.1-2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libnettle8",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libnettle8:3.8.1-2:*:*:*:*:*:*:* | cpe:2.3:a:libnettle8:libnettle8:3.8.1-2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libnettle8@3.8.1-2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Magnus Holmgren <holmgren@debian.org>"
+      },
+      "type": "library",
+      "version": "3.8.1-2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libp11-kit0@0.24.1-2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libp11-kit0:0.24.1-2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libp11-kit0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libp11-kit0:0.24.1-2:*:*:*:*:*:*:* | cpe:2.3:a:libp11-kit0:libp11-kit0:0.24.1-2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libp11-kit0@0.24.1-2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GnuTLS Maintainers <pkg-gnutls-maint@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "0.24.1-2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpam-modules-bin@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libpam-modules-bin:1.5.2-6\\+deb12u2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpam-modules-bin",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpam-modules-bin:1.5.2-6\\+deb12u2:*:*:*:*:*:*:* | cpe:2.3:a:libpam-modules-bin:libpam-modules-bin:1.5.2-6\\+deb12u2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpam-modules-bin@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Sam Hartman <hartmans@debian.org>"
+      },
+      "type": "library",
+      "version": "1.5.2-6+deb12u2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpam-modules@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libpam-modules:1.5.2-6\\+deb12u2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpam-modules",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpam-modules:1.5.2-6\\+deb12u2:*:*:*:*:*:*:* | cpe:2.3:a:libpam-modules:libpam-modules:1.5.2-6\\+deb12u2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpam-modules@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Sam Hartman <hartmans@debian.org>"
+      },
+      "type": "library",
+      "version": "1.5.2-6+deb12u2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpam-runtime@1.5.2-6%2Bdeb12u2?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libpam-runtime:1.5.2-6\\+deb12u2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpam-runtime",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpam-runtime:1.5.2-6\\+deb12u2:*:*:*:*:*:*:* | cpe:2.3:a:libpam-runtime:libpam-runtime:1.5.2-6\\+deb12u2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpam-runtime@1.5.2-6%2Bdeb12u2?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "Sam Hartman <hartmans@debian.org>"
+      },
+      "type": "library",
+      "version": "1.5.2-6+deb12u2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpam0g@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libpam0g:1.5.2-6\\+deb12u2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpam0g",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpam0g:1.5.2-6\\+deb12u2:*:*:*:*:*:*:* | cpe:2.3:a:libpam0g:libpam0g:1.5.2-6\\+deb12u2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpam0g@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Sam Hartman <hartmans@debian.org>"
+      },
+      "type": "library",
+      "version": "1.5.2-6+deb12u2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libpcre2-8-0:10.42-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libpcre2-8-0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libpcre2-8-0:10.42-1:*:*:*:*:*:*:* | cpe:2.3:a:libpcre2-8-0:libpcre2-8-0:10.42-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Matthew Vernon <matthew@debian.org>"
+      },
+      "type": "library",
+      "version": "10.42-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libseccomp2@2.5.4-1%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libseccomp2:2.5.4-1\\+deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libseccomp2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libseccomp2:2.5.4-1\\+deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:libseccomp2:libseccomp2:2.5.4-1\\+deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libseccomp2@2.5.4-1%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Kees Cook <kees@debian.org>"
+      },
+      "type": "library",
+      "version": "2.5.4-1+deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libselinux1:3.4-1\\+b6:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libselinux1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libselinux1:3.4-1\\+b6:*:*:*:*:*:*:* | cpe:2.3:a:libselinux1:libselinux1:3.4-1\\+b6:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian SELinux maintainers <selinux-devel@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "3.4-1+b6"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libsemanage-common:3.4-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsemanage-common",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsemanage-common:3.4-1:*:*:*:*:*:*:* | cpe:2.3:a:libsemanage-common:libsemanage-common:3.4-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "Debian SELinux maintainers <selinux-devel@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "3.4-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libsemanage2:3.4-1\\+b5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsemanage2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsemanage2:3.4-1\\+b5:*:*:*:*:*:*:* | cpe:2.3:a:libsemanage2:libsemanage2:3.4-1\\+b5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian SELinux maintainers <selinux-devel@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "3.4-1+b5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsepol2@3.4-2.1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libsepol2:3.4-2.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsepol2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsepol2:3.4-2.1:*:*:*:*:*:*:* | cpe:2.3:a:libsepol2:libsepol2:3.4-2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsepol2@3.4-2.1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian SELinux maintainers <selinux-devel@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "3.4-2.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsmartcols1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libsmartcols1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsmartcols1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsmartcols1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:* | cpe:2.3:a:libsmartcols1:libsmartcols1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsmartcols1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "util-linux packagers <util-linux@packages.debian.org>"
+      },
+      "type": "library",
+      "version": "2.38.1-5+deb12u3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libss2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libss2:1.47.0-2\\+b2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libss2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libss2:1.47.0-2\\+b2:*:*:*:*:*:*:* | cpe:2.3:a:libss2:libss2:1.47.0-2\\+b2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libss2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Theodore Y. Ts'o <tytso@mit.edu>"
+      },
+      "type": "library",
+      "version": "1.47.0-2+b2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libstdc\\+\\+6:12.2.0-14\\+deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libstdc++6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libstdc\\+\\+6:12.2.0-14\\+deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:libstdc\\+\\+6:libstdc\\+\\+6:12.2.0-14\\+deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GCC Maintainers <debian-gcc@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "12.2.0-14+deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libsystemd0@252.39-1~deb12u1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libsystemd0:252.39-1\\~deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libsystemd0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libsystemd0:252.39-1\\~deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:libsystemd0:libsystemd0:252.39-1\\~deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libsystemd0@252.39-1~deb12u1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian systemd Maintainers <pkg-systemd-maintainers@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "252.39-1~deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libtasn1-6:4.19.0-2\\+deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libtasn1-6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libtasn1-6:4.19.0-2\\+deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:libtasn1-6:libtasn1-6:4.19.0-2\\+deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian GnuTLS Maintainers <pkg-gnutls-maint@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "4.19.0-2+deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libtinfo6@6.4-4?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libtinfo6:6.4-4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libtinfo6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libtinfo6:6.4-4:*:*:*:*:*:*:* | cpe:2.3:a:libtinfo6:libtinfo6:6.4-4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libtinfo6@6.4-4?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Craig Small <csmall@debian.org>"
+      },
+      "type": "library",
+      "version": "6.4-4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libudev1@252.39-1~deb12u1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libudev1:252.39-1\\~deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libudev1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libudev1:252.39-1\\~deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:libudev1:libudev1:252.39-1\\~deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libudev1@252.39-1~deb12u1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian systemd Maintainers <pkg-systemd-maintainers@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "252.39-1~deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libunistring2@1.0-2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libunistring2:1.0-2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libunistring2",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libunistring2:1.0-2:*:*:*:*:*:*:* | cpe:2.3:a:libunistring2:libunistring2:1.0-2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libunistring2@1.0-2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Jörg Frings-Fürst <debian@jff.email>"
+      },
+      "type": "library",
+      "version": "1.0-2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libuuid1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libuuid1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libuuid1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libuuid1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:* | cpe:2.3:a:libuuid1:libuuid1:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libuuid1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "util-linux packagers <util-linux@packages.debian.org>"
+      },
+      "type": "library",
+      "version": "2.38.1-5+deb12u3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libxxhash0@0.8.1-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libxxhash0:0.8.1-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libxxhash0",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libxxhash0:0.8.1-1:*:*:*:*:*:*:* | cpe:2.3:a:libxxhash0:libxxhash0:0.8.1-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libxxhash0@0.8.1-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Josue Ortega <josue@debian.org>"
+      },
+      "type": "library",
+      "version": "0.8.1-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libzstd1@1.5.4%2Bdfsg2-5?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:libzstd1:1.5.4\\+dfsg2-5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "libzstd1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libzstd1:1.5.4\\+dfsg2-5:*:*:*:*:*:*:* | cpe:2.3:a:libzstd1:libzstd1:1.5.4\\+dfsg2-5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libzstd1@1.5.4%2Bdfsg2-5?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "RPM packaging team <team+pkg-rpm@tracker.debian.org>"
+      },
+      "type": "library",
+      "version": "1.5.4+dfsg2-5"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/login@1:4.13%2Bdfsg1-1%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:login:1\\:4.13\\+dfsg1-1\\+deb12u2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "login",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:login:1\\:4.13\\+dfsg1-1\\+deb12u2:*:*:*:*:*:*:* | cpe:2.3:a:login:login:1\\:4.13\\+dfsg1-1\\+deb12u2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/login@1:4.13%2Bdfsg1-1%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Shadow package maintainers <pkg-shadow-devel@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "1:4.13+dfsg1-1+deb12u2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/logsave@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:logsave:1.47.0-2\\+b2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "logsave",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:logsave:1.47.0-2\\+b2:*:*:*:*:*:*:* | cpe:2.3:a:logsave:logsave:1.47.0-2\\+b2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/logsave@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Theodore Y. Ts'o <tytso@mit.edu>"
+      },
+      "type": "library",
+      "version": "1.47.0-2+b2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/mawk@1.3.4.20200120-3.1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:mawk:1.3.4.20200120-3.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "mawk",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:mawk:1.3.4.20200120-3.1:*:*:*:*:*:*:* | cpe:2.3:a:mawk:mawk:1.3.4.20200120-3.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/mawk@1.3.4.20200120-3.1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Boyuan Yang <byang@debian.org>"
+      },
+      "type": "library",
+      "version": "1.3.4.20200120-3.1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/mount@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:mount:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "mount",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:mount:2.38.1-5\\+deb12u3:*:*:*:*:*:*:* | cpe:2.3:a:mount:mount:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/mount@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "util-linux packagers <util-linux@packages.debian.org>"
+      },
+      "type": "library",
+      "version": "2.38.1-5+deb12u3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/ncurses-base@6.4-4?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:ncurses-base:6.4-4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "ncurses-base",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:ncurses-base:6.4-4:*:*:*:*:*:*:* | cpe:2.3:a:ncurses-base:ncurses-base:6.4-4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/ncurses-base@6.4-4?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "Craig Small <csmall@debian.org>"
+      },
+      "type": "library",
+      "version": "6.4-4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/ncurses-bin@6.4-4?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:ncurses-bin:6.4-4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "ncurses-bin",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:ncurses-bin:6.4-4:*:*:*:*:*:*:* | cpe:2.3:a:ncurses-bin:ncurses-bin:6.4-4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/ncurses-bin@6.4-4?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Craig Small <csmall@debian.org>"
+      },
+      "type": "library",
+      "version": "6.4-4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/passwd@1:4.13%2Bdfsg1-1%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:passwd:1\\:4.13\\+dfsg1-1\\+deb12u2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "passwd",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:passwd:1\\:4.13\\+dfsg1-1\\+deb12u2:*:*:*:*:*:*:* | cpe:2.3:a:passwd:passwd:1\\:4.13\\+dfsg1-1\\+deb12u2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/passwd@1:4.13%2Bdfsg1-1%2Bdeb12u2?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Shadow package maintainers <pkg-shadow-devel@lists.alioth.debian.org>"
+      },
+      "type": "library",
+      "version": "1:4.13+dfsg1-1+deb12u2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/perl-base@5.36.0-7%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:perl-base:5.36.0-7\\+deb12u3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "perl-base",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:perl-base:5.36.0-7\\+deb12u3:*:*:*:*:*:*:* | cpe:2.3:a:perl-base:perl-base:5.36.0-7\\+deb12u3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/perl-base@5.36.0-7%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Niko Tyni <ntyni@debian.org>"
+      },
+      "type": "library",
+      "version": "5.36.0-7+deb12u3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/sed@4.9-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:sed:4.9-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "sed",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:sed:4.9-1:*:*:*:*:*:*:* | cpe:2.3:a:sed:sed:4.9-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/sed@4.9-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Clint Adams <clint@debian.org>"
+      },
+      "type": "library",
+      "version": "4.9-1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/sysvinit-utils@3.06-4?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:sysvinit-utils:3.06-4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "sysvinit-utils",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:sysvinit-utils:3.06-4:*:*:*:*:*:*:* | cpe:2.3:a:sysvinit-utils:sysvinit-utils:3.06-4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/sysvinit-utils@3.06-4?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Debian sysvinit maintainers <debian-init-diversity@chiark.greenend.org.uk>"
+      },
+      "type": "library",
+      "version": "3.06-4"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/tar@1.34%2Bdfsg-1.2%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:tar:1.34\\+dfsg-1.2\\+deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "tar",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:tar:1.34\\+dfsg-1.2\\+deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:tar:tar:1.34\\+dfsg-1.2\\+deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/tar@1.34%2Bdfsg-1.2%2Bdeb12u1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Janos Lenart <ocsi@debian.org>"
+      },
+      "type": "library",
+      "version": "1.34+dfsg-1.2+deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/tzdata@2025b-0%2Bdeb12u2?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:tzdata:2025b-0\\+deb12u2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "tzdata",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:tzdata:2025b-0\\+deb12u2:*:*:*:*:*:*:* | cpe:2.3:a:tzdata:tzdata:2025b-0\\+deb12u2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/tzdata@2025b-0%2Bdeb12u2?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "GNU Libc Maintainers <debian-glibc@lists.debian.org>"
+      },
+      "type": "library",
+      "version": "2025b-0+deb12u2"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/usr-is-merged@37~deb12u1?arch=all&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:usr-is-merged:37\\~deb12u1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "usr-is-merged",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:usr-is-merged:37\\~deb12u1:*:*:*:*:*:*:* | cpe:2.3:a:usr-is-merged:usr-is-merged:37\\~deb12u1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/usr-is-merged@37~deb12u1?arch=all&distro=bookworm",
+      "supplier": {
+        "name": "Marco d'Itri <md@linux.it>"
+      },
+      "type": "library",
+      "version": "37~deb12u1"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/util-linux-extra@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:util-linux-extra:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "util-linux-extra",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:util-linux-extra:2.38.1-5\\+deb12u3:*:*:*:*:*:*:* | cpe:2.3:a:util-linux-extra:util-linux-extra:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/util-linux-extra@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "util-linux packagers <util-linux@packages.debian.org>"
+      },
+      "type": "library",
+      "version": "2.38.1-5+deb12u3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/util-linux@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:util-linux:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "util-linux",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:util-linux:2.38.1-5\\+deb12u3:*:*:*:*:*:*:* | cpe:2.3:a:util-linux:util-linux:2.38.1-5\\+deb12u3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/util-linux@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "util-linux packagers <util-linux@packages.debian.org>"
+      },
+      "type": "library",
+      "version": "2.38.1-5+deb12u3"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=arm64&distro=bookworm",
+      "cpe": "cpe:2.3:a:debian:zlib1g:1\\:1.2.13.dfsg-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": {
+          "confidence": 0.85,
+          "field": "purl",
+          "methods": [
+            {
+              "confidence": 0.85,
+              "technique": "manifest-analysis"
+            }
+          ]
+        }
+      },
+      "name": "zlib1g",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:zlib1g:1\\:1.2.13.dfsg-1:*:*:*:*:*:*:* | cpe:2.3:a:zlib1g:zlib1g:1\\:1.2.13.dfsg-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/sbom-conformance/fixtures/debian-bookworm-minimal/project/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=arm64&distro=bookworm",
+      "supplier": {
+        "name": "Mark Brown <broonie@debian.org>"
+      },
+      "type": "library",
+      "version": "1:1.2.13.dfsg-1"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "pkg:deb/debian/adduser@3.134?arch=all&distro=bookworm",
+        "pkg:deb/debian/apt@2.6.1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/base-files@12.4%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/base-passwd@3.6.1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/bash@5.2.15-2%2Bb10?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/bsdutils@1:2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/coreutils@9.1-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/dash@0.5.12-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/debconf@1.5.82?arch=all&distro=bookworm",
+        "pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=bookworm",
+        "pkg:deb/debian/debianutils@5.7-0.5~deb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/diffutils@1:3.8-4?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/dpkg@1.21.22?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/e2fsprogs@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/findutils@4.9.0-4?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/gpgv@2.2.40-1.1%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/grep@3.8-5?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/gzip@1.12-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/hostname@3.23%2Bnmu1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/init-system-helpers@1.65.2%2Bdeb12u1?arch=all&distro=bookworm",
+        "pkg:deb/debian/libacl1@2.3.1-3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libapt-pkg6.0@2.6.1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libattr1@1:2.5.1-4?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libaudit-common@1:3.0.9-1?arch=all&distro=bookworm",
+        "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libblkid1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libbz2-1.0@1.0.8-5%2Bb1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libcap-ng0@0.8.3-1%2Bb3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libcap2@1:2.66-4%2Bdeb12u2%2Bb2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libcom-err2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libcrypt1@1:4.4.33-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libdb5.3@5.3.28%2Bdfsg2-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libdebconfclient0@0.270?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libext2fs2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libffi8@3.4.4-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgcrypt20@1.10.1-3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgmp10@2:6.2.1%2Bdfsg1-1.1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u6?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgpg-error0@1.46-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libhogweed6@3.8.1-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libidn2-0@2.3.3-1%2Bb1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/liblz4-1@1.9.4-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/liblzma5@5.4.1-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libmd0@1.0.4-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libmount1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libnettle8@3.8.1-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libp11-kit0@0.24.1-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libpam-modules-bin@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libpam-modules@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libpam-runtime@1.5.2-6%2Bdeb12u2?arch=all&distro=bookworm",
+        "pkg:deb/debian/libpam0g@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libseccomp2@2.5.4-1%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=bookworm",
+        "pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libsepol2@3.4-2.1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libsmartcols1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libss2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libsystemd0@252.39-1~deb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libtinfo6@6.4-4?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libudev1@252.39-1~deb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libunistring2@1.0-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libuuid1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libxxhash0@0.8.1-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libzstd1@1.5.4%2Bdfsg2-5?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/login@1:4.13%2Bdfsg1-1%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/logsave@1.47.0-2%2Bb2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/mawk@1.3.4.20200120-3.1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/mount@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/ncurses-base@6.4-4?arch=all&distro=bookworm",
+        "pkg:deb/debian/ncurses-bin@6.4-4?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/passwd@1:4.13%2Bdfsg1-1%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/perl-base@5.36.0-7%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/sed@4.9-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/sysvinit-utils@3.06-4?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/tar@1.34%2Bdfsg-1.2%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/tzdata@2025b-0%2Bdeb12u2?arch=all&distro=bookworm",
+        "pkg:deb/debian/usr-is-merged@37~deb12u1?arch=all&distro=bookworm",
+        "pkg:deb/debian/util-linux-extra@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/util-linux@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=arm64&distro=bookworm"
+      ]
+    },
+    {
+      "aggregate": "incomplete_first_party_only",
+      "assemblies": [
+        "project@0.0.0"
+      ],
+      "properties": [
+        {
+          "name": "mikebom:ring-buffer-overflows",
+          "value": "0"
+        },
+        {
+          "name": "mikebom:events-dropped",
+          "value": "0"
+        },
+        {
+          "name": "mikebom:uprobe-attach-failures",
+          "value": "0"
+        },
+        {
+          "name": "mikebom:kprobe-attach-failures",
+          "value": "0"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [
+        "pkg:deb/debian/passwd@1:4.13%2Bdfsg1-1%2Bdeb12u2?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/adduser@3.134?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/adduser@3.134?arch=all&distro=bookworm",
+        "pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=bookworm",
+        "pkg:deb/debian/gpgv@2.2.40-1.1%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libapt-pkg6.0@2.6.1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u6?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libseccomp2@2.5.4-1%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libsystemd0@252.39-1~deb12u1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/apt@2.6.1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/base-files@12.4%2Bdeb12u13?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libdebconfclient0@0.270?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/base-passwd@3.6.1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/base-files@12.4%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/debianutils@5.7-0.5~deb12u1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/bash@5.2.15-2%2Bb10?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/bsdutils@1:2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/coreutils@9.1-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/debianutils@5.7-0.5~deb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/dpkg@1.21.22?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/dash@0.5.12-2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/debconf@1.5.82?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/debian-archive-keyring@2023.3%2Bdeb12u2?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/debianutils@5.7-0.5~deb12u1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/diffutils@1:3.8-4?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/tar@1.34%2Bdfsg-1.2%2Bdeb12u1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/dpkg@1.21.22?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/logsave@1.47.0-2%2Bb2?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/e2fsprogs@1.47.0-2%2Bb2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/findutils@4.9.0-4?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libbz2-1.0@1.0.8-5%2Bb1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgcrypt20@1.10.1-3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgpg-error0@1.46-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/gpgv@2.2.40-1.1%2Bdeb12u2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/dpkg@1.21.22?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/grep@3.8-5?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/dpkg@1.21.22?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/gzip@1.12-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/hostname@3.23%2Bnmu1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/usr-is-merged@37~deb12u1?arch=all&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/init-system-helpers@1.65.2%2Bdeb12u1?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libacl1@2.3.1-3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libbz2-1.0@1.0.8-5%2Bb1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgcrypt20@1.10.1-3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/liblz4-1@1.9.4-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/liblzma5@5.4.1-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libsystemd0@252.39-1~deb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libudev1@252.39-1~deb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libxxhash0@0.8.1-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libzstd1@1.5.4%2Bdfsg2-5?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libapt-pkg6.0@2.6.1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libattr1@1:2.5.1-4?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/libaudit-common@1:3.0.9-1?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libaudit-common@1:3.0.9-1?arch=all&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libcap-ng0@0.8.3-1%2Bb3?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libblkid1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libbz2-1.0@1.0.8-5%2Bb1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libc-bin@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libcap-ng0@0.8.3-1%2Bb3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libcap2@1:2.66-4%2Bdeb12u2%2Bb2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libcom-err2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libcrypt1@1:4.4.33-2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libdb5.3@5.3.28%2Bdfsg2-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libdebconfclient0@0.270?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libext2fs2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libffi8@3.4.4-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgpg-error0@1.46-1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libgcrypt20@1.10.1-3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libgmp10@2:6.2.1%2Bdfsg1-1.1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgmp10@2:6.2.1%2Bdfsg1-1.1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libhogweed6@3.8.1-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libidn2-0@2.3.3-1%2Bb1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libnettle8@3.8.1-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libp11-kit0@0.24.1-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libunistring2@1.0-2?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libgnutls30@3.7.9-2%2Bdeb12u6?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libgpg-error0@1.46-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgmp10@2:6.2.1%2Bdfsg1-1.1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libnettle8@3.8.1-2?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libhogweed6@3.8.1-2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libunistring2@1.0-2?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libidn2-0@2.3.3-1%2Bb1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/liblz4-1@1.9.4-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/liblzma5@5.4.1-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libmd0@1.0.4-2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libblkid1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libmount1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libnettle8@3.8.1-2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libffi8@3.4.4-1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libp11-kit0@0.24.1-2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libcrypt1@1:4.4.33-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libpam0g@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libpam-modules-bin@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/libpam-modules@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/debconf@1.5.82?arch=all&distro=bookworm",
+        "pkg:deb/debian/libpam-modules@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libpam-runtime@1.5.2-6%2Bdeb12u2?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/debconf@1.5.82?arch=all&distro=bookworm",
+        "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libpam0g@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libseccomp2@2.5.4-1%2Bdeb12u1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libpcre2-8-0@10.42-1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libbz2-1.0@1.0.8-5%2Bb1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libsemanage-common@3.4-1?arch=all&distro=bookworm",
+        "pkg:deb/debian/libsepol2@3.4-2.1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libsepol2@3.4-2.1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libsmartcols1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libcom-err2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libss2@1.47.0-2%2Bb2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/gcc-12-base@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgcc-s1@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libstdc%2B%2B6@12.2.0-14%2Bdeb12u1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libcap2@1:2.66-4%2Bdeb12u2%2Bb2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libgcrypt20@1.10.1-3?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/liblz4-1@1.9.4-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/liblzma5@5.4.1-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libzstd1@1.5.4%2Bdfsg2-5?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libsystemd0@252.39-1~deb12u1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libtasn1-6@4.19.0-2%2Bdeb12u1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libtinfo6@6.4-4?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libudev1@252.39-1~deb12u1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libunistring2@1.0-2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libuuid1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libxxhash0@0.8.1-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/libzstd1@1.5.4%2Bdfsg2-5?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/login@1:4.13%2Bdfsg1-1%2Bdeb12u2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/logsave@1.47.0-2%2Bb2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/mawk@1.3.4.20200120-3.1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/mount@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/ncurses-base@6.4-4?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/ncurses-bin@6.4-4?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libcrypt1@1:4.4.33-2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libpam-modules@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libpam0g@1.5.2-6%2Bdeb12u2?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libselinux1@3.4-1%2Bb6?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libsemanage2@3.4-1%2Bb5?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/passwd@1:4.13%2Bdfsg1-1%2Bdeb12u2?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/perl-base@5.36.0-7%2Bdeb12u3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/sed@4.9-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/sysvinit-utils@3.06-4?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/tar@1.34%2Bdfsg-1.2%2Bdeb12u1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/debconf@1.5.82?arch=all&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/tzdata@2025b-0%2Bdeb12u2?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/usr-is-merged@37~deb12u1?arch=all&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libaudit1@1:3.0.9-1?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm",
+        "pkg:deb/debian/libsmartcols1@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/util-linux-extra@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/util-linux-extra@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/util-linux@2.38.1-5%2Bdeb12u3?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9%2Bdeb12u13?arch=arm64&distro=bookworm"
+      ],
+      "ref": "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=arm64&distro=bookworm"
+    },
+    {
+      "dependsOn": [],
+      "ref": "project@0.0.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "project@0.0.0",
+      "name": "project",
+      "type": "application",
+      "version": "0.0.0"
+    },
+    "lifecycles": [
+      {
+        "phase": "operations"
+      }
+    ],
+    "properties": [
+      {
+        "name": "mikebom:generation-context",
+        "value": "filesystem-scan"
+      }
+    ],
+    "timestamp": "2026-04-20T15:10:05Z",
+    "tools": {
+      "components": [
+        {
+          "name": "mikebom",
+          "publisher": "mikebom contributors",
+          "type": "application",
+          "version": "0.1.0"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:dbaa023c-8a04-4a48-bc33-dbf01f518e73",
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": []
+}

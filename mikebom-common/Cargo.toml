@@ -1,0 +1,21 @@
+[package]
+name = "mikebom-common"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["std"]
+std = ["dep:chrono", "dep:serde", "dep:serde_json", "dep:packageurl", "dep:thiserror", "dep:spdx"]
+aya-user = ["dep:aya"]
+
+[dependencies]
+chrono = { workspace = true, optional = true }
+packageurl = { version = "0.3", optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+spdx = { version = "0.10", optional = true }
+thiserror = { workspace = true, optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+aya = { version = "0.13", optional = true }

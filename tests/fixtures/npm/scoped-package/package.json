@@ -1,0 +1,7 @@
+{
+  "name": "scoped-fixture",
+  "version": "0.1.0",
+  "dependencies": {
+    "@angular/core": "^16.0.0"
+  }
+}

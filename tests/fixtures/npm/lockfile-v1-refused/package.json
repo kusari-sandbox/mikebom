@@ -1,0 +1,7 @@
+{
+  "name": "v1-refused-fixture",
+  "version": "0.1.0",
+  "dependencies": {
+    "leftpad": "1.0.0"
+  }
+}
