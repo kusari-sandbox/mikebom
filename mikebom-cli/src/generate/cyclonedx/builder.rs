@@ -7,7 +7,7 @@ use mikebom_common::resolution::{Relationship, ResolvedComponent};
 
 use super::compositions::build_compositions;
 use super::dependencies::build_dependencies;
-use super::evidence::build_evidence;
+use super::evidence::{build_evidence, evidence_to_properties};
 use super::metadata::build_metadata;
 use super::vex::build_vulnerabilities;
 
@@ -212,6 +212,13 @@ impl CycloneDxBuilder {
                     "value": src_type
                 }));
             }
+            // Evidence-derived provenance properties. Replaces the
+            // former `evidence.identity[].tools` entries — those fail
+            // CDX 1.6 schema because `tools[]` must be bom-refs to
+            // declared BOM elements, which source_connection_ids and
+            // deps.dev markers are not. Properties are the idiomatic
+            // home for scanner-specific provenance data.
+            properties.extend(evidence_to_properties(&component.evidence));
             // `mikebom:sbom-tier` — the traceability-ladder classifier
             // introduced in milestone 002 (spec FR-021a, research R13).
             // Emitted on every component that carries one. Values:
@@ -612,5 +619,94 @@ mod tests {
                 "non-Go component must not surface mikebom:buildinfo-status"
             );
         }
+    }
+
+    // --- CDX 1.6 evidence serialization (sbomqs parse-failure fix) -----
+
+    #[test]
+    fn evidence_connection_ids_land_in_component_properties() {
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("serde", "1.0.197");
+        component.evidence.source_connection_ids =
+            vec!["conn-1".to_string(), "conn-2".to_string()];
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let props = comp["properties"]
+            .as_array()
+            .expect("component must have properties");
+        let conn_prop = props
+            .iter()
+            .find(|p| p["name"] == "mikebom:source-connection-ids")
+            .expect("source-connection-ids property must be present");
+        assert_eq!(conn_prop["value"], "conn-1,conn-2");
+    }
+
+    #[test]
+    fn evidence_tools_field_absent_from_serialized_output() {
+        // Regression guard for sbomqs parse failure:
+        // `cannot unmarshal object into Go struct field
+        //  Component.components.evidence.tools of type cyclonedx.BOMReference`.
+        // Build a component with every flavor of provenance populated
+        // (connection IDs, deps.dev match) and confirm nothing surfaces
+        // under `evidence.identity[].tools`.
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("express", "4.19.2");
+        component.evidence.source_connection_ids = vec!["conn-42".to_string()];
+        component.evidence.deps_dev_match = Some(
+            mikebom_common::resolution::DepsDevMatch {
+                system: "npm".to_string(),
+                name: "express".to_string(),
+                version: "4.19.2".to_string(),
+            },
+        );
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let identity = comp["evidence"]["identity"]
+            .as_array()
+            .expect("evidence.identity must be an array (CDX 1.6)");
+        assert_eq!(identity.len(), 1);
+        assert!(
+            identity[0].get("tools").is_none(),
+            "evidence.identity[].tools must not be emitted; got {:?}",
+            identity[0].get("tools")
+        );
+    }
+
+    #[test]
+    fn deps_dev_match_lands_in_component_properties() {
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("express", "4.19.2");
+        component.evidence.deps_dev_match = Some(
+            mikebom_common::resolution::DepsDevMatch {
+                system: "npm".to_string(),
+                name: "express".to_string(),
+                version: "4.19.2".to_string(),
+            },
+        );
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let props = comp["properties"]
+            .as_array()
+            .expect("component must have properties");
+        let dd_prop = props
+            .iter()
+            .find(|p| p["name"] == "mikebom:deps-dev-match")
+            .expect("deps-dev-match property must be present");
+        assert_eq!(dd_prop["value"], "npm:express@4.19.2");
     }
 }

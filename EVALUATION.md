@@ -237,9 +237,12 @@ enrichment pass skips them entirely and the `deb`/`apk` coverage above
 is local-only. For every other ecosystem, `mikebom sbom scan` makes an
 async `GetVersion` call per component (in-memory cached by
 `(system, name, version)` for the life of the scan) and pushes any
-canonical SPDX licenses onto `licenses[]`, stamping
-`evidence.identity.tools` with a `deps.dev:<system>:<name>@<version>`
-reference as provenance.
+canonical SPDX licenses onto `licenses[]`, stamping the
+`mikebom:deps-dev-match` component property with a
+`<system>:<name>@<version>` reference as provenance. (This used to live
+under `evidence.identity.tools` but CDX 1.6 reserves that field for
+bom-refs to declared BOM elements — see the 2026-04-20 serialization
+fix.)
 
 Real-world effect on a `~/.cargo/registry/cache` scan (1153 crates):
 

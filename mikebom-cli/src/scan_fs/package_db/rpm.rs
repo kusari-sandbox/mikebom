@@ -131,7 +131,7 @@ where
         }
     };
 
-    let vendor = os_release::read_id(&rootfs.join("etc/os-release"))
+    let vendor = os_release::read_id_from_rootfs(rootfs)
         .map(|id| rpm_vendor_from_id(&id))
         .unwrap_or_else(|| "rpm".to_string());
 

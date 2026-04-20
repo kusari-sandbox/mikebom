@@ -5,11 +5,54 @@
 //! layer promotes that into CycloneDX `evidence.occurrences[]`).
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use mikebom_common::types::purl::Purl;
 
 use crate::scan_fs::package_db::PackageDbEntry;
+
+/// Standard shared-library search paths, relative to rootfs. Used by
+/// [`LinkageAggregator::add_with_claim_check`] to resolve a DT_NEEDED
+/// soname to a probable on-disk path and skip the linkage emission
+/// when that path is already claimed by a package-db reader.
+///
+/// Covers glibc multiarch (Debian/Ubuntu), classic layouts (RHEL
+/// lib64), and common aarch64 variants. Order matches
+/// ld.so's default search path precedence loosely — we don't
+/// implement full ld.so resolution, just cheap probing.
+const STANDARD_LIBRARY_DIRS: &[&str] = &[
+    "lib/x86_64-linux-gnu",
+    "lib/aarch64-linux-gnu",
+    "usr/lib/x86_64-linux-gnu",
+    "usr/lib/aarch64-linux-gnu",
+    "lib64",
+    "usr/lib64",
+    "lib",
+    "usr/lib",
+];
+
+/// Check whether `soname` resolves to a path claimed by a package-db
+/// reader. Probes the standard library search paths; returns `true`
+/// at the first claimed hit.
+fn soname_resolves_to_claimed(
+    soname: &str,
+    rootfs: &Path,
+    claimed: &std::collections::HashSet<PathBuf>,
+    #[cfg(unix)] claimed_inodes: &std::collections::HashSet<(u64, u64)>,
+) -> bool {
+    for dir in STANDARD_LIBRARY_DIRS {
+        let candidate = rootfs.join(dir).join(soname);
+        if crate::scan_fs::binary::is_path_claimed(
+            &candidate,
+            claimed,
+            #[cfg(unix)]
+            claimed_inodes,
+        ) {
+            return true;
+        }
+    }
+    false
+}
 
 /// Accumulates linkage evidence across a scan. Each unique soname
 /// emits one `PackageDbEntry`; multiple parent binaries referencing
@@ -53,6 +96,38 @@ impl LinkageAggregator {
         if !entry.parents.iter().any(|p| p == &parent_str) {
             entry.parents.push(parent_str);
         }
+    }
+
+    /// Like [`Self::add`], but first probes standard library search
+    /// paths under `rootfs` and skips the linkage emission entirely
+    /// when the soname resolves to a path already claimed by a
+    /// package-db reader (dpkg/apk/rpm). Fixes conformance bug 6b
+    /// where `libc.so.6` (owned by the libc6 deb) was double-emitting
+    /// as `pkg:generic/libc.so.6`.
+    pub fn add_with_claim_check(
+        &mut self,
+        soname: &str,
+        parent_path: &Path,
+        parent_bom_ref: &str,
+        rootfs: &Path,
+        claimed: &std::collections::HashSet<PathBuf>,
+        #[cfg(unix)] claimed_inodes: &std::collections::HashSet<(u64, u64)>,
+    ) {
+        if soname_resolves_to_claimed(
+            soname,
+            rootfs,
+            claimed,
+            #[cfg(unix)]
+            claimed_inodes,
+        ) {
+            tracing::debug!(
+                soname = %soname,
+                parent = %parent_path.display(),
+                "linkage evidence skipped: soname resolves to a claimed path"
+            );
+            return;
+        }
+        self.add(soname, parent_path, parent_bom_ref);
     }
 
     /// Emit one `PackageDbEntry` per unique soname. Entries are sorted
@@ -166,5 +241,63 @@ mod tests {
         // `@`, `/` percent-encoded
         let purl = entries[0].purl.as_str();
         assert!(purl.starts_with("pkg:generic/%40rpath%2Flibssl.48.dylib"));
+    }
+
+    #[test]
+    fn add_with_claim_check_skips_claimed_soname() {
+        // Simulate: /lib/x86_64-linux-gnu/libc.so.6 is dpkg-owned
+        // (path is in claim set). The linkage aggregator must NOT emit
+        // pkg:generic/libc.so.6 for a binary that links it.
+        let tmp = tempfile::tempdir().unwrap();
+        let rootfs = tmp.path();
+        let libc_path = rootfs.join("lib/x86_64-linux-gnu/libc.so.6");
+        std::fs::create_dir_all(libc_path.parent().unwrap()).unwrap();
+        std::fs::write(&libc_path, b"\x7fELF").unwrap();
+
+        let mut claimed = std::collections::HashSet::new();
+        claimed.insert(libc_path.clone());
+        #[cfg(unix)]
+        let claimed_inodes = std::collections::HashSet::new();
+
+        let mut agg = LinkageAggregator::new();
+        agg.add_with_claim_check(
+            "libc.so.6",
+            Path::new("/bin/app"),
+            "r1",
+            rootfs,
+            &claimed,
+            #[cfg(unix)]
+            &claimed_inodes,
+        );
+
+        let entries = agg.into_entries();
+        assert_eq!(entries.len(), 0, "claimed soname must not emit linkage");
+    }
+
+    #[test]
+    fn add_with_claim_check_emits_unclaimed_soname() {
+        // Soname that doesn't resolve to any standard library dir
+        // must still emit (no claim → no skip).
+        let tmp = tempfile::tempdir().unwrap();
+        let rootfs = tmp.path();
+
+        let claimed = std::collections::HashSet::new();
+        #[cfg(unix)]
+        let claimed_inodes = std::collections::HashSet::new();
+
+        let mut agg = LinkageAggregator::new();
+        agg.add_with_claim_check(
+            "libmycustom.so.1",
+            Path::new("/bin/app"),
+            "r1",
+            rootfs,
+            &claimed,
+            #[cfg(unix)]
+            &claimed_inodes,
+        );
+
+        let entries = agg.into_entries();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "libmycustom.so.1");
     }
 }

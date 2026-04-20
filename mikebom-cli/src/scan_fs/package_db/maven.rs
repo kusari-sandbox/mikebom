@@ -616,6 +616,14 @@ pub(crate) struct PomProperties {
 
 /// Parse a `pom.properties` file body. Format: Java properties file
 /// with `key=value` lines, UTF-8.
+///
+/// Returns `None` when `version` is empty or still contains an
+/// unresolved `${...}` placeholder — some RPM-packaged Maven JARs ship
+/// with the build-time property substitution never applied, which would
+/// otherwise yield garbage PURLs like `pkg:maven/g/a@` or
+/// `pkg:maven/g/a@${project.version}`. The pom.xml path already guards
+/// placeholders via `resolve_maven_property` (see `pom_dep_to_entry`);
+/// this mirrors that behavior for the pom.properties path.
 pub(crate) fn parse_pom_properties(text: &str) -> Option<PomProperties> {
     let mut g = None;
     let mut a = None;
@@ -634,10 +642,18 @@ pub(crate) fn parse_pom_properties(text: &str) -> Option<PomProperties> {
             }
         }
     }
+    let version = v?;
+    if version.is_empty() || version.contains("${") {
+        tracing::debug!(
+            version = %version,
+            "pom.properties has empty or unresolved placeholder version, skipping"
+        );
+        return None;
+    }
     Some(PomProperties {
         group_id: g?,
         artifact_id: a?,
-        version: v?,
+        version,
     })
 }
 
@@ -980,7 +996,30 @@ fn jar_pom_to_entry(
 // Reader
 // ---------------------------------------------------------------------------
 
+/// Backward-compat shim for tests and callers that don't have a
+/// populated claim set. Delegates to [`read_with_claims`] with empty
+/// claim sets. Production code should go through `read_with_claims`
+/// with the package-db walker's claim set so RPM-owned Maven JARs are
+/// skipped (conformance bug 2b).
 pub fn read(rootfs: &Path, include_dev: bool) -> Vec<PackageDbEntry> {
+    let claimed = std::collections::HashSet::new();
+    #[cfg(unix)]
+    let claimed_inodes = std::collections::HashSet::new();
+    read_with_claims(
+        rootfs,
+        include_dev,
+        &claimed,
+        #[cfg(unix)]
+        &claimed_inodes,
+    )
+}
+
+pub fn read_with_claims(
+    rootfs: &Path,
+    include_dev: bool,
+    claimed: &std::collections::HashSet<std::path::PathBuf>,
+    #[cfg(unix)] claimed_inodes: &std::collections::HashSet<(u64, u64)>,
+) -> Vec<PackageDbEntry> {
     let mut out: Vec<PackageDbEntry> = Vec::new();
     let mut seen_purls: HashSet<String> = HashSet::new();
     let (pom_files, jar_files) = find_maven_artifacts(rootfs);
@@ -1005,8 +1044,29 @@ pub fn read(rootfs: &Path, include_dev: bool) -> Vec<PackageDbEntry> {
     // `pom_store` before BFS runs. This lets parent-chain resolution
     // find parents shipped in-JAR (e.g. uber-JARs that vendor their
     // full parent hierarchy).
+    //
+    // v6 fix (conformance bug 2b): skip JARs whose on-disk path is
+    // claimed by a package-db reader (dpkg / apk / rpm). Fedora's
+    // `dnf install maven` drops JARs at `/usr/share/java/*.jar` which
+    // are owned by RPM packages; walking them as Maven artefacts
+    // double-reports them as `pkg:maven/...` alongside `pkg:rpm/...`
+    // AND frequently emits empty versions because the RPM-packaged
+    // JARs ship `pom.properties` with unresolved `${project.version}`
+    // placeholders.
     let mut jar_meta: Vec<(String, Vec<EmbeddedMavenMeta>)> = Vec::new();
     for jar_path in &jar_files {
+        if crate::scan_fs::binary::is_path_claimed(
+            jar_path,
+            claimed,
+            #[cfg(unix)]
+            claimed_inodes,
+        ) {
+            tracing::debug!(
+                path = %jar_path.display(),
+                "skipping claimed JAR (already owned by a package-db reader)"
+            );
+            continue;
+        }
         let meta = walk_jar_maven_meta(jar_path);
         if meta.is_empty() {
             continue;
@@ -1350,6 +1410,31 @@ mod tests {
         assert_eq!(p.group_id, "com.google.guava");
         assert_eq!(p.artifact_id, "guava");
         assert_eq!(p.version, "32.1.3");
+    }
+
+    #[test]
+    fn parse_pom_properties_rejects_unresolved_placeholder() {
+        // Some RPM-packaged Maven JARs (Fedora's /usr/share/java/*.jar)
+        // ship pom.properties with unresolved build-time placeholders.
+        // Emitting these would yield `pkg:maven/g/a@${project.version}`
+        // garbage PURLs.
+        let body = "version=${project.version}\ngroupId=org.apache.commons\nartifactId=commons-io\n";
+        assert!(parse_pom_properties(body).is_none());
+    }
+
+    #[test]
+    fn parse_pom_properties_rejects_empty_version() {
+        let body = "version=\ngroupId=org.apache.commons\nartifactId=commons-io\n";
+        assert!(parse_pom_properties(body).is_none());
+    }
+
+    #[test]
+    fn parse_pom_properties_rejects_nested_placeholder() {
+        // Nested or compound placeholders like `${foo}-SNAPSHOT` are
+        // still unresolved — guard matches the `${` substring anywhere
+        // in the version.
+        let body = "version=${foo}-SNAPSHOT\ngroupId=g\nartifactId=a\n";
+        assert!(parse_pom_properties(body).is_none());
     }
 
     // --- JAR-embedded pom.xml walker -----------------------------------
@@ -2351,6 +2436,60 @@ mod tests {
         assert_eq!(
             sibling.requirement_range.as_deref(),
             Some("${unresolved.version}")
+        );
+    }
+
+    #[test]
+    fn read_with_claims_skips_jars_in_claim_set() {
+        // Simulate Fedora's `dnf install maven` layout: a JAR in
+        // /usr/share/java is already emitted by the rpm reader, so its
+        // path is in the claim set. The Maven JAR walker must skip it.
+        let dir = tempfile::tempdir().unwrap();
+        let share_java = dir.path().join("usr/share/java");
+        std::fs::create_dir_all(&share_java).unwrap();
+        let jar_path = share_java.join("commons-io.jar");
+        write_jar(
+            &jar_path,
+            &[(
+                "META-INF/maven/commons-io/commons-io/pom.properties",
+                b"groupId=commons-io\nartifactId=commons-io\nversion=2.12.0\n",
+            )],
+        );
+
+        // Without the claim, the walker emits the JAR.
+        let empty_claims: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        #[cfg(unix)]
+        let empty_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let no_claim = read_with_claims(
+            dir.path(),
+            false,
+            &empty_claims,
+            #[cfg(unix)]
+            &empty_inodes,
+        );
+        assert_eq!(no_claim.len(), 1, "baseline: expected 1 Maven entry");
+        assert_eq!(no_claim[0].name, "commons-io");
+
+        // With the JAR path claimed, the walker skips it.
+        let mut claimed: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        claimed.insert(jar_path.clone());
+        #[cfg(unix)]
+        let claimed_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let with_claim = read_with_claims(
+            dir.path(),
+            false,
+            &claimed,
+            #[cfg(unix)]
+            &claimed_inodes,
+        );
+        assert_eq!(
+            with_claim.len(),
+            0,
+            "claimed JAR must be skipped; got {with_claim:?}"
         );
     }
 }

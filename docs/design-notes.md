@@ -17,7 +17,7 @@ sections that matter for the task at hand.
 | **pypi** | venv `dist-info/METADATA`, poetry/pipfile locks, requirements.txt | Partial: venv `Requires-Dist:` is flat; locks encode tree | |
 | **npm** | `package-lock.json` v2/v3, `pnpm-lock.yaml`, `node_modules/` | Full (locks encode tree) | v1 locks refused |
 | **cargo** | `Cargo.lock` v3/v4 | Full (lockfile encodes tree) | v1/v2 refused |
-| **gem** | `Gemfile.lock` indent structure | Full (indent-6 lines = per-gem edges) | |
+| **gem** | `Gemfile.lock` indent structure + `specifications/*.gemspec` walker | Full (indent-6 lines = per-gem edges); gemspecs have no edges | Gemspec walker catches Ruby stdlib/default gems invisible to Gemfile.lock |
 | **golang (source)** | `go.sum` + `go.mod` + `$GOMODCACHE/cache/download/<escaped>/@v/<v>.mod` walker | Full when module cache warm; root → directs when cold | |
 | **golang (binary)** | `runtime/debug.BuildInfo` (inline format, Go 1.18+) | Module list but **no edges** — BuildInfo doesn't encode them | Pre-1.18 format flagged as `buildinfo-status = unsupported` |
 | **maven** | Project pom.xml, JAR `META-INF/maven/.../{pom.properties,pom.xml}`, `~/.m2/repository/.../*.pom`, deps.dev fallback | Full when cache warm or network available; see layered strategy below | |
@@ -114,6 +114,19 @@ distinguishes how a coord was discovered:
 
 ### Ruby
 - Only `--include-dev` gating is on gems under `test` scope in the declaration tree; bundler's full scope semantics not modeled.
+- **Gemspec walker** (added 2026-04-20 for sbom-conformance bug 3) parses name + version from `specifications/*.gemspec` files via a line-scanner for `s.name = "..."` / `s.version = "..."`. Interpolated versions (`"#{FOO_VERSION}"`) produce garbage strings — downstream PURL construction will typically reject them. In practice, gemspec versions are always literal strings so this is a theoretical edge case.
+
+### Binary scanner
+- **Version-string scanner is gated on `skip_file_level_and_linkage`** (added 2026-04-20 for conformance bug 6a). Claimed binaries no longer emit `pkg:generic/<library>@<version>` from the curated scanner. Trade-off: static-library version detection inside claimed binaries (e.g. statically-linked OpenSSL in a dpkg-owned binary) is lost. Accepted because the FP flood from self-identifying claimed binaries (curl reporting libcurl from /usr/bin/curl) was the larger correctness problem.
+- **Linkage aggregator probes standard library dirs** (added 2026-04-20 for conformance bug 6b) via `add_with_claim_check`. Sonames resolving to a claimed library path (e.g. libc.so.6 → /lib/x86_64-linux-gnu/libc.so.6 owned by libc6 deb) are skipped.
+- **Curated version-string scanner is a 7-library list** (OpenSSL/BoringSSL/zlib/SQLite/curl/PCRE/PCRE2). Binaries installed outside the package manager without matching patterns emit file-level only (hash-only PURL). Extending the list is case-by-case; see backlog item #12.
+
+### OS-release reader
+- **Rootfs-aware fallback** (added 2026-04-20 for conformance bug 1): tries `<rootfs>/etc/os-release` first, falls back to `<rootfs>/usr/lib/os-release`. Fixes Ubuntu images where /etc/os-release is a relative symlink that can dangle after container-layer tar extraction.
+
+### CycloneDX 1.6 serialization
+- **`evidence.identity` is an array** (added 2026-04-20 for sbomqs parse failure): the single-object form was deprecated in CDX 1.5→1.6. Every component emits `identity: [{...}]` with exactly one identity object.
+- **`evidence.identity[].tools` is never emitted**: per CDX 1.6 that field must contain bom-refs to items declared in the BOM (metadata/tools/services/formulation). mikebom's previous payload (TLS connection IDs + deps.dev markers) are not tools and don't exist elsewhere in the BOM. Both now land on the component as properties `mikebom:source-connection-ids` (comma-joined) and `mikebom:deps-dev-match` (`<system>:<name>@<version>`). The `pkg:generic/...` provenance semantics are preserved, just in the CDX-conformant location.
 
 ### General
 - **Same-artifact-different-group edge conflation** (see Maven note).
@@ -131,7 +144,7 @@ distinguishes how a coord was discovered:
 | Cache-warm tests | Synthetic `<rootfs>/root/.m2/repository/...` inside tempdirs | Avoids dependency on user's host `~/.m2` |
 | Online tests | Unit tests involving deps.dev are unit-tested only for name-formatting / URL construction; no HTTP roundtrips in CI | Integration tests that would need network are gated behind env-present checks |
 
-Full-suite regression: `cargo test --workspace` — baseline 585 passing, 0 failed as of milestone 003 completion.
+Full-suite regression: `cargo test --workspace` — 790 passing, 0 failed as of conformance-fix pass (2026-04-20). Baseline was 585 at milestone 003.
 
 ---
 
@@ -184,6 +197,8 @@ Ordered rough priority (highest-value first):
 8. **POM-less JARs** (OSGi bundles, older Gradle artifacts) — would need OSGi manifest (`Import-Package`, `Require-Bundle`) parsing.
 9. **Same-artifactId-different-groupId edge conflation** — pre-existing. Fix would require keying edges on `(ecosystem, namespace, name)` not just `(ecosystem, name)`.
 10. **Multiple cached versions of the same `(g, a)` in `~/.m2`** — the JAR walker's `coord_index` currently keeps the first-observed version. Good enough for most cases; a project-specific resolution would require reading the project's pom + running Maven's "nearest wins" algorithm.
+11. **Go source-tree scope** — investigate switching from go.sum-driven to `go.mod Require`-driven component enumeration for Go 1.17+ sources. Would align with trivy's default behavior (syft default uses `packages.Load` which is even more inclusive). Full context in `docs/research/go-binary-scope.md`.
+12. **Binary-scanner jq detection** — `version_strings.rs` has a curated 7-library scanner (OpenSSL/BoringSSL/zlib/SQLite/curl/PCRE/PCRE2). Unmanaged binaries like a curl'd `/usr/local/bin/jq` emit only as `pkg:generic/jq?file-sha256=...` (hash, no version). Options: (a) add jq-specific pattern to the curated list — doesn't scale; (b) generic version-string heuristic (`<name>-<ver>` / `<name> version <ver>`) — high FP surface; (c) investigate trivy's `binaries` analyzer and port the subset that has low FP risk.
 
 ---
 

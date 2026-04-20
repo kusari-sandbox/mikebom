@@ -111,7 +111,7 @@ pub fn resolve_rpm_vendor_slug(
 /// `.rpm` file passed as `rootfs` → still works (treated as its own
 /// scan root with no nested walk needed).
 pub fn read(rootfs: &Path, distro_version: Option<&str>) -> Vec<PackageDbEntry> {
-    let os_release_id = os_release::read_id(&rootfs.join("etc/os-release"));
+    let os_release_id = os_release::read_id_from_rootfs(rootfs);
 
     let mut out = Vec::new();
     for path in discover_rpm_files(rootfs) {

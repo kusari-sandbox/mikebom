@@ -289,16 +289,23 @@ pub fn read_all(
         std::collections::HashSet::new();
     let mut diagnostics = ScanDiagnostics::default();
 
-    // Feature 005 US2/US3: read /etc/os-release once per scan. `ID`
+    // Feature 005 US2/US3: read os-release once per scan. `ID`
     // drives the deb/rpm/apk PURL namespace + distro-qualifier prefix
     // (falls back to `debian` when missing, with diagnostic emitted).
     // `VERSION_ID` becomes the version half of the qualifier (omitted
     // when missing). Both are recorded in ScanDiagnostics so the SBOM
     // surfaces whichever were missing in `metadata.properties`.
-    let os_release_path = rootfs.join("etc/os-release");
-    let id_raw = crate::scan_fs::os_release::read_id(&os_release_path);
+    //
+    // v6 fix (conformance bug 1): use the rootfs-aware reader which
+    // tries `/etc/os-release` first and falls back to
+    // `/usr/lib/os-release` (per the os-release spec) when the primary
+    // is missing. Ubuntu 24.04 ships `/etc/os-release` as a relative
+    // symlink to `../usr/lib/os-release`; some layer-reorderings during
+    // container-image extraction can leave the symlink dangling, which
+    // was causing Ubuntu images to fall back to the `debian` namespace.
+    let id_raw = crate::scan_fs::os_release::read_id_from_rootfs(rootfs);
     let distro_version =
-        crate::scan_fs::os_release::read_version_id(&os_release_path);
+        crate::scan_fs::os_release::read_version_id_from_rootfs(rootfs);
     let deb_namespace: String = match &id_raw {
         Some(id) if !id.is_empty() => id.to_ascii_lowercase(),
         _ => {
@@ -396,7 +403,13 @@ pub fn read_all(
     // Milestone 004 US4: legacy BDB rpmdb reader (stub until T061–T065
     // land). Gated behind --include-legacy-rpmdb; no-op when flag unset.
     out.extend(rpmdb_bdb::read(rootfs, include_legacy_rpmdb));
-    out.extend(maven::read(rootfs, include_dev));
+    out.extend(maven::read_with_claims(
+        rootfs,
+        include_dev,
+        &claimed,
+        #[cfg(unix)]
+        &claimed_inodes,
+    ));
     // Cargo is fail-closed on v1/v2 lockfiles (FR-040), mirroring the
     // npm v1 refusal pattern.
     out.extend(cargo::read(rootfs, include_dev)?);

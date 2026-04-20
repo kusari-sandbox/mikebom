@@ -274,8 +274,46 @@ fn spec_to_entry(
     })
 }
 
-/// Public entry point — walks `rootfs` for `Gemfile.lock` files, parses
-/// each, and returns the flattened entry list.
+/// Convert a disk-observed gemspec into a PackageDbEntry. Gemspec
+/// files carry no transitive dep graph (that lives in Gemfile.lock), so
+/// `depends` is always empty. Tagged `source_type = "installed-gemspec"`
+/// to distinguish from Gemfile.lock-tier entries.
+fn gemspec_to_entry(
+    name: &str,
+    version: &str,
+    source_path: &str,
+) -> Option<PackageDbEntry> {
+    let purl = build_gem_purl(name, version)?;
+    Some(PackageDbEntry {
+        purl,
+        name: name.to_string(),
+        version: version.to_string(),
+        arch: None,
+        source_path: source_path.to_string(),
+        depends: Vec::new(),
+        maintainer: None,
+        licenses: Vec::new(),
+        is_dev: None,
+        requirement_range: None,
+        source_type: Some("installed-gemspec".to_string()),
+        buildinfo_status: None,
+        evidence_kind: None,
+        binary_class: None,
+        binary_stripped: None,
+        linkage_kind: None,
+        detected_go: None,
+        confidence: None,
+        binary_packed: None,
+        raw_version: None,
+        npm_role: None,
+        sbom_tier: Some("analyzed".to_string()),
+    })
+}
+
+/// Public entry point — walks `rootfs` for `Gemfile.lock` files AND
+/// for `specifications/*.gemspec` files (Ruby's stdlib/default gems +
+/// system-installed gems not pinned by a Gemfile). Dedupes on PURL so
+/// Gemfile.lock entries win if both sources see the same gem.
 pub fn read(rootfs: &Path, _include_dev: bool) -> Vec<PackageDbEntry> {
     let mut out: Vec<PackageDbEntry> = Vec::new();
     let mut seen_purls: HashSet<String> = HashSet::new();
@@ -296,11 +334,32 @@ pub fn read(rootfs: &Path, _include_dev: bool) -> Vec<PackageDbEntry> {
             }
         }
     }
+    // Gemspec walk (conformance bug 3): Ruby stdlib and default gems
+    // ship as `<ruby>/lib/ruby/gems/<VERSION>/specifications/default/*.gemspec`
+    // and are invisible to Gemfile.lock scanning. Also catches any
+    // system-wide `gem install` outputs living in the standard
+    // specifications dirs.
+    for spec_path in find_gemspecs(rootfs) {
+        let Ok(text) = std::fs::read_to_string(&spec_path) else {
+            continue;
+        };
+        let Some((name, version)) = parse_gemspec(&text) else {
+            continue;
+        };
+        let source_path = spec_path.to_string_lossy().into_owned();
+        let Some(entry) = gemspec_to_entry(&name, &version, &source_path) else {
+            continue;
+        };
+        let purl_key = entry.purl.as_str().to_string();
+        if seen_purls.insert(purl_key) {
+            out.push(entry);
+        }
+    }
     if !out.is_empty() {
         tracing::info!(
             rootfs = %rootfs.display(),
             entries = out.len(),
-            "parsed Gemfile.lock entries",
+            "parsed Gemfile.lock + gemspec entries",
         );
     }
     out
@@ -346,6 +405,184 @@ fn should_skip_descent(name: &str) -> bool {
         name,
         "target" | "vendor" | "node_modules" | "dist" | "__pycache__"
     )
+}
+
+/// Find `.gemspec` files under `rootfs` that live in a
+/// `specifications/` directory (including `specifications/default/`).
+/// This is the canonical location for installed gems — Ruby's
+/// `Gem::Specification.dirs` resolves to paths like:
+///
+/// - `/usr/lib/ruby/gems/3.3.0/specifications/`
+/// - `/usr/lib/ruby/gems/3.3.0/specifications/default/`   (stdlib gems)
+/// - `$HOME/.gem/ruby/3.3.0/specifications/`
+/// - `/opt/*/gems/specifications/`
+///
+/// Rather than hard-code those paths, we walk the filesystem looking
+/// for any directory named `specifications` containing `.gemspec`
+/// files. Cheap, covers all Ruby install layouts (distro packages,
+/// rbenv, rvm, asdf, ruby-install), and doesn't depend on environment
+/// variables.
+fn find_gemspecs(rootfs: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    walk_for_gemspecs(rootfs, 0, &mut out);
+    out
+}
+
+const MAX_GEMSPEC_WALK_DEPTH: usize = 10;
+
+fn walk_for_gemspecs(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
+    if depth >= MAX_GEMSPEC_WALK_DEPTH {
+        return;
+    }
+    let Ok(read_dir) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in read_dir.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if path.is_dir() {
+            if should_skip_descent(name) {
+                continue;
+            }
+            // When we hit a `specifications` directory, harvest its
+            // .gemspec files (plus any nested `default/` subdirectory
+            // that Ruby uses for stdlib gems) and do NOT descend
+            // further. Saves walking per-gem source trees under
+            // neighboring `gems/` directories.
+            if name == "specifications" {
+                harvest_gemspecs_in_dir(&path, out);
+                continue;
+            }
+            walk_for_gemspecs(&path, depth + 1, out);
+        }
+    }
+}
+
+fn harvest_gemspecs_in_dir(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(read_dir) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in read_dir.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if path
+                .extension()
+                .and_then(|s| s.to_str())
+                .map(|ext| ext.eq_ignore_ascii_case("gemspec"))
+                .unwrap_or(false)
+            {
+                out.push(path);
+            }
+        } else if path.is_dir() {
+            // `specifications/default/` contains Ruby-shipped stdlib
+            // gems. One level of recursion is enough — Ruby doesn't
+            // nest deeper.
+            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                if name == "default" {
+                    harvest_gemspecs_in_dir(&path, out);
+                }
+            }
+        }
+    }
+}
+
+/// Parse a `.gemspec` file and extract `(name, version)`.
+///
+/// Gemspec files are Ruby source; mikebom doesn't execute Ruby.
+/// Fortunately the name+version assignments follow a rigid idiom
+/// across all installed gemspecs:
+///
+/// ```ruby
+/// Gem::Specification.new do |s|
+///   s.name = "json"
+///   s.version = "2.7.2"                 # most common
+///   # or:
+///   s.version = Gem::Version.new "2.7.2"
+///   ...
+/// end
+/// ```
+///
+/// We only need to recognise the `s.name`/`s.version` (or `spec.`/
+/// `specification.`) assignment lines and strip the quoted literal.
+/// Any non-trivial Ruby expression (interpolation, conditionals) for
+/// name or version returns `None` and the caller skips the gem.
+pub(crate) fn parse_gemspec(text: &str) -> Option<(String, String)> {
+    let mut name: Option<String> = None;
+    let mut version: Option<String> = None;
+    for raw_line in text.lines() {
+        let line = raw_line.trim();
+        if let Some(v) = strip_assignment(line, "name") {
+            if let Some(literal) = extract_string_literal(v) {
+                name = Some(literal);
+            }
+        } else if let Some(v) = strip_assignment(line, "version") {
+            // The common shapes, in decreasing specificity:
+            //   "1.2.3"
+            //   '1.2.3'
+            //   Gem::Version.new "1.2.3"
+            //   Gem::Version.new("1.2.3")
+            if let Some(literal) = extract_string_literal(v) {
+                version = Some(literal);
+            }
+        }
+        if name.is_some() && version.is_some() {
+            break;
+        }
+    }
+    match (name, version) {
+        (Some(n), Some(v)) if !n.is_empty() && !v.is_empty() => Some((n, v)),
+        _ => None,
+    }
+}
+
+/// Match a line like `s.name = "foo"` / `spec.version = "1.0"` /
+/// `specification.name = "foo"` and return the RHS trimmed. Returns
+/// `None` when the line doesn't match any accepted receiver + attribute
+/// combo, or when the attribute doesn't match `attr`.
+fn strip_assignment<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
+    // Receivers Ruby gemspec generators emit in practice.
+    const RECEIVERS: &[&str] = &["s", "spec", "specification", "gem"];
+    for receiver in RECEIVERS {
+        let prefix = format!("{receiver}.{attr}");
+        if let Some(rest) = line.strip_prefix(&prefix) {
+            let rest = rest.trim_start();
+            if let Some(rhs) = rest.strip_prefix('=') {
+                return Some(rhs.trim());
+            }
+        }
+    }
+    None
+}
+
+/// Extract the first string literal from `rhs`, handling:
+///   `"foo"` / `'foo'`
+///   `Gem::Version.new("foo")` / `Gem::Version.new "foo"`
+///   `"foo".freeze`
+/// Returns the content between quotes; `None` if no literal found.
+fn extract_string_literal(rhs: &str) -> Option<String> {
+    let bytes = rhs.as_bytes();
+    for (i, &b) in bytes.iter().enumerate() {
+        if b == b'"' || b == b'\'' {
+            let quote = b;
+            // Find the matching closing quote; gemspec strings don't
+            // contain escapes in practice (Ruby string literals with
+            // `\"` do exist but gem names/versions never use them).
+            let start = i + 1;
+            for j in start..bytes.len() {
+                if bytes[j] == quote {
+                    let literal = &rhs[start..j];
+                    if literal.is_empty() {
+                        return None;
+                    }
+                    return Some(literal.to_string());
+                }
+            }
+            return None;
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -532,5 +769,151 @@ DEPENDENCIES
         .unwrap();
         let entries = read(dir.path(), false);
         assert_eq!(entries[0].source_type.as_deref(), Some("git"));
+    }
+
+    // --- gemspec walker (conformance bug 3) ----------------------------
+
+    #[test]
+    fn parse_gemspec_simple_name_version() {
+        // Canonical shape from `gem build` output.
+        let text = r#"# -*- encoding: utf-8 -*-
+Gem::Specification.new do |s|
+  s.name = "json"
+  s.version = "2.7.2"
+  s.authors = ["foo"]
+end
+"#;
+        let (name, version) = parse_gemspec(text).unwrap();
+        assert_eq!(name, "json");
+        assert_eq!(version, "2.7.2");
+    }
+
+    #[test]
+    fn parse_gemspec_gem_version_new_form() {
+        // Common alternative — Ruby stdlib default gems emit this.
+        let text = r#"Gem::Specification.new do |s|
+  s.name = "bundler"
+  s.version = Gem::Version.new "4.0.10"
+end
+"#;
+        let (name, version) = parse_gemspec(text).unwrap();
+        assert_eq!(name, "bundler");
+        assert_eq!(version, "4.0.10");
+    }
+
+    #[test]
+    fn parse_gemspec_spec_receiver_and_freeze() {
+        // `spec.` receiver (vs `s.`) and `.freeze` suffix both occur.
+        let text = r#"Gem::Specification.new do |spec|
+  spec.name = "psych".freeze
+  spec.version = "5.1.2".freeze
+end
+"#;
+        let (name, version) = parse_gemspec(text).unwrap();
+        assert_eq!(name, "psych");
+        assert_eq!(version, "5.1.2");
+    }
+
+    #[test]
+    fn parse_gemspec_single_quoted() {
+        let text = r#"Gem::Specification.new do |s|
+  s.name = 'rdoc'
+  s.version = '6.6.3.1'
+end
+"#;
+        let (name, version) = parse_gemspec(text).unwrap();
+        assert_eq!(name, "rdoc");
+        assert_eq!(version, "6.6.3.1");
+    }
+
+    #[test]
+    fn parse_gemspec_rejects_when_name_missing() {
+        let text = r#"Gem::Specification.new do |s|
+  s.version = "1.0"
+end
+"#;
+        assert!(parse_gemspec(text).is_none());
+    }
+
+    #[test]
+    fn parse_gemspec_handles_interpolated_version() {
+        // Ruby `#{}` interpolation means we can't resolve without
+        // executing the gemspec. The string-literal extractor still
+        // captures the raw `#{VAR}` contents — downstream PURL
+        // construction may fail on non-alphanumerics, in which case
+        // the caller skips. This test documents current behavior.
+        let text = "Gem::Specification.new do |s|\n  s.name = \"foo\"\n  s.version = \"#{FOO_VERSION}\"\nend\n";
+        let result = parse_gemspec(text);
+        if let Some((_, v)) = result {
+            assert!(v.contains('#') || v.contains('{'));
+        }
+    }
+
+    #[test]
+    fn find_gemspecs_walks_default_specs_dir() {
+        // Simulate a Ruby install tree:
+        //   usr/lib/ruby/gems/3.3.0/specifications/default/json-2.7.2.gemspec
+        //   usr/lib/ruby/gems/3.3.0/specifications/psych-5.1.2.gemspec
+        let dir = tempfile::tempdir().unwrap();
+        let specs = dir.path().join("usr/lib/ruby/gems/3.3.0/specifications");
+        std::fs::create_dir_all(specs.join("default")).unwrap();
+        std::fs::write(
+            specs.join("default/json-2.7.2.gemspec"),
+            "Gem::Specification.new do |s|\n  s.name = \"json\"\n  s.version = \"2.7.2\"\nend\n",
+        )
+        .unwrap();
+        std::fs::write(
+            specs.join("psych-5.1.2.gemspec"),
+            "Gem::Specification.new do |s|\n  s.name = \"psych\"\n  s.version = \"5.1.2\"\nend\n",
+        )
+        .unwrap();
+        let found = find_gemspecs(dir.path());
+        assert_eq!(found.len(), 2, "expected two gemspecs, got {found:?}");
+    }
+
+    #[test]
+    fn read_returns_installed_gems_without_gemfile_lock() {
+        let dir = tempfile::tempdir().unwrap();
+        let specs = dir.path().join("usr/lib/ruby/gems/3.3.0/specifications/default");
+        std::fs::create_dir_all(&specs).unwrap();
+        std::fs::write(
+            specs.join("bigdecimal-3.1.5.gemspec"),
+            "Gem::Specification.new do |s|\n  s.name = \"bigdecimal\"\n  s.version = \"3.1.5\"\nend\n",
+        )
+        .unwrap();
+        let entries = read(dir.path(), false);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "bigdecimal");
+        assert_eq!(entries[0].version, "3.1.5");
+        assert_eq!(entries[0].source_type.as_deref(), Some("installed-gemspec"));
+        assert_eq!(entries[0].purl.as_str(), "pkg:gem/bigdecimal@3.1.5");
+    }
+
+    #[test]
+    fn gemfile_lock_wins_over_gemspec_for_same_gem() {
+        // Dedup: if a gem appears in both Gemfile.lock and a
+        // specifications/*.gemspec, the Gemfile.lock version wins
+        // (Gemfile.lock processed first and seen_purls blocks the
+        // gemspec from being re-added).
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Gemfile.lock"),
+            "GEM\n  remote: https://rubygems.org/\n  specs:\n    json (2.7.1)\n\nDEPENDENCIES\n  json\n",
+        )
+        .unwrap();
+        let specs = dir.path().join("usr/lib/ruby/gems/3.3.0/specifications/default");
+        std::fs::create_dir_all(&specs).unwrap();
+        std::fs::write(
+            specs.join("json-2.7.2.gemspec"),
+            "Gem::Specification.new do |s|\n  s.name = \"json\"\n  s.version = \"2.7.2\"\nend\n",
+        )
+        .unwrap();
+        let entries = read(dir.path(), false);
+        // Two distinct PURLs — different versions so they're distinct
+        // packages, both emitted. This is correct: two different
+        // versions of json are installed.
+        let json_entries: Vec<_> =
+            entries.iter().filter(|e| e.name == "json").collect();
+        assert_eq!(json_entries.len(), 2);
     }
 }

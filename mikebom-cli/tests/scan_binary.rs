@@ -438,27 +438,32 @@ fn dpkg_rootfs_suppresses_owned_binaries() {
     );
 }
 
-/// TLS-library preservation guarantee — the user's explicit clarifying
-/// question. When a Go binary is inside a Linux container AND owned by
-/// a package, the file-level and linkage-evidence are suppressed BUT
-/// embedded-version-string detection (OpenSSL / BoringSSL / zlib /
-/// SQLite / curl / PCRE) still fires. A claimed binary with
-/// `OpenSSL 3.0.11` in its `.rodata` MUST still emit `pkg:generic/openssl@3.0.11`.
+/// v6 behavior change (conformance bug 6a): embedded-version-string
+/// scans are now GATED on `skip_file_level_and_linkage`. Claimed
+/// binaries (dpkg-owned, rpm-dir-heuristic, go-in-linux,
+/// python/jdk-collapsed) do NOT run the curated version-string
+/// scanner.
 ///
-/// We can't synthesize an ELF on darwin without a cross-toolchain,
-/// so this test lives as a placeholder-documented-skip until an ELF
-/// fixture lands (T042 in milestone-004 tasks). The unit tests on
-/// `version_strings::scan` + the unconditional call in `scan_binary`
-/// already verify the code path in isolation.
+/// Rationale: previously, dpkg-owned `/usr/bin/curl` would double-
+/// emit as both `pkg:deb/.../curl@7.88.1` (from dpkg) and
+/// `pkg:generic/curl@7.88.1` (from the curl version-string pattern
+/// matching `libcurl/7.88.1` in the binary). The deduplicator groups
+/// by (ecosystem, name, version) so the two don't merge. The FP flood
+/// from self-identifying claimed binaries was the larger correctness
+/// problem than losing static-library version detection inside
+/// claimed binaries.
+///
+/// The v6 gate lives at `binary/mod.rs` — the `if !skip_file_level_and_linkage`
+/// now wraps `version_strings::scan` as well. Unit tests on
+/// `version_strings::scan` (binary/version_strings.rs::tests) continue
+/// to verify the pattern library in isolation.
 #[test]
-fn boringssl_detection_survives_claimed_binary_documented() {
-    // Placeholder: ELF fixture with `BoringSSL <sha>` in .rodata and
-    // a dpkg claim would exercise this end-to-end. Covered today by:
-    //  - version_strings::scan unit tests (binary/version_strings.rs::tests)
-    //  - the unconditional call site at binary/mod.rs::read (version-strings
-    //    emission runs regardless of skip_file_level_and_linkage)
-    // See the plan at specs/004-rpm-binary-sboms/ for the full
-    // TLS-preservation guarantee.
+fn version_strings_gated_on_claim_documented() {
+    // Placeholder: an ELF fixture with `OpenSSL 3.0.11` in .rodata
+    // + a dpkg `.list` entry claiming its path would exercise end-to-end.
+    // Covered today by:
+    //  - version_strings::scan unit tests (pattern library still correct)
+    //  - unclaimed-binary scan_binary tests (version-strings still emit for unclaimed)
 }
 
 /// Test B1 from the v3 plan — CPython stdlib files (extension

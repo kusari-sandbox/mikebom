@@ -80,7 +80,10 @@ fn detect_rootfs_kind(rootfs: &Path) -> RootfsKind {
         }
     }
     // Generic os-release probe. Linux is by far the dominant ID.
-    if let Some(id) = crate::scan_fs::os_release::read_id(&rootfs.join("etc/os-release")) {
+    // Uses the rootfs-aware reader so Ubuntu/Fedora images whose
+    // /etc/os-release is a symlink into /usr/lib/os-release still
+    // resolve (see os_release::read_id_from_rootfs).
+    if let Some(id) = crate::scan_fs::os_release::read_id_from_rootfs(rootfs) {
         let id_lower = id.to_lowercase();
         // Every RPM/DEB/APK-family distro + common musl / busybox ids.
         const LINUX_IDS: &[&str] = &[
@@ -318,16 +321,27 @@ pub fn read(
 
         // Milestone 004 post-ship double-counting fix. Suppress the
         // file-level + linkage-evidence emissions when the binary is
-        // already owned by a package-db reader. `.note.package` and
-        // embedded-version-string scans (below) remain unconditional
-        // so we still surface distro self-identification + static
-        // TLS-library versions even for owned binaries.
+        // already owned by a package-db reader. `.note.package` remains
+        // unconditional — it's authoritative distro self-identification.
         //
         // v2 fix: path_claimed now canonicalizes via `is_path_claimed`
         // so walker discoveries via /bin → usr/bin symlink traversal
         // (Debian usrmerge) correctly match claims recorded with the
         // canonical /usr/bin/... form. Pre-v2, the character-equality
         // lookup missed and 917/954 pkg:generic/ FPs leaked through.
+        //
+        // v6 fix (conformance bug 6a): embedded-version-string scans
+        // were previously unconditional, which caused dpkg-owned
+        // /usr/bin/curl to double-emit as `pkg:generic/curl@7.88.1`
+        // alongside the dpkg `pkg:deb/.../curl@...` entry. The
+        // deduplicator groups by (ecosystem, name, version) so the two
+        // don't merge. Now gated on `skip_file_level_and_linkage` —
+        // matches the same claim-aware skip that the file-level
+        // emission uses. Trade-off: we lose static-library version
+        // detection inside claimed binaries (e.g. statically-linked
+        // OpenSSL in a dpkg-owned binary). Accepted because the FP
+        // flood from self-identifying claimed binaries is the larger
+        // correctness problem in practice.
         let path_claimed = is_path_claimed(
             &path,
             claimed_paths,
@@ -439,11 +453,25 @@ pub fn read(
             // dedup aggregator; emitted after the walk completes.
             // Host-system-path install-names filtered out to prevent
             // `/System/Library/Frameworks/...` leakage.
+            //
+            // v6 (conformance bug 6b): `add_with_claim_check` probes
+            // standard library search paths and skips sonames that
+            // resolve to a path claimed by a package-db reader.
+            // Fixes `libc.so.6` double-emission alongside the libc6
+            // deb.
             for soname in &scan.imports {
                 if is_host_system_path(soname) {
                     continue;
                 }
-                linkage_agg.add(soname, &path, &parent_bom_ref);
+                linkage_agg.add_with_claim_check(
+                    soname,
+                    &path,
+                    &parent_bom_ref,
+                    rootfs,
+                    claimed_paths,
+                    #[cfg(unix)]
+                    claimed_inodes,
+                );
             }
         }
 
@@ -459,9 +487,16 @@ pub fn read(
         // Confined to read-only string sections per Q4 resolution.
         // Every match emits `pkg:generic/<library>@<version>` tagged
         // confidence=heuristic + sbom-tier=analyzed.
-        for m in version_strings::scan(&scan.string_region) {
-            if let Some(entry) = version_match_to_entry(&m, &path) {
-                out.push(entry);
+        //
+        // v6: gated on `skip_file_level_and_linkage` so claimed
+        // binaries (dpkg/rpm-owned, collapsed-by-python/jdk, go
+        // binaries on Linux) don't double-emit `pkg:generic/curl`
+        // alongside the package-db scanner's authoritative entry.
+        if !skip_file_level_and_linkage {
+            for m in version_strings::scan(&scan.string_region) {
+                if let Some(entry) = version_match_to_entry(&m, &path) {
+                    out.push(entry);
+                }
             }
         }
     }

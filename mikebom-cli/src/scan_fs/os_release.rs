@@ -6,7 +6,54 @@
 //! of an extracted container image rootfs or a --path root). Same
 //! parsing rules in both cases — one small helper in one place.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// Spec-compliant os-release location fallback list. Per
+/// `man os-release`: applications check `/etc/os-release` first and
+/// fall back to `/usr/lib/os-release` when the primary is missing.
+/// Ubuntu 24.04 (and many Debian-derivatives) ship `/etc/os-release`
+/// as a symlink to `/usr/lib/os-release`; when container-image
+/// extraction preserves the symlink but the target lands in a layer
+/// that gets whited out or reordered, the symlink dangles and the
+/// primary read fails. The fallback recovers the data.
+///
+/// Takes a rootfs and yields absolute file paths within it in the
+/// order callers should try.
+pub fn os_release_candidates(rootfs: &Path) -> [PathBuf; 2] {
+    [
+        rootfs.join("etc/os-release"),
+        rootfs.join("usr/lib/os-release"),
+    ]
+}
+
+/// Read the first os-release file within `rootfs` that exists and is
+/// readable, trying the spec-compliant paths in order
+/// (see [`os_release_candidates`]). Returns the file contents for the
+/// caller to parse. `None` when neither path resolves.
+fn read_os_release_contents(rootfs: &Path) -> Option<String> {
+    for candidate in os_release_candidates(rootfs) {
+        if let Ok(text) = std::fs::read_to_string(&candidate) {
+            if !text.is_empty() {
+                return Some(text);
+            }
+        }
+    }
+    None
+}
+
+/// Rootfs-aware `ID=` reader. Tries `/etc/os-release` first, falls
+/// back to `/usr/lib/os-release` per the os-release spec. Used by the
+/// scan pipeline where the primary location may be a dangling symlink
+/// after container-image extraction.
+pub fn read_id_from_rootfs(rootfs: &Path) -> Option<String> {
+    read_os_release_contents(rootfs).and_then(|t| parse_id(&t))
+}
+
+/// Rootfs-aware `VERSION_ID=` reader. Same fallback policy as
+/// [`read_id_from_rootfs`].
+pub fn read_version_id_from_rootfs(rootfs: &Path) -> Option<String> {
+    read_os_release_contents(rootfs).and_then(|t| parse_version_id(&t))
+}
 
 /// Read `os-release` at an explicit path and pluck out `VERSION_CODENAME`.
 /// Used by the scan-mode pipelines to grab the codename from an extracted
@@ -335,5 +382,59 @@ mod tests {
         // VERSION_ID="9" should NOT satisfy the ID= lookup.
         let text = "VERSION_ID=\"9\"\n";
         assert_eq!(parse_id(text), None);
+    }
+
+    // --- rootfs-aware readers (conformance bug 1) ----------------------
+
+    #[test]
+    fn rootfs_reader_prefers_etc_os_release() {
+        let dir = tempfile::tempdir().unwrap();
+        let rootfs = dir.path();
+        std::fs::create_dir_all(rootfs.join("etc")).unwrap();
+        std::fs::create_dir_all(rootfs.join("usr/lib")).unwrap();
+        std::fs::write(rootfs.join("etc/os-release"), "ID=ubuntu\nVERSION_ID=24.04\n").unwrap();
+        // Conflicting usr/lib/os-release — should be ignored because
+        // /etc takes precedence per spec.
+        std::fs::write(rootfs.join("usr/lib/os-release"), "ID=debian\nVERSION_ID=12\n").unwrap();
+        assert_eq!(read_id_from_rootfs(rootfs), Some("ubuntu".to_string()));
+        assert_eq!(read_version_id_from_rootfs(rootfs), Some("24.04".to_string()));
+    }
+
+    #[test]
+    fn rootfs_reader_falls_back_to_usr_lib_when_etc_absent() {
+        // Exact scenario from Ubuntu 24.04 images where /etc/os-release
+        // is a symlink into /usr/lib/os-release and the symlink ends up
+        // dangling after tar extraction: only the target file is
+        // present. Before this fix, read_id returned None and the
+        // caller fell back to "debian" namespace.
+        let dir = tempfile::tempdir().unwrap();
+        let rootfs = dir.path();
+        std::fs::create_dir_all(rootfs.join("usr/lib")).unwrap();
+        std::fs::write(rootfs.join("usr/lib/os-release"), "ID=ubuntu\nVERSION_ID=24.04\n").unwrap();
+        assert_eq!(read_id_from_rootfs(rootfs), Some("ubuntu".to_string()));
+        assert_eq!(read_version_id_from_rootfs(rootfs), Some("24.04".to_string()));
+    }
+
+    #[test]
+    fn rootfs_reader_returns_none_when_neither_path_present() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(read_id_from_rootfs(dir.path()), None);
+        assert_eq!(read_version_id_from_rootfs(dir.path()), None);
+    }
+
+    #[test]
+    fn rootfs_reader_follows_symlink_when_target_present() {
+        // Happy-path: symlink is intact, target is present. The OS
+        // resolves it for us via std::fs::read_to_string.
+        let dir = tempfile::tempdir().unwrap();
+        let rootfs = dir.path();
+        std::fs::create_dir_all(rootfs.join("etc")).unwrap();
+        std::fs::create_dir_all(rootfs.join("usr/lib")).unwrap();
+        std::fs::write(rootfs.join("usr/lib/os-release"), "ID=ubuntu\nVERSION_ID=24.04\n").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("../usr/lib/os-release", rootfs.join("etc/os-release")).unwrap();
+        #[cfg(not(unix))]
+        return;
+        assert_eq!(read_id_from_rootfs(rootfs), Some("ubuntu".to_string()));
     }
 }
