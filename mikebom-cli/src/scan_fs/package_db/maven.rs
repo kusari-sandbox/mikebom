@@ -115,6 +115,70 @@ impl MavenRepoCache {
         }
         None
     }
+
+    /// Read the strongest available SHA sidecar for a given Maven
+    /// artifact from the M2 cache. Maven Central publishes
+    /// `<artifact>-<version>.jar.sha1` for every artifact, plus
+    /// optional `.sha256` and `.sha512` for newer releases. Each
+    /// sidecar holds a single line of lowercase hex, optionally
+    /// followed by whitespace and the original filename — we strip
+    /// the filename and keep only the hex token.
+    ///
+    /// Probes algorithms in strongest-first order
+    /// (sha512 → sha256 → sha1) and returns the FIRST hit. Returns
+    /// an empty Vec when no sidecar exists for any algorithm.
+    pub(crate) fn read_artifact_hash(
+        &self,
+        group: &str,
+        artifact: &str,
+        version: &str,
+    ) -> Vec<mikebom_common::types::hash::ContentHash> {
+        if self.roots.is_empty() {
+            return Vec::new();
+        }
+        let group_path = group.replace('.', "/");
+        let base = format!("{group_path}/{artifact}/{version}/{artifact}-{version}.jar");
+        for root in &self.roots {
+            let dir = root.join(&base);
+            if let Some(hash) = read_sidecar(&dir) {
+                return vec![hash];
+            }
+        }
+        Vec::new()
+    }
+}
+
+/// Probe the three sidecar extensions in strongest-first order at
+/// `<jar_base_path>.{sha512,sha256,sha1}`. Returns the first parsed
+/// `ContentHash`. `jar_base_path` is the JAR's full path (NOT the
+/// JAR contents) — sidecars live alongside it.
+pub(crate) fn read_sidecar(
+    jar_base_path: &Path,
+) -> Option<mikebom_common::types::hash::ContentHash> {
+    use mikebom_common::types::hash::{ContentHash, HashAlgorithm};
+    let candidates = [
+        ("sha512", HashAlgorithm::Sha512),
+        ("sha256", HashAlgorithm::Sha256),
+        ("sha1", HashAlgorithm::Sha1),
+    ];
+    for (ext, alg) in candidates {
+        let sidecar_path = jar_base_path.with_extension(format!(
+            "{}.{ext}",
+            jar_base_path.extension().and_then(|s| s.to_str()).unwrap_or("jar")
+        ));
+        if let Ok(text) = std::fs::read_to_string(&sidecar_path) {
+            // Maven sidecar format: hex digest, optionally followed by
+            // whitespace + filename ("abc123  myartifact.jar").
+            let token = text.split_whitespace().next().unwrap_or("");
+            if token.is_empty() {
+                continue;
+            }
+            if let Ok(hash) = ContentHash::with_algorithm(alg, token) {
+                return Some(hash);
+            }
+        }
+    }
+    None
 }
 
 // ---------------------------------------------------------------------------
@@ -675,6 +739,13 @@ pub(crate) struct EmbeddedMavenMeta {
     /// parent-chain walks can resolve through JAR-shipped parents
     /// even when they aren't in the M2 cache.
     pub pom_xml_bytes: Option<Vec<u8>>,
+    /// SHA-512/256/1 sidecar hash for this JAR, when present
+    /// alongside the JAR on disk. `None` for fat JAR vendored
+    /// artefacts (which don't have their own sidecar). Sidecar
+    /// reads happen in [`walk_jar_maven_meta`] using
+    /// [`read_sidecar`]. Plumbed onto `entry.hashes` via
+    /// [`jar_pom_to_entry`].
+    pub sidecar_hash: Option<mikebom_common::types::hash::ContentHash>,
 }
 
 /// Crack open `archive_path` and return every `META-INF/maven/<g>/<a>/`
@@ -733,6 +804,20 @@ pub(crate) fn walk_jar_maven_meta(archive_path: &Path) -> Vec<EmbeddedMavenMeta>
         }
     }
 
+    // The sidecar hash applies to the WHOLE jar archive, not the
+    // individual vendored coords inside a fat JAR. Read it once from
+    // the JAR's filesystem path and attach to whichever embedded coord
+    // matches the JAR's primary coord (artifactId == jar filename
+    // stem, naive but covers the common case). For fat / shaded JARs
+    // with multiple vendored coords, only the primary coord gets the
+    // hash — others are second-party artefacts whose hashes the
+    // shader didn't record.
+    let archive_sidecar = read_sidecar(archive_path);
+    let archive_stem = archive_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+
     let mut out = Vec::new();
     for (dir, coord) in properties_by_dir {
         let pom_xml_bytes = pom_xml_by_dir.get(&dir).cloned();
@@ -740,10 +825,23 @@ pub(crate) fn walk_jar_maven_meta(archive_path: &Path) -> Vec<EmbeddedMavenMeta>
             .as_ref()
             .map(|bytes| parse_pom_xml(bytes).dependencies)
             .unwrap_or_default();
+        // Match this coord to the JAR's filesystem name to decide
+        // whether to attach the sidecar hash. Maven's standard naming
+        // is `<artifactId>-<version>.jar`; if the stem starts with
+        // the artifactId (or matches the artifactId+version), this
+        // is the JAR's primary coord.
+        let is_primary = archive_stem.starts_with(&coord.artifact_id)
+            || archive_stem == format!("{}-{}", coord.artifact_id, coord.version);
+        let sidecar_hash = if is_primary {
+            archive_sidecar.clone()
+        } else {
+            None
+        };
         out.push(EmbeddedMavenMeta {
             coord,
             declared_deps,
             pom_xml_bytes,
+            sidecar_hash,
         });
     }
     out
@@ -763,6 +861,7 @@ fn pom_dep_to_entry(
     doc: &PomXmlDocument,
     source_path: &str,
     include_dev: bool,
+    cache: Option<&MavenRepoCache>,
 ) -> Option<PackageDbEntry> {
     // Filter out test-scope when include_dev is false.
     if !include_dev && matches!(dep.scope.as_deref(), Some("test")) {
@@ -786,6 +885,12 @@ fn pom_dep_to_entry(
         ),
     };
     let purl = build_maven_purl(&dep.group_id, &dep.artifact_id, &resolved_version)?;
+    // Probe the M2 cache for a sidecar SHA hash for this coord. Empty
+    // when no cache root has the artifact (common for design-tier
+    // entries with placeholder versions).
+    let hashes = cache
+        .map(|c| c.read_artifact_hash(&dep.group_id, &dep.artifact_id, &resolved_version))
+        .unwrap_or_default();
     Some(PackageDbEntry {
         purl,
         name: dep.artifact_id.clone(),
@@ -811,7 +916,7 @@ fn pom_dep_to_entry(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
-        hashes: Vec::new(),
+        hashes,
         sbom_tier: Some(tier),
     })
 }
@@ -862,9 +967,14 @@ fn bfs_transitive_poms(
             // Cache miss — emit the component with no outbound edges
             // and don't enqueue further. This keeps partial-cache
             // scans as useful as possible without fabricating data.
-            if let Some(entry) =
-                build_transitive_entry(&group, &artifact, &version, Vec::new(), source_path)
-            {
+            if let Some(entry) = build_transitive_entry(
+                &group,
+                &artifact,
+                &version,
+                Vec::new(),
+                source_path,
+                Some(cache),
+            ) {
                 out.push(entry);
             }
             continue;
@@ -893,9 +1003,14 @@ fn bfs_transitive_poms(
             .map(|d| d.artifact_id.clone())
             .collect();
 
-        if let Some(entry) =
-            build_transitive_entry(&group, &artifact, &version, edges, source_path)
-        {
+        if let Some(entry) = build_transitive_entry(
+            &group,
+            &artifact,
+            &version,
+            edges,
+            source_path,
+            Some(cache),
+        ) {
             out.push(entry);
         }
 
@@ -927,14 +1042,22 @@ fn bfs_transitive_poms(
 /// Build a `PackageDbEntry` for a BFS-discovered coord. `depends`
 /// holds the outbound edges (artifactIds). `source_type = "transitive"`
 /// marks this as cache-inferred rather than scanned-project-declared.
+///
+/// Probes the M2 cache for a sidecar SHA hash for this coord
+/// (`<a>-<v>.jar.sha512` etc.) and attaches whichever is strongest.
+/// `cache` may be `None` for synthetic / non-cache callers (tests).
 fn build_transitive_entry(
     group: &str,
     artifact: &str,
     version: &str,
     depends: Vec<String>,
     source_path: &str,
+    cache: Option<&MavenRepoCache>,
 ) -> Option<PackageDbEntry> {
     let purl = build_maven_purl(group, artifact, version)?;
+    let hashes = cache
+        .map(|c| c.read_artifact_hash(group, artifact, version))
+        .unwrap_or_default();
     Some(PackageDbEntry {
         purl,
         name: artifact.to_string(),
@@ -957,7 +1080,7 @@ fn build_transitive_entry(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
-        hashes: Vec::new(),
+        hashes,
         sbom_tier: Some("source".to_string()),
     })
 }
@@ -966,6 +1089,7 @@ fn jar_pom_to_entry(
     p: &PomProperties,
     depends: Vec<String>,
     source_path: &str,
+    sidecar_hash: Option<mikebom_common::types::hash::ContentHash>,
 ) -> Option<PackageDbEntry> {
     let purl = build_maven_purl(&p.group_id, &p.artifact_id, &p.version)?;
     Some(PackageDbEntry {
@@ -990,7 +1114,7 @@ fn jar_pom_to_entry(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
-        hashes: Vec::new(),
+        hashes: sidecar_hash.into_iter().collect(),
         sbom_tier: Some("analyzed".to_string()),
     })
 }
@@ -1150,7 +1274,9 @@ pub fn read_with_claims(
         let mut direct_entries: Vec<(PomDependency, PackageDbEntry)> = Vec::new();
         let mut bfs_seeds: Vec<(String, String, String)> = Vec::new();
         for dep in &doc.dependencies {
-            let Some(entry) = pom_dep_to_entry(dep, &doc, &source_path, include_dev) else {
+            let Some(entry) =
+                pom_dep_to_entry(dep, &doc, &source_path, include_dev, Some(&repo_cache))
+            else {
                 continue;
             };
             // Seed BFS with the concrete (group, artifact, version) —
@@ -1242,7 +1368,12 @@ pub fn read_with_claims(
                     coord_index.get(&key).map(|_v| d.artifact_id.clone())
                 })
                 .collect();
-            let Some(entry) = jar_pom_to_entry(&meta.coord, depends, &source_path) else {
+            let Some(entry) = jar_pom_to_entry(
+                &meta.coord,
+                depends,
+                &source_path,
+                meta.sidecar_hash.clone(),
+            ) else {
                 continue;
             };
             let key = entry.purl.as_str().to_string();
@@ -1507,6 +1638,46 @@ mod tests {
         assert_eq!(meta[0].coord.artifact_id, "guava");
         assert_eq!(meta[0].declared_deps.len(), 1);
         assert_eq!(meta[0].declared_deps[0].artifact_id, "failureaccess");
+    }
+
+    #[test]
+    fn walk_jar_attaches_sidecar_hash_when_present() {
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("guava.jar");
+        write_jar(
+            &jar,
+            &[(
+                "META-INF/maven/com.google.guava/guava/pom.properties",
+                &pom_properties("com.google.guava", "guava", "32.1.3-jre"),
+            )],
+        );
+        let hex = "b".repeat(64);
+        std::fs::write(dir.path().join("guava.jar.sha256"), &hex).unwrap();
+
+        let meta = walk_jar_maven_meta(&jar);
+        assert_eq!(meta.len(), 1);
+        let sidecar = meta[0]
+            .sidecar_hash
+            .as_ref()
+            .expect("sidecar hash must be attached");
+        assert_eq!(sidecar.algorithm, HashAlgorithm::Sha256);
+        assert_eq!(sidecar.value.as_str(), &hex);
+    }
+
+    #[test]
+    fn walk_jar_no_sidecar_attaches_no_hash() {
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("guava.jar");
+        write_jar(
+            &jar,
+            &[(
+                "META-INF/maven/com.google.guava/guava/pom.properties",
+                &pom_properties("com.google.guava", "guava", "32.1.3-jre"),
+            )],
+        );
+        let meta = walk_jar_maven_meta(&jar);
+        assert_eq!(meta.len(), 1);
+        assert!(meta[0].sidecar_hash.is_none());
     }
 
     #[test]
@@ -2495,5 +2666,105 @@ mod tests {
             0,
             "claimed JAR must be skipped; got {with_claim:?}"
         );
+    }
+
+    // --- Sidecar hash helper (sbomqs Integrity lift, Maven) -------------
+
+    use mikebom_common::types::hash::HashAlgorithm;
+
+    fn write_sidecar(jar_path: &Path, ext: &str, contents: &str) {
+        let sidecar = jar_path.with_extension(format!("jar.{ext}"));
+        std::fs::write(sidecar, contents).unwrap();
+    }
+
+    #[test]
+    fn read_sidecar_prefers_sha512_over_sha256_and_sha1() {
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("myartifact-1.0.jar");
+        // Write all three. Each uses a digest of the right length.
+        write_sidecar(&jar, "sha1", &"a".repeat(40));
+        write_sidecar(&jar, "sha256", &"b".repeat(64));
+        write_sidecar(&jar, "sha512", &"c".repeat(128));
+
+        let hash = read_sidecar(&jar).expect("hash returned");
+        assert_eq!(hash.algorithm, HashAlgorithm::Sha512);
+        assert_eq!(hash.value.as_str(), &"c".repeat(128));
+    }
+
+    #[test]
+    fn read_sidecar_falls_back_to_sha256_when_sha512_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("myartifact-1.0.jar");
+        write_sidecar(&jar, "sha1", &"a".repeat(40));
+        write_sidecar(&jar, "sha256", &"b".repeat(64));
+
+        let hash = read_sidecar(&jar).expect("hash returned");
+        assert_eq!(hash.algorithm, HashAlgorithm::Sha256);
+    }
+
+    #[test]
+    fn read_sidecar_falls_back_to_sha1_when_others_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("myartifact-1.0.jar");
+        write_sidecar(&jar, "sha1", &"a".repeat(40));
+
+        let hash = read_sidecar(&jar).expect("hash returned");
+        assert_eq!(hash.algorithm, HashAlgorithm::Sha1);
+    }
+
+    #[test]
+    fn read_sidecar_handles_filename_suffix_in_sidecar_content() {
+        // Maven Central + many CI tools emit `<hex>  <filename>` pairs.
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("myartifact-1.0.jar");
+        let hex = "b".repeat(64);
+        write_sidecar(&jar, "sha256", &format!("{hex}  myartifact-1.0.jar\n"));
+        let hash = read_sidecar(&jar).expect("hash returned");
+        assert_eq!(hash.value.as_str(), &hex);
+    }
+
+    #[test]
+    fn read_sidecar_returns_none_when_no_sidecar() {
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("myartifact-1.0.jar");
+        // No sidecar files at all.
+        assert!(read_sidecar(&jar).is_none());
+    }
+
+    #[test]
+    fn read_sidecar_skips_invalid_hex() {
+        // A sidecar with garbage content should fall through to the
+        // next algorithm rather than be silently accepted.
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("myartifact-1.0.jar");
+        write_sidecar(&jar, "sha512", "not_hex_garbage_zzz");
+        write_sidecar(&jar, "sha256", &"b".repeat(64));
+        let hash = read_sidecar(&jar).expect("hash returned");
+        assert_eq!(hash.algorithm, HashAlgorithm::Sha256);
+    }
+
+    #[test]
+    fn read_artifact_hash_resolves_through_cache_root() {
+        let dir = tempfile::tempdir().unwrap();
+        // Plant <root>/com/example/myapp/1.0.0/myapp-1.0.0.jar.sha256
+        let artifact_dir = dir.path().join("com/example/myapp/1.0.0");
+        std::fs::create_dir_all(&artifact_dir).unwrap();
+        let jar = artifact_dir.join("myapp-1.0.0.jar");
+        let hex = "f".repeat(64);
+        write_sidecar(&jar, "sha256", &hex);
+
+        let cache = MavenRepoCache {
+            roots: vec![dir.path().to_path_buf()],
+        };
+        let hashes = cache.read_artifact_hash("com.example", "myapp", "1.0.0");
+        assert_eq!(hashes.len(), 1);
+        assert_eq!(hashes[0].value.as_str(), &hex);
+    }
+
+    #[test]
+    fn read_artifact_hash_returns_empty_when_no_cache_roots() {
+        let cache = MavenRepoCache { roots: vec![] };
+        let hashes = cache.read_artifact_hash("com.example", "myapp", "1.0.0");
+        assert!(hashes.is_empty());
     }
 }

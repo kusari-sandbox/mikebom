@@ -29,6 +29,7 @@
 
 use std::path::{Path, PathBuf};
 
+use mikebom_common::types::hash::{ContentHash, HashAlgorithm};
 use mikebom_common::types::license::SpdxExpression;
 use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
@@ -981,6 +982,11 @@ pub(crate) struct RequirementsTxtEntry {
     /// for `file:...`, `"git"` for `git+...`. None for registry-named
     /// requirements.
     pub source_type: Option<String>,
+    /// Per-component content hashes from `--hash=alg:hex` flags. pip
+    /// allows multiple `--hash=` flags per requirement (one per
+    /// distribution file — sdist + per-platform wheels) and CDX
+    /// `components[].hashes[]` is array-shaped, so all are emitted.
+    pub hashes: Vec<ContentHash>,
 }
 
 impl RequirementsTxtEntry {
@@ -1014,7 +1020,7 @@ impl RequirementsTxtEntry {
             binary_packed: None,
             raw_version: None,
             npm_role: None,
-            hashes: Vec::new(),
+            hashes: self.hashes,
             sbom_tier: Some("design".to_string()),
         })
     }
@@ -1060,8 +1066,11 @@ pub(crate) fn parse_requirements_file_text(text: &str) -> Vec<RequirementsTxtEnt
 
 /// Parse a single non-blank, non-comment, non-meta requirements line.
 fn parse_requirements_line(line: &str) -> Option<RequirementsTxtEntry> {
-    // Strip any trailing `--hash=sha256:...` flags (can repeat).
+    // Split off `--hash=alg:hex` flags. pip allows MULTIPLE per
+    // requirement (one for sdist + one per platform wheel) so collect
+    // all of them. Each flag has form `--hash=<alg>:<hex>`.
     let body = line.splitn(2, "--hash").next().unwrap_or(line).trim();
+    let hashes = parse_hash_flags(line);
 
     // URL-style sources.
     if body.starts_with("git+") {
@@ -1072,6 +1081,7 @@ fn parse_requirements_line(line: &str) -> Option<RequirementsTxtEntry> {
             version: String::new(),
             range_spec: body.to_string(),
             source_type: Some("git".to_string()),
+            hashes,
         });
     }
     if body.starts_with("http://") || body.starts_with("https://") {
@@ -1081,6 +1091,7 @@ fn parse_requirements_line(line: &str) -> Option<RequirementsTxtEntry> {
             version: String::new(),
             range_spec: body.to_string(),
             source_type: Some("url".to_string()),
+            hashes,
         });
     }
     if body.starts_with("file:") || body.starts_with('.') || body.starts_with('/') {
@@ -1090,6 +1101,7 @@ fn parse_requirements_line(line: &str) -> Option<RequirementsTxtEntry> {
             version: String::new(),
             range_spec: body.to_string(),
             source_type: Some("local".to_string()),
+            hashes,
         });
     }
 
@@ -1105,7 +1117,53 @@ fn parse_requirements_line(line: &str) -> Option<RequirementsTxtEntry> {
         version,
         range_spec: body.to_string(),
         source_type: None,
+        hashes,
     })
+}
+
+/// Extract every `--hash=<alg>:<hex>` flag from a requirements line.
+/// Tolerates both `--hash=sha256:abc` and `--hash sha256:abc` shapes
+/// (pip accepts the latter via getopt-style spacing). Unknown
+/// algorithms are silently dropped (not just sha256/512/1 — md5
+/// also gets through ContentHash::with_algorithm but pip docs only
+/// list sha256/384/512).
+fn parse_hash_flags(line: &str) -> Vec<ContentHash> {
+    let mut out = Vec::new();
+    // Iterate on `--hash` substring; each occurrence is followed by
+    // either `=` or ` ` then `<alg>:<hex>`.
+    let mut rest = line;
+    while let Some(idx) = rest.find("--hash") {
+        let after = &rest[idx + "--hash".len()..];
+        // Skip the separator (`=` or whitespace).
+        let after = after.trim_start_matches(|c: char| c == '=' || c.is_whitespace());
+        // Take up to the next whitespace or end.
+        let token_end = after
+            .find(|c: char| c.is_whitespace())
+            .unwrap_or(after.len());
+        let token = &after[..token_end];
+        if let Some((alg_str, hex)) = token.split_once(':') {
+            if let Some(alg) = parse_hash_alg(alg_str) {
+                if let Ok(hash) = ContentHash::with_algorithm(alg, hex) {
+                    if !out.contains(&hash) {
+                        out.push(hash);
+                    }
+                }
+            }
+        }
+        rest = &after[token_end..];
+    }
+    out
+}
+
+fn parse_hash_alg(s: &str) -> Option<HashAlgorithm> {
+    match s.to_ascii_lowercase().as_str() {
+        "sha256" => Some(HashAlgorithm::Sha256),
+        "sha512" => Some(HashAlgorithm::Sha512),
+        "sha1" => Some(HashAlgorithm::Sha1),
+        // sha384 not in HashAlgorithm yet; pip uses sha256/384/512.
+        // md5 is supported by ContentHash but pip rejects md5 hashes.
+        _ => None,
+    }
 }
 
 /// Extract `egg=<name>` from a URL-style requirement, if present.
@@ -1670,6 +1728,77 @@ urllib3>=2 \\
     }
 
     #[test]
+    fn parse_hash_flags_captures_single_sha256() {
+        let line = "requests==2.31.0 --hash=sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f";
+        let hashes = parse_hash_flags(line);
+        assert_eq!(hashes.len(), 1);
+        assert_eq!(hashes[0].algorithm, HashAlgorithm::Sha256);
+        assert_eq!(
+            hashes[0].value.as_str(),
+            "58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f"
+        );
+    }
+
+    #[test]
+    fn parse_hash_flags_captures_multiple() {
+        // pip allows multiple --hash= flags (sdist + per-platform wheel).
+        let sha256 = "a".repeat(64);
+        let sha512 = "b".repeat(128);
+        let line = format!(
+            "requests==2.31.0 --hash=sha256:{sha256} --hash=sha512:{sha512}"
+        );
+        let hashes = parse_hash_flags(&line);
+        assert_eq!(hashes.len(), 2);
+        // Order preserved (first --hash flag → first slot).
+        assert_eq!(hashes[0].algorithm, HashAlgorithm::Sha256);
+        assert_eq!(hashes[1].algorithm, HashAlgorithm::Sha512);
+    }
+
+    #[test]
+    fn parse_hash_flags_dedups_identical_entries() {
+        // Pathological: same hash specified twice. Only emit once.
+        let line = "x==1 --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let hashes = parse_hash_flags(line);
+        assert_eq!(hashes.len(), 1);
+    }
+
+    #[test]
+    fn parse_hash_flags_drops_unknown_algorithm() {
+        let line = "x==1 --hash=md4:dead --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let hashes = parse_hash_flags(line);
+        assert_eq!(hashes.len(), 1);
+        assert_eq!(hashes[0].algorithm, HashAlgorithm::Sha256);
+    }
+
+    #[test]
+    fn parse_hash_flags_returns_empty_when_absent() {
+        let line = "requests==2.31.0";
+        assert!(parse_hash_flags(line).is_empty());
+    }
+
+    #[test]
+    fn parse_hash_flags_handles_space_separator() {
+        // pip also accepts `--hash sha256:abc` (getopt-style).
+        let line = "x==1 --hash sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let hashes = parse_hash_flags(line);
+        assert_eq!(hashes.len(), 1);
+    }
+
+    #[test]
+    fn requirements_txt_threads_hashes_through_to_entry() {
+        let text = "requests==2.31.0 --hash=sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f\n";
+        let entries = parse_requirements_file_text(text);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].hashes.len(), 1);
+        let pdb = entries[0]
+            .clone()
+            .into_package_db_entry("/req.txt")
+            .expect("converts");
+        assert_eq!(pdb.hashes.len(), 1);
+        assert_eq!(pdb.hashes[0].algorithm, HashAlgorithm::Sha256);
+    }
+
+    #[test]
     fn requirements_txt_git_url_source_type() {
         let text = "git+https://github.com/psf/requests.git@main#egg=requests\n";
         let entries = parse_requirements_file_text(text);
@@ -1704,6 +1833,7 @@ urllib3>=2 \\
             version: "2.31.0".into(),
             range_spec: "requests==2.31.0".into(),
             source_type: None,
+            hashes: Vec::new(),
         };
         let pdb = entry.into_package_db_entry("/req.txt").expect("converts");
         assert_eq!(pdb.sbom_tier.as_deref(), Some("design"));
@@ -1717,6 +1847,7 @@ urllib3>=2 \\
             version: String::new(),
             range_spec: "requests>=2".into(),
             source_type: None,
+            hashes: Vec::new(),
         };
         let pdb = entry.into_package_db_entry("/req.txt").expect("converts");
         // packageurl-rs accepts `pkg:pypi/<name>` without @version.
