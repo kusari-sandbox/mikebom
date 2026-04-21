@@ -14,6 +14,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use mikebom_common::types::license::SpdxExpression;
 use mikebom_common::types::purl::Purl;
 
 use super::PackageDbEntry;
@@ -121,6 +122,8 @@ fn parse_stanza(
     let mut version = None;
     let mut arch = None;
     let mut depends_raw: Option<String> = None;
+    let mut maintainer: Option<String> = None;
+    let mut license_raw: Option<String> = None;
     for line in stanza.lines() {
         if line.len() < 2 || line.as_bytes()[1] != b':' {
             continue;
@@ -132,6 +135,17 @@ fn parse_stanza(
             b'V' => version = Some(val),
             b'A' => arch = Some(val),
             b'D' => depends_raw = Some(val),
+            // `m:` (lowercase) — package maintainer, e.g.
+            // `Natanael Copa <ncopa@alpinelinux.org>`. Note: Alpine
+            // uses lowercase for this field; capital M is unused in
+            // the installed-db format. Freeform, passed through
+            // verbatim.
+            b'm' => maintainer = Some(val),
+            // `L:` (uppercase) — license string. Usually an SPDX
+            // expression (`MIT`, `MIT AND BSD-2-Clause`), occasionally
+            // prose like `GPL-2.0-only OR GPL-3.0-only`. Canonicalised
+            // below; non-canonical values drop silently.
+            b'L' => license_raw = Some(val),
             _ => {}
         }
     }
@@ -149,6 +163,14 @@ fn parse_stanza(
         .map(parse_depends)
         .unwrap_or_default();
 
+    let licenses: Vec<SpdxExpression> = license_raw
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .and_then(|s| SpdxExpression::try_canonical(s).ok())
+        .into_iter()
+        .collect();
+
     Some(PackageDbEntry {
         purl,
         name,
@@ -156,13 +178,8 @@ fn parse_stanza(
         arch,
         source_path: source_path.to_string(),
         depends,
-        // apk's installed-db doesn't carry a per-package maintainer
-        // field equivalent to dpkg's `Maintainer:`. Leave None.
-        maintainer: None,
-        // apk /lib/apk/db/installed is the installed-package record
-        // for Alpine — deployed tier per research.md R13. No dev/prod
-        // distinction, no range spec, always registry-sourced.
-        licenses: Vec::new(),
+        maintainer: maintainer.filter(|s| !s.is_empty()),
+        licenses,
         is_dev: None,
         requirement_range: None,
         source_type: None,
@@ -267,6 +284,58 @@ T:the musl c library (libc) implementation
             e.purl.as_str(),
             "pkg:apk/alpine/musl@1.2.4-r2?arch=aarch64"
         );
+    }
+
+    #[test]
+    fn parses_maintainer_and_license_fields() {
+        // Real APK installed-db entries carry `M:` (maintainer) and
+        // `L:` (license) — lifts sbomqs NTIA 2025 `comp_supplier`
+        // and `comp_license` on alpine fixtures.
+        let text = "\
+P:musl
+V:1.2.4-r2
+A:aarch64
+m:Timo Teras <timo.teras@iki.fi>
+L:MIT
+";
+        let entries = parse(text, SOURCE, None);
+        assert_eq!(entries.len(), 1);
+        let e = &entries[0];
+        assert_eq!(e.maintainer.as_deref(), Some("Timo Teras <timo.teras@iki.fi>"));
+        assert_eq!(e.licenses.len(), 1);
+        assert_eq!(e.licenses[0].as_str(), "MIT");
+    }
+
+    #[test]
+    fn parses_compound_license_expression() {
+        let text = "\
+P:gnu-utils
+V:1.0-r0
+A:x86_64
+L:GPL-2.0-only OR GPL-3.0-only
+";
+        let entries = parse(text, SOURCE, None);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(
+            entries[0].licenses[0].as_str(),
+            "GPL-2.0-only OR GPL-3.0-only"
+        );
+    }
+
+    #[test]
+    fn non_canonical_license_drops_silently() {
+        // Freeform prose that can't be canonicalised to SPDX
+        // shouldn't fail the whole record — the component still
+        // surfaces with no license, same as today's baseline.
+        let text = "\
+P:obscure-pkg
+V:1.0-r0
+A:x86_64
+L:custom internal license see LICENSE file
+";
+        let entries = parse(text, SOURCE, None);
+        assert_eq!(entries.len(), 1);
+        assert!(entries[0].licenses.is_empty());
     }
 
     #[test]

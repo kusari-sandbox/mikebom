@@ -256,6 +256,15 @@ fn resolve_go_path(path: &str) -> Option<Purl> {
     let mod_idx = path.find("/pkg/mod/")?;
     let after = &path[mod_idx + "/pkg/mod/".len()..];
 
+    // Reject $GOMODCACHE/cache/{download,lock,vcs}/... — these are
+    // toolchain-internal cache files, not extracted modules. A path
+    // resolver match here produces nonsense PURLs because the first
+    // `@` in the path belongs to the `@v` version-index directory,
+    // not a `module@version` separator.
+    if after.starts_with("cache/") {
+        return None;
+    }
+
     // Find the '@' separator between module path and version.
     let at_idx = after.find('@')?;
     let module = &after[..at_idx];
@@ -510,6 +519,24 @@ mod tests {
         let purl = purl.expect("should resolve go github module path");
         assert_eq!(purl.ecosystem(), "golang");
         assert_eq!(purl.version(), Some("v1.9.0"));
+    }
+
+    #[test]
+    fn go_cache_download_path_not_resolved() {
+        // $GOMODCACHE/cache/download/<module>/@v/<version>.{mod,zip,info}
+        // are toolchain-internal artefacts, not extracted modules. Their
+        // first `@` belongs to the `/@v/` version-index directory, so a
+        // naive resolver would emit e.g.
+        // `pkg:golang/cache/download/github.com/davecgh/go-spew/@v` — nonsense.
+        assert!(resolve_path(
+            "/root/go/pkg/mod/cache/download/github.com/davecgh/go-spew/@v/v1.1.1.zip"
+        )
+        .is_none());
+        assert!(resolve_path("/root/go/pkg/mod/cache/lock").is_none());
+        assert!(resolve_path(
+            "/home/user/go/pkg/mod/cache/download/sumdb/sum.golang.org/lookup/rsc.io/quote/@v/v1.5.2.ziphash"
+        )
+        .is_none());
     }
 
     // -----------------------------------------------------------------------

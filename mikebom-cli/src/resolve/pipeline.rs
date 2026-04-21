@@ -176,6 +176,7 @@ impl ResolutionPipeline {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
                     };
                     components.push(component);
                     continue; // URL match found; skip lower-priority resolvers for this connection.
@@ -230,6 +231,7 @@ impl ResolutionPipeline {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
                                 };
                                 components.push(component);
                             }
@@ -298,6 +300,7 @@ impl ResolutionPipeline {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
                 };
                 components.push(component);
             }

@@ -126,6 +126,14 @@ fn package_to_entry(pkg: &CargoPackage, source_path: &str) -> Option<PackageDbEn
                 .to_string()
         })
         .collect();
+    // Registry crates have an accessible `~/.cargo/registry/src/...`
+    // Cargo.toml carrying `authors = [...]` that the lockfile
+    // doesn't. Offline-safe: miss → None.
+    let maintainer = if matches!(kind, SourceKind::Registry) {
+        registry_cache_authors(&pkg.name, &pkg.version)
+    } else {
+        None
+    };
     Some(PackageDbEntry {
         purl,
         name: pkg.name.clone(),
@@ -133,7 +141,7 @@ fn package_to_entry(pkg: &CargoPackage, source_path: &str) -> Option<PackageDbEn
         arch: None,
         source_path: source_path.to_string(),
         depends,
-        maintainer: None,
+        maintainer,
         licenses,
         is_dev: None,
         requirement_range: None,
@@ -158,6 +166,62 @@ fn package_to_entry(pkg: &CargoPackage, source_path: &str) -> Option<PackageDbEn
 /// when the value isn't a valid SHA-256 hex.
 pub(crate) fn checksum_to_content_hash(hex: &str) -> Option<ContentHash> {
     ContentHash::sha256(hex).ok()
+}
+
+/// Read `~/.cargo/registry/src/index.crates.io-*/<crate>-<version>/Cargo.toml`
+/// and extract `package.authors`. Returns the joined author string
+/// when found, `None` otherwise. Offline-safe: missing cache, missing
+/// crate, missing authors, or malformed TOML all map to `None`.
+///
+/// The cache dir has a hash suffix that varies per registry
+/// (`index.crates.io-6f17d22bba15001f` is today's crates.io); glob
+/// `src/` and probe each candidate. Cost: one `read_dir` + a handful
+/// of `is_dir()` probes per crate — negligible next to the lockfile
+/// walk.
+fn registry_cache_authors(name: &str, version: &str) -> Option<String> {
+    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
+    let src_root = std::path::PathBuf::from(home).join(".cargo/registry/src");
+    let Ok(read_dir) = std::fs::read_dir(&src_root) else {
+        return None;
+    };
+    let crate_dirname = format!("{name}-{version}");
+    for entry in read_dir.flatten() {
+        let registry_dir = entry.path();
+        if !registry_dir.is_dir() {
+            continue;
+        }
+        let cargo_toml = registry_dir.join(&crate_dirname).join("Cargo.toml");
+        if let Ok(text) = std::fs::read_to_string(&cargo_toml) {
+            if let Some(authors) = parse_authors_from_cargo_toml(&text) {
+                return Some(authors);
+            }
+        }
+    }
+    None
+}
+
+/// Extract `package.authors = [...]` from a Cargo.toml body. Returns
+/// the authors joined with `", "`. Uses the `toml` crate (already a
+/// workspace dep) for robust parsing — handles multi-line arrays,
+/// quoting, escapes, and TOML structure edge cases the lockfile
+/// parser doesn't need to care about.
+fn parse_authors_from_cargo_toml(text: &str) -> Option<String> {
+    let parsed: toml::Value = toml::from_str(text).ok()?;
+    let authors = parsed
+        .get("package")?
+        .get("authors")?
+        .as_array()?;
+    let joined: Vec<String> = authors
+        .iter()
+        .filter_map(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if joined.is_empty() {
+        None
+    } else {
+        Some(joined.join(", "))
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -312,6 +376,60 @@ fn should_skip_descent(name: &str) -> bool {
 #[cfg_attr(test, allow(clippy::unwrap_used))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_authors_from_cargo_toml_joins_array() {
+        let text = r#"
+[package]
+name = "serde"
+version = "1.0.197"
+authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
+edition = "2021"
+"#;
+        assert_eq!(
+            parse_authors_from_cargo_toml(text).as_deref(),
+            Some(
+                "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
+            ),
+        );
+    }
+
+    #[test]
+    fn parse_authors_handles_single_author() {
+        let text = r#"
+[package]
+name = "tiny"
+authors = ["Solo Dev"]
+"#;
+        assert_eq!(
+            parse_authors_from_cargo_toml(text).as_deref(),
+            Some("Solo Dev"),
+        );
+    }
+
+    #[test]
+    fn parse_authors_returns_none_when_field_missing() {
+        let text = r#"
+[package]
+name = "noauth"
+version = "0.1"
+"#;
+        assert!(parse_authors_from_cargo_toml(text).is_none());
+    }
+
+    #[test]
+    fn parse_authors_returns_none_on_empty_array() {
+        let text = r#"
+[package]
+authors = []
+"#;
+        assert!(parse_authors_from_cargo_toml(text).is_none());
+    }
+
+    #[test]
+    fn parse_authors_tolerates_malformed_toml() {
+        assert!(parse_authors_from_cargo_toml("not valid =@ toml").is_none());
+    }
 
     #[test]
     fn lockfile_unsupported_version_display_matches_contract() {

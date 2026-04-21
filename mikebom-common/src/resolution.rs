@@ -148,6 +148,26 @@ pub struct ResolvedComponent {
     /// the `mikebom:raw-version` property.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raw_version: Option<String>,
+    /// External references for this component — repository URLs,
+    /// homepages, issue trackers. Maps to CycloneDX
+    /// `components[].externalReferences[]`. Populated from PURL
+    /// heuristics (e.g. `pkg:golang/github.com/X/Y` → vcs
+    /// `https://github.com/X/Y`) and from deps.dev `VersionInfo.links`.
+    /// Drives sbomqs `comp_with_source_code` when a `vcs`-type
+    /// entry is present.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub external_references: Vec<ExternalReference>,
+}
+
+/// A single external reference on a `ResolvedComponent`. The
+/// `ref_type` values mirror CDX 1.6's `externalReferences[].type`
+/// enum: `vcs` (source-code repo), `website` (project homepage),
+/// `issue-tracker`, `distribution`, etc. Kept as a string rather
+/// than an enum so new values flow through without a crate release.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExternalReference {
+    pub ref_type: String,
+    pub url: String,
 }
 
 /// One installed file owned by a `ResolvedComponent`. The presence of
@@ -309,6 +329,7 @@ mod tests {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
         };
 
         let json = serde_json::to_string(&component).expect("serialize component");
@@ -359,6 +380,7 @@ mod tests {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
         };
 
         let json = serde_json::to_string(&component).expect("serialize component");

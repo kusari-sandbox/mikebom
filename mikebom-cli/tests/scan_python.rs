@@ -227,25 +227,45 @@ fn pipfile_project_splits_default_vs_develop() {
 }
 
 #[test]
-fn requirements_only_emits_design_tier_components() {
+fn requirements_only_emits_mixed_tier_components() {
+    // Fixture has: `requests==2.31.0` (pinned), `urllib3>=2,<3`
+    // (range), `certifi` (unpinned). Pin → source tier (we have
+    // a concrete version); range / unpinned → design tier.
     let sbom = scan("requirements-only", false);
     let pypi = pypi_components(&sbom);
     assert_eq!(pypi.len(), 3);
+
+    let find = |name: &str| -> &serde_json::Value {
+        pypi.iter()
+            .find(|c| c["name"] == name)
+            .unwrap_or_else(|| panic!("{name} missing from pypi components"))
+    };
+    assert_eq!(
+        prop_value(find("requests"), "mikebom:sbom-tier"),
+        Some("source"),
+        "pinned `requests==2.31.0` must be source-tier",
+    );
+    assert_eq!(
+        prop_value(find("urllib3"), "mikebom:sbom-tier"),
+        Some("design"),
+        "range `urllib3>=2,<3` must be design-tier",
+    );
+    assert_eq!(
+        prop_value(find("certifi"), "mikebom:sbom-tier"),
+        Some("design"),
+        "unpinned `certifi` must be design-tier",
+    );
     for c in &pypi {
-        assert_eq!(
-            prop_value(c, "mikebom:sbom-tier"),
-            Some("design"),
-            "{}: must be design-tier",
-            c["name"]
-        );
         assert!(
             prop_value(c, "mikebom:requirement-range").is_some(),
             "{}: must carry requirement-range",
             c["name"]
         );
     }
-    // pypi is NOT marked complete — requirements.txt alone is not
-    // authoritative enough for aggregate=complete.
+    // Mixed tiers: the presence of ONE source-tier component marks
+    // the ecosystem authoritative for that subset. The existence of
+    // the `requests` pin is enough to emit an `aggregate: complete`
+    // record for pypi.
     let compositions = sbom["compositions"].as_array().unwrap();
     let pypi_complete = compositions.iter().any(|r| {
         r["aggregate"].as_str() == Some("complete")
@@ -258,10 +278,11 @@ fn requirements_only_emits_design_tier_components() {
                 .unwrap_or(false)
     });
     assert!(
-        !pypi_complete,
-        "requirements-only must NOT mark pypi complete"
+        pypi_complete,
+        "any pinned pypi requirement marks the ecosystem complete"
     );
-    // envelope lifecycles includes "design".
+    // envelope lifecycles still includes "design" because urllib3 /
+    // certifi are design-tier.
     let lifecycles = &sbom["metadata"]["lifecycles"];
     if let Some(arr) = lifecycles.as_array() {
         assert!(

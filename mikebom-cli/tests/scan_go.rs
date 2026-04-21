@@ -95,10 +95,12 @@ fn scan_go_source_tree_emits_canonical_purls() {
         gosum_modules.saturating_sub(1),
         purls.len(),
     );
-    // The main module should be present.
+    // The main module (workspace root) is intentionally NOT emitted
+    // — same semantics as cargo/npm/maven workspace filters. Only
+    // transitive deps from go.sum surface as components.
     assert!(
-        purls.iter().any(|p| p.contains("example.com/simple")),
-        "main module PURL missing: {purls:?}",
+        purls.iter().all(|p| !p.contains("example.com/simple")),
+        "workspace root PURL should not be emitted: {purls:?}",
     );
     // Canonical PURLs always have `pkg:golang/` + a `/`-separated module path.
     for p in &purls {

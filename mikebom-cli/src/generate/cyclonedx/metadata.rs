@@ -376,6 +376,7 @@ mod tests {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
         };
 
         let components = vec![
@@ -446,6 +447,7 @@ mod tests {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
         };
 
         let meta = build_metadata(

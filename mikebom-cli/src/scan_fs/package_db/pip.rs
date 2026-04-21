@@ -998,6 +998,17 @@ impl RequirementsTxtEntry {
         // crate accepts this.
         let purl_str = build_pypi_purl_str(&self.name, &self.version);
         let purl = Purl::new(&purl_str).ok()?;
+        // Tier: `source` when the requirement is exactly pinned
+        // (`==` gives us a concrete version); `design` for ranges /
+        // unpinned / URL refs where we kept the raw range string
+        // but have no resolved version. A project that exclusively
+        // pins its deps is authoritative for the pypi ecosystem —
+        // `complete_ecosystems` keys off this.
+        let tier = if self.version.is_empty() {
+            "design"
+        } else {
+            "source"
+        };
         Some(PackageDbEntry {
             purl,
             name: self.name,
@@ -1021,7 +1032,7 @@ impl RequirementsTxtEntry {
             raw_version: None,
             npm_role: None,
             hashes: self.hashes,
-            sbom_tier: Some("design".to_string()),
+            sbom_tier: Some(tier.to_string()),
         })
     }
 }
@@ -1827,7 +1838,12 @@ urllib3>=2 \\
     }
 
     #[test]
-    fn requirements_txt_conversion_produces_design_tier() {
+    fn requirements_txt_pinned_produces_source_tier() {
+        // Exact pin (`==`) means the requirement IS authoritative for
+        // the version — same semantics as a cargo.lock line.
+        // `complete_ecosystems` keys off source/deployed tier, so
+        // pinned requirements.txt entries mark the pypi ecosystem
+        // complete and drive sbomqs `sbom_completeness_declared`.
         let entry = RequirementsTxtEntry {
             name: "requests".into(),
             version: "2.31.0".into(),
@@ -1836,8 +1852,24 @@ urllib3>=2 \\
             hashes: Vec::new(),
         };
         let pdb = entry.into_package_db_entry("/req.txt").expect("converts");
-        assert_eq!(pdb.sbom_tier.as_deref(), Some("design"));
+        assert_eq!(pdb.sbom_tier.as_deref(), Some("source"));
         assert_eq!(pdb.requirement_range.as_deref(), Some("requests==2.31.0"));
+    }
+
+    #[test]
+    fn requirements_txt_unpinned_stays_design_tier() {
+        // Range / unpinned requirements have no resolved version —
+        // tier stays `design`, same as a package.json dependency
+        // block without a lockfile.
+        let entry = RequirementsTxtEntry {
+            name: "requests".into(),
+            version: "".into(),
+            range_spec: "requests>=2.0".into(),
+            source_type: None,
+            hashes: Vec::new(),
+        };
+        let pdb = entry.into_package_db_entry("/req.txt").expect("converts");
+        assert_eq!(pdb.sbom_tier.as_deref(), Some("design"));
     }
 
     #[test]

@@ -4,6 +4,7 @@ use uuid::Uuid;
 use mikebom_common::attestation::integrity::TraceIntegrity;
 use mikebom_common::attestation::metadata::GenerationContext;
 use mikebom_common::resolution::{Relationship, ResolvedComponent};
+use mikebom_common::types::license::SpdxExpression;
 
 use super::compositions::build_compositions;
 use super::dependencies::build_dependencies;
@@ -160,41 +161,54 @@ impl CycloneDxBuilder {
             // `comp_no_deprecated_licenses`, `comp_no_restrictive_licenses`
             // all read concluded; `comp_with_declared_licenses` reads
             // declared.
+            // CDX 1.6 `licenses` schema is oneOf:
+            // - An array of `{license: {id/name, ...}}` objects (any
+            //   length), OR
+            // - An array of exactly ONE `{expression: ...}` entry.
+            // Mixing the two shapes, or emitting multiple expression
+            // entries, is a schema error. We accumulate both declared
+            // + concluded sources, split `A OR B` compounds into
+            // individual ids when possible, and fall back to a single
+            // expression entry (concluded > declared) only when a
+            // genuine compound remains.
             let mut all_licenses: Vec<serde_json::Value> = Vec::new();
-            for l in &component.licenses {
-                let entry_obj = if let Some(id) = l.as_spdx_id() {
-                    json!({
-                        "license": {
-                            "id": id,
-                            "acknowledgement": "declared",
+            let mut pending_expression: Option<(&str, &str)> = None;
+            let sources: [(&[SpdxExpression], &str); 2] = [
+                (&component.licenses, "declared"),
+                (&component.concluded_licenses, "concluded"),
+            ];
+            for (exprs, ack) in sources {
+                for l in exprs {
+                    if let Some(id) = l.as_spdx_id() {
+                        all_licenses.push(json!({
+                            "license": { "id": id, "acknowledgement": ack }
+                        }));
+                    } else if l.as_str().starts_with("LicenseRef-")
+                        || l.as_str().starts_with("DocumentRef-")
+                    {
+                        // Bare LicenseRef-* / DocumentRef-* aren't valid
+                        // in CDX `license.id` (id is restricted to the
+                        // SPDX list). Emit via `license.name` — schema-
+                        // legal and counted by sbomqs.
+                        all_licenses.push(json!({
+                            "license": { "name": l.as_str(), "acknowledgement": ack }
+                        }));
+                    } else if let Some(tokens) = try_split_or_compound(l.as_str()) {
+                        for tok in tokens {
+                            all_licenses.push(license_entry_for_token(&tok, ack));
                         }
-                    })
-                } else {
-                    json!({
-                        "expression": l.as_str(),
-                        "acknowledgement": "declared",
-                    })
-                };
-                all_licenses.push(entry_obj);
+                    } else {
+                        pending_expression = Some((l.as_str(), ack));
+                    }
+                }
             }
-            for l in &component.concluded_licenses {
-                let entry_obj = if let Some(id) = l.as_spdx_id() {
-                    json!({
-                        "license": {
-                            "id": id,
-                            "acknowledgement": "concluded",
-                        }
-                    })
-                } else {
-                    json!({
-                        "expression": l.as_str(),
-                        "acknowledgement": "concluded",
-                    })
-                };
-                all_licenses.push(entry_obj);
-            }
-            if !all_licenses.is_empty() {
-                entry["licenses"] = json!(all_licenses);
+            let final_licenses = if let Some((expr, ack)) = pending_expression {
+                vec![json!({ "expression": expr, "acknowledgement": ack })]
+            } else {
+                all_licenses
+            };
+            if !final_licenses.is_empty() {
+                entry["licenses"] = json!(final_licenses);
             }
 
             // Include supplier if present.
@@ -202,6 +216,18 @@ impl CycloneDxBuilder {
                 entry["supplier"] = json!({
                     "name": supplier
                 });
+            }
+
+            // External references — VCS repos, homepages, etc.
+            // Drives sbomqs `comp_with_source_code` when a `vcs`
+            // entry is present.
+            if !component.external_references.is_empty() {
+                let refs: Vec<serde_json::Value> = component
+                    .external_references
+                    .iter()
+                    .map(|r| json!({ "type": r.ref_type, "url": r.url }))
+                    .collect();
+                entry["externalReferences"] = json!(refs);
             }
 
             // CycloneDX `component.cpe` is single-valued. Emit the first
@@ -406,6 +432,86 @@ impl CycloneDxBuilder {
     }
 }
 
+/// Split an SPDX expression of the shape `A OR B OR C` OR
+/// `A AND B AND C` into its constituent identifiers. Returns `None`
+/// for expressions that mix operators, contain `WITH`, parentheses,
+/// license refs, or any component that isn't a bare SPDX-list
+/// identifier — those can't be represented as a set of independent
+/// `{license: {id}}` entries without losing semantics.
+///
+/// Motivation: CDX 1.6 allows only ONE `{expression}` entry per
+/// `licenses[]` array, and sbomqs `comp_with_licenses` scores credit
+/// on `license.id` / `license.name` only, not on `expression`. So
+/// `Apache-2.0 OR MIT` (cargo dual-licensed pattern) and
+/// `BSD-2-Clause AND BSD-3-Clause` (ClearlyDefined curated-AND
+/// pattern) both become multiple `{license: {id}}` entries.
+///
+/// For AND the split is semantically faithful (both licenses apply →
+/// list both). For OR it's a compromise (the disjunction relation is
+/// lost) but downstream readers still see every candidate ID.
+fn try_split_or_compound(expr: &str) -> Option<Vec<String>> {
+    let trimmed = expr.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.contains('(') || trimmed.contains(')') {
+        return None;
+    }
+    let tokens: Vec<&str> = trimmed.split_whitespace().collect();
+    if tokens.iter().any(|&t| t == "WITH") {
+        return None;
+    }
+    // Pick a single top-level operator. Mixed operators (e.g.
+    // `A AND B OR C`) require parens for unambiguous parsing, so
+    // bail — let the single-expression fallback handle them.
+    let has_or = tokens.iter().any(|&t| t == "OR");
+    let has_and = tokens.iter().any(|&t| t == "AND");
+    let separator = match (has_or, has_and) {
+        (true, false) => " OR ",
+        (false, true) => " AND ",
+        _ => return None,
+    };
+    let parts: Vec<&str> = trimmed.split(separator).map(str::trim).collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let mut tokens_out = Vec::with_capacity(parts.len());
+    for p in parts {
+        // Every operand must be a single token (SPDX id or
+        // LicenseRef-*); whitespace inside an operand means the
+        // expression has nested operators we can't flatten.
+        if p.is_empty() || p.contains(char::is_whitespace) {
+            return None;
+        }
+        tokens_out.push(p.to_string());
+    }
+    Some(tokens_out)
+}
+
+/// Map one split-expression token to the right CDX `license` shape.
+/// SPDX-list IDs go into `license.id` (the canonical place, and
+/// the CDX 1.6 schema enforces the SPDX list for that field).
+/// `LicenseRef-*` / `DocumentRef-*` aren't on the SPDX list so they
+/// go into `license.name` — schema-legal as a free-text label and
+/// still counted by sbomqs's `comp_with_licenses`.
+fn license_entry_for_token(token: &str, acknowledgement: &str) -> serde_json::Value {
+    if token.starts_with("LicenseRef-") || token.starts_with("DocumentRef-") {
+        json!({
+            "license": {
+                "name": token,
+                "acknowledgement": acknowledgement,
+            }
+        })
+    } else {
+        json!({
+            "license": {
+                "id": token,
+                "acknowledgement": acknowledgement,
+            }
+        })
+    }
+}
+
 #[cfg(test)]
 #[cfg_attr(test, allow(clippy::unwrap_used))]
 mod tests {
@@ -459,6 +565,7 @@ mod tests {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
         }
     }
 
@@ -775,7 +882,11 @@ mod tests {
     }
 
     #[test]
-    fn component_with_compound_license_emits_expression_form_with_acknowledgement() {
+    fn compound_or_license_splits_into_individual_ids() {
+        // CDX 1.6 allows only ONE `{expression}` entry in a
+        // `licenses[]` array and sbomqs scores `license.id`/`name`
+        // only. `A OR B` becomes two separate `{license: {id}}`
+        // entries — the disjunction is preserved structurally.
         let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
         let mut component = make_component("anyhow", "1.0.80");
         component.licenses = vec![
@@ -785,16 +896,143 @@ mod tests {
             .unwrap(),
         ];
         let integrity = clean_integrity();
-
         let bom = builder
             .build(&[component], &[], &integrity, "myapp", &[])
             .expect("build bom");
-
         let comp = &bom["components"].as_array().expect("components")[0];
         let licenses = comp["licenses"].as_array().unwrap();
-        assert_eq!(licenses[0]["expression"], "Apache-2.0 OR MIT");
-        assert_eq!(licenses[0]["acknowledgement"], "declared");
-        assert!(licenses[0].get("license").is_none());
+        assert_eq!(licenses.len(), 2);
+        assert_eq!(licenses[0]["license"]["id"], "Apache-2.0");
+        assert_eq!(licenses[0]["license"]["acknowledgement"], "declared");
+        assert_eq!(licenses[1]["license"]["id"], "MIT");
+        assert_eq!(licenses[1]["license"]["acknowledgement"], "declared");
+    }
+
+    #[test]
+    fn compound_and_license_splits_into_individual_ids() {
+        // AND splits cleanly: "both licenses apply" maps to listing
+        // both as `{license: {id}}` entries (multiple listed licenses
+        // = all apply, per CDX 1.6 `licenses` array semantics). This
+        // is strictly more semantically faithful than an expression
+        // for the AND case.
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("flask", "3.0.3");
+        component.concluded_licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new(
+                "BSD-2-Clause AND BSD-3-Clause",
+            )
+            .unwrap(),
+        ];
+        let integrity = clean_integrity();
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"].as_array().unwrap();
+        assert_eq!(licenses.len(), 2);
+        assert_eq!(licenses[0]["license"]["id"], "BSD-2-Clause");
+        assert_eq!(licenses[0]["license"]["acknowledgement"], "concluded");
+        assert_eq!(licenses[1]["license"]["id"], "BSD-3-Clause");
+    }
+
+    #[test]
+    fn compound_with_expression_falls_back_to_single_expression() {
+        // `X WITH exception` can't be split — the WITH operator is
+        // a semantic modifier on a base license, not a disjunction
+        // or conjunction of independent licenses. Stays as one
+        // `{expression}` entry.
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("openjdk", "21");
+        component.concluded_licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new(
+                "GPL-2.0-only WITH Classpath-exception-2.0",
+            )
+            .unwrap(),
+        ];
+        let integrity = clean_integrity();
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"].as_array().unwrap();
+        assert_eq!(licenses.len(), 1);
+        assert_eq!(
+            licenses[0]["expression"],
+            "GPL-2.0-only WITH Classpath-exception-2.0",
+        );
+    }
+
+    #[test]
+    fn compound_and_with_license_ref_splits_using_name_field() {
+        // ClearlyDefined returns shapes like
+        // `BSD-3-Clause AND LicenseRef-scancode-google-patent-license-golang`
+        // for `golang.org/x/sys`. CDX 1.6's `license.id` is SPDX-list
+        // only, so the LicenseRef operand routes to `license.name`
+        // instead. Both entries are schema-legal and sbomqs-countable.
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("x-sys", "0.5.0");
+        component.concluded_licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new(
+                "BSD-3-Clause AND LicenseRef-scancode-google-patent-license-golang",
+            )
+            .unwrap(),
+        ];
+        let integrity = clean_integrity();
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"].as_array().unwrap();
+        assert_eq!(licenses.len(), 2);
+        assert_eq!(licenses[0]["license"]["id"], "BSD-3-Clause");
+        assert_eq!(
+            licenses[1]["license"]["name"],
+            "LicenseRef-scancode-google-patent-license-golang",
+        );
+        assert!(licenses[1]["license"].get("id").is_none());
+    }
+
+    #[test]
+    fn bare_license_ref_emits_name_form() {
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("proprietary", "1.0.0");
+        component.licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new(
+                "LicenseRef-internal-eula",
+            )
+            .unwrap(),
+        ];
+        let integrity = clean_integrity();
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"].as_array().unwrap();
+        assert_eq!(licenses.len(), 1);
+        assert_eq!(licenses[0]["license"]["name"], "LicenseRef-internal-eula");
+    }
+
+    #[test]
+    fn mixed_operators_fall_back_to_single_expression() {
+        // `A AND B OR C` has ambiguous precedence without parens —
+        // splitting would misrepresent either interpretation. Stays
+        // as one `{expression}` entry.
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("complex", "1.0.0");
+        component.concluded_licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new(
+                "Apache-2.0 AND MIT OR BSD-3-Clause",
+            )
+            .unwrap(),
+        ];
+        let integrity = clean_integrity();
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"].as_array().unwrap();
+        assert_eq!(licenses.len(), 1);
+        assert!(licenses[0]["expression"].is_string());
     }
 
     #[test]

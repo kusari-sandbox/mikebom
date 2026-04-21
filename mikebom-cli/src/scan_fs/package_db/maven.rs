@@ -138,13 +138,24 @@ impl MavenRepoCache {
         }
         let group_path = group.replace('.', "/");
         let base = format!("{group_path}/{artifact}/{version}/{artifact}-{version}.jar");
+        let mut out: Vec<mikebom_common::types::hash::ContentHash> = Vec::new();
         for root in &self.roots {
-            let dir = root.join(&base);
-            if let Some(hash) = read_sidecar(&dir) {
-                return vec![hash];
+            let jar_path = root.join(&base);
+            if let Some(hash) = read_sidecar(&jar_path) {
+                out.push(hash);
+            }
+            // Always compute a SHA-256 of the JAR itself when it
+            // exists in this cache root. Maven Central sidecars are
+            // usually SHA-1 only; the computed digest is what lifts
+            // sbomqs `comp_with_strong_checksums` out of 0/10.
+            if jar_path.is_file() {
+                if let Some(hash) = compute_archive_sha256(&jar_path) {
+                    out.push(hash);
+                }
+                break;
             }
         }
-        Vec::new()
+        out
     }
 }
 
@@ -746,6 +757,15 @@ pub(crate) struct EmbeddedMavenMeta {
     /// [`read_sidecar`]. Plumbed onto `entry.hashes` via
     /// [`jar_pom_to_entry`].
     pub sidecar_hash: Option<mikebom_common::types::hash::ContentHash>,
+    /// SHA-256 of the JAR archive itself, computed by streaming the
+    /// file during the walk. Present on the primary coord of any
+    /// readable JAR; `None` for vendored fat-JAR sub-coords and
+    /// unreadable files. Coexists with `sidecar_hash` so consumers
+    /// can pick the strongest algorithm (sbomqs grades SHA-256+ as
+    /// strong, SHA-1 as weak — Maven Central sidecars are usually
+    /// SHA-1 only, so this is the primary source of strong hashes
+    /// for Maven components).
+    pub archive_sha256: Option<mikebom_common::types::hash::ContentHash>,
 }
 
 /// Crack open `archive_path` and return every `META-INF/maven/<g>/<a>/`
@@ -813,6 +833,12 @@ pub(crate) fn walk_jar_maven_meta(archive_path: &Path) -> Vec<EmbeddedMavenMeta>
     // hash — others are second-party artefacts whose hashes the
     // shader didn't record.
     let archive_sidecar = read_sidecar(archive_path);
+    // Compute a SHA-256 over the JAR file itself as a strong-hash
+    // complement to the sidecar. Maven Central's sidecar artefacts
+    // are usually SHA-1 only; sbomqs grades SHA-1 as weak, so
+    // without a computed SHA-256 every Maven component reads as
+    // "no strong checksum" regardless of sidecar presence.
+    let archive_sha256 = compute_archive_sha256(archive_path);
     let archive_stem = archive_path
         .file_stem()
         .and_then(|s| s.to_str())
@@ -832,19 +858,43 @@ pub(crate) fn walk_jar_maven_meta(archive_path: &Path) -> Vec<EmbeddedMavenMeta>
         // is the JAR's primary coord.
         let is_primary = archive_stem.starts_with(&coord.artifact_id)
             || archive_stem == format!("{}-{}", coord.artifact_id, coord.version);
-        let sidecar_hash = if is_primary {
-            archive_sidecar.clone()
+        let (sidecar_hash, sha256_for_coord) = if is_primary {
+            (archive_sidecar.clone(), archive_sha256.clone())
         } else {
-            None
+            (None, None)
         };
         out.push(EmbeddedMavenMeta {
             coord,
             declared_deps,
             pom_xml_bytes,
             sidecar_hash,
+            archive_sha256: sha256_for_coord,
         });
     }
     out
+}
+
+/// Stream-hash a JAR file and return its SHA-256 wrapped as a
+/// `ContentHash`. Returns `None` when the file is unreadable; the
+/// walker already ignores unreadable entries upstream, but this
+/// keeps the helper infallible at the call site.
+fn compute_archive_sha256(
+    path: &Path,
+) -> Option<mikebom_common::types::hash::ContentHash> {
+    use sha2::{Digest, Sha256};
+    use std::io::Read;
+    let mut file = std::fs::File::open(path).ok()?;
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 64 * 1024];
+    loop {
+        match file.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => hasher.update(&buf[..n]),
+            Err(_) => return None,
+        }
+    }
+    let digest = format!("{:x}", hasher.finalize());
+    mikebom_common::types::hash::ContentHash::sha256(&digest).ok()
 }
 
 
@@ -1090,8 +1140,12 @@ fn jar_pom_to_entry(
     depends: Vec<String>,
     source_path: &str,
     sidecar_hash: Option<mikebom_common::types::hash::ContentHash>,
+    archive_sha256: Option<mikebom_common::types::hash::ContentHash>,
 ) -> Option<PackageDbEntry> {
     let purl = build_maven_purl(&p.group_id, &p.artifact_id, &p.version)?;
+    let mut hashes: Vec<mikebom_common::types::hash::ContentHash> = Vec::new();
+    hashes.extend(sidecar_hash);
+    hashes.extend(archive_sha256);
     Some(PackageDbEntry {
         purl,
         name: p.artifact_id.clone(),
@@ -1114,7 +1168,7 @@ fn jar_pom_to_entry(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
-        hashes: sidecar_hash.into_iter().collect(),
+        hashes,
         sbom_tier: Some("analyzed".to_string()),
     })
 }
@@ -1213,45 +1267,19 @@ pub fn read_with_claims(
         };
         let doc = parse_pom_xml(&bytes);
         let source_path = pom_path.to_string_lossy().into_owned();
-        // Emit the project's own coord (as source tier).
-        if let Some((g, a, v)) = &doc.self_coord {
-            if !v.is_empty() {
-                if let Some(purl) = build_maven_purl(g, a, v) {
-                    let key = purl.as_str().to_string();
-                    if seen_purls.insert(key) {
-                        out.push(PackageDbEntry {
-                            purl,
-                            name: a.clone(),
-                            version: v.clone(),
-                            arch: None,
-                            source_path: source_path.clone(),
-                            depends: doc
-                                .dependencies
-                                .iter()
-                                .map(|d| d.artifact_id.clone())
-                                .collect(),
-                            maintainer: None,
-                            licenses: Vec::new(),
-                            is_dev: None,
-                            requirement_range: None,
-                            source_type: Some("workspace".to_string()),
-                            buildinfo_status: None,
-                            evidence_kind: None,
-                            binary_class: None,
-                            binary_stripped: None,
-                            linkage_kind: None,
-                            detected_go: None,
-                            confidence: None,
-                            binary_packed: None,
-                            raw_version: None,
-                            npm_role: None,
-                            hashes: Vec::new(),
-                            sbom_tier: Some("source".to_string()),
-                        });
-                    }
-                }
-            }
-        }
+        // Intentionally NOT emitting the project's own self_coord as a
+        // component — it's the workspace root being scanned, not a
+        // dependency consumed by it. This mirrors the cargo workspace
+        // filter (`pkg.source.is_none()` skip at
+        // `scan_fs/package_db/cargo.rs`) and the npm workspace-root
+        // skip: only declared deps of the project surface as
+        // components, never the project itself.
+        //
+        // Also note: the workspace-root coord is often unqualified
+        // (e.g. `1.0-SNAPSHOT`), which conformance frameworks flag as
+        // false-positive dependency claims — see bug report
+        // `runs/mikebom-2026-04-21-comparison.md` §1 for the polyglot
+        // fixture case.
         // Build the project's own effective POM so direct deps with
         // no inline version or `${foo}`-placeholder versions (both
         // common when the project inherits from a parent/BOM) can
@@ -1373,6 +1401,7 @@ pub fn read_with_claims(
                 depends,
                 &source_path,
                 meta.sidecar_hash.clone(),
+                meta.archive_sha256.clone(),
             ) else {
                 continue;
             };
@@ -1665,7 +1694,13 @@ mod tests {
     }
 
     #[test]
-    fn walk_jar_no_sidecar_attaches_no_hash() {
+    fn walk_jar_no_sidecar_still_computes_archive_sha256() {
+        // Even when no `.sha256`/`.sha512`/`.sha1` sidecar exists
+        // alongside the JAR (the common container-image case where
+        // ~/.m2 isn't present), the walker stream-hashes the JAR
+        // and attaches a SHA-256. Maven sidecars are usually SHA-1
+        // only; the computed SHA-256 is what lifts sbomqs
+        // `comp_with_strong_checksums` out of 0/10.
         let dir = tempfile::tempdir().unwrap();
         let jar = dir.path().join("guava.jar");
         write_jar(
@@ -1678,6 +1713,73 @@ mod tests {
         let meta = walk_jar_maven_meta(&jar);
         assert_eq!(meta.len(), 1);
         assert!(meta[0].sidecar_hash.is_none());
+        let sha256 = meta[0]
+            .archive_sha256
+            .as_ref()
+            .expect("archive SHA-256 must be computed when no sidecar is present");
+        assert_eq!(sha256.algorithm, HashAlgorithm::Sha256);
+        assert_eq!(sha256.value.as_str().len(), 64);
+    }
+
+    #[test]
+    fn walk_jar_with_sha1_sidecar_also_gets_sha256() {
+        // When a SHA-1 sidecar (Maven Central default) exists, the
+        // walker emits BOTH the sidecar hash AND a computed SHA-256,
+        // so consumers can pick the strongest algorithm per
+        // component. sbomqs grades SHA-256 as strong and SHA-1 as
+        // weak; both land on `entry.hashes`.
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("guava.jar");
+        write_jar(
+            &jar,
+            &[(
+                "META-INF/maven/com.google.guava/guava/pom.properties",
+                &pom_properties("com.google.guava", "guava", "32.1.3-jre"),
+            )],
+        );
+        let sha1_hex = "a".repeat(40);
+        std::fs::write(dir.path().join("guava.jar.sha1"), &sha1_hex).unwrap();
+        let meta = walk_jar_maven_meta(&jar);
+        assert_eq!(meta.len(), 1);
+        let sidecar = meta[0].sidecar_hash.as_ref().expect("sha1 sidecar");
+        assert_eq!(sidecar.algorithm, HashAlgorithm::Sha1);
+        let sha256 = meta[0].archive_sha256.as_ref().expect("computed sha256");
+        assert_eq!(sha256.algorithm, HashAlgorithm::Sha256);
+    }
+
+    #[test]
+    fn walk_fat_jar_only_primary_coord_gets_archive_sha256() {
+        // Fat / shaded JARs ship META-INF/maven dirs for their
+        // vendored dependencies. The archive SHA-256 describes the
+        // outer JAR, not the vendored artifacts, so it attaches only
+        // to the primary coord (matched by filename stem).
+        let dir = tempfile::tempdir().unwrap();
+        let jar = dir.path().join("myapp-1.0.jar");
+        write_jar(
+            &jar,
+            &[
+                (
+                    "META-INF/maven/com.example/myapp/pom.properties",
+                    &pom_properties("com.example", "myapp", "1.0"),
+                ),
+                (
+                    "META-INF/maven/com.google.guava/guava/pom.properties",
+                    &pom_properties("com.google.guava", "guava", "32.1.3-jre"),
+                ),
+            ],
+        );
+        let meta = walk_jar_maven_meta(&jar);
+        assert_eq!(meta.len(), 2);
+        let primary = meta
+            .iter()
+            .find(|m| m.coord.artifact_id == "myapp")
+            .expect("primary coord present");
+        let vendored = meta
+            .iter()
+            .find(|m| m.coord.artifact_id == "guava")
+            .expect("vendored coord present");
+        assert!(primary.archive_sha256.is_some());
+        assert!(vendored.archive_sha256.is_none());
     }
 
     #[test]
@@ -1876,7 +1978,11 @@ mod tests {
         )
         .unwrap();
         let entries = read(dir.path(), false);
-        assert!(entries.iter().any(|e| e.name == "app"));
+        // Workspace root ("app") must NOT surface — same semantics as
+        // cargo + npm workspace roots. Only the declared dep ("guava")
+        // is emitted. See bug fix in `read_with_claims`: the project's
+        // own pom.xml coord is the scan target, not a dependency.
+        assert!(!entries.iter().any(|e| e.name == "app"));
         assert!(entries.iter().any(|e| e.name == "guava"));
         for e in &entries {
             assert_eq!(e.sbom_tier.as_deref(), Some("source"));

@@ -282,6 +282,7 @@ fn spec_to_entry(
 fn gemspec_to_entry(
     name: &str,
     version: &str,
+    authors: Option<&str>,
     source_path: &str,
 ) -> Option<PackageDbEntry> {
     let purl = build_gem_purl(name, version)?;
@@ -292,7 +293,7 @@ fn gemspec_to_entry(
         arch: None,
         source_path: source_path.to_string(),
         depends: Vec::new(),
-        maintainer: None,
+        maintainer: authors.map(|s| s.to_string()),
         licenses: Vec::new(),
         is_dev: None,
         requirement_range: None,
@@ -345,11 +346,16 @@ pub fn read(rootfs: &Path, _include_dev: bool) -> Vec<PackageDbEntry> {
         let Ok(text) = std::fs::read_to_string(&spec_path) else {
             continue;
         };
-        let Some((name, version)) = parse_gemspec(&text) else {
+        let Some(spec) = parse_gemspec_full(&text) else {
             continue;
         };
         let source_path = spec_path.to_string_lossy().into_owned();
-        let Some(entry) = gemspec_to_entry(&name, &version, &source_path) else {
+        let Some(entry) = gemspec_to_entry(
+            &spec.name,
+            &spec.version,
+            spec.authors.as_deref(),
+            &source_path,
+        ) else {
             continue;
         };
         let purl_key = entry.purl.as_str().to_string();
@@ -511,8 +517,22 @@ fn harvest_gemspecs_in_dir(dir: &Path, out: &mut Vec<PathBuf>) {
 /// Any non-trivial Ruby expression (interpolation, conditionals) for
 /// name or version returns `None` and the caller skips the gem.
 pub(crate) fn parse_gemspec(text: &str) -> Option<(String, String)> {
+    parse_gemspec_full(text).map(|g| (g.name, g.version))
+}
+
+/// Parsed `.gemspec` fields. `authors` is the raw array content
+/// joined with `", "` when multiple; single-author form (`s.author =
+/// "..."`) is also accepted and returned as a one-element string.
+pub(crate) struct GemspecFields {
+    pub name: String,
+    pub version: String,
+    pub authors: Option<String>,
+}
+
+pub(crate) fn parse_gemspec_full(text: &str) -> Option<GemspecFields> {
     let mut name: Option<String> = None;
     let mut version: Option<String> = None;
+    let mut authors: Option<String> = None;
     for raw_line in text.lines() {
         let line = raw_line.trim();
         if let Some(v) = strip_assignment(line, "name") {
@@ -520,22 +540,55 @@ pub(crate) fn parse_gemspec(text: &str) -> Option<(String, String)> {
                 name = Some(literal);
             }
         } else if let Some(v) = strip_assignment(line, "version") {
-            // The common shapes, in decreasing specificity:
-            //   "1.2.3"
-            //   '1.2.3'
-            //   Gem::Version.new "1.2.3"
-            //   Gem::Version.new("1.2.3")
             if let Some(literal) = extract_string_literal(v) {
                 version = Some(literal);
             }
-        }
-        if name.is_some() && version.is_some() {
-            break;
+        } else if let Some(v) = strip_assignment(line, "authors") {
+            if let Some(joined) = extract_string_array(v) {
+                authors = Some(joined);
+            }
+        } else if let Some(v) = strip_assignment(line, "author") {
+            // Some gemspecs use the singular form.
+            if let Some(literal) = extract_string_literal(v) {
+                authors = Some(literal);
+            }
         }
     }
     match (name, version) {
-        (Some(n), Some(v)) if !n.is_empty() && !v.is_empty() => Some((n, v)),
+        (Some(n), Some(v)) if !n.is_empty() && !v.is_empty() => Some(GemspecFields {
+            name: n,
+            version: v,
+            authors,
+        }),
         _ => None,
+    }
+}
+
+/// Extract a bracketed array of string literals — `["Alice", "Bob"]`
+/// or `['Alice']` — and return `"Alice, Bob"`. Ignores surrounding
+/// trailing tokens like `.freeze`. Returns `None` on malformed input.
+fn extract_string_array(rhs: &str) -> Option<String> {
+    let trimmed = rhs.trim();
+    let inside = trimmed
+        .strip_prefix('[')
+        .and_then(|s| s.rsplit_once(']'))
+        .map(|(before, _after)| before.trim())?;
+    let mut out: Vec<String> = Vec::new();
+    for piece in inside.split(',') {
+        let p = piece.trim();
+        if p.is_empty() {
+            continue;
+        }
+        if let Some(literal) = extract_string_literal(p) {
+            if !literal.is_empty() {
+                out.push(literal);
+            }
+        }
+    }
+    if out.is_empty() {
+        None
+    } else {
+        Some(out.join(", "))
     }
 }
 
@@ -826,6 +879,60 @@ end
         let (name, version) = parse_gemspec(text).unwrap();
         assert_eq!(name, "rdoc");
         assert_eq!(version, "6.6.3.1");
+    }
+
+    #[test]
+    fn parse_gemspec_full_extracts_authors_array() {
+        let text = r#"Gem::Specification.new do |s|
+  s.name = "rake"
+  s.version = "13.0.6"
+  s.authors = ["Hiroshi SHIBATA", "Eric Hodel", "Jim Weirich"]
+end
+"#;
+        let spec = parse_gemspec_full(text).unwrap();
+        assert_eq!(spec.name, "rake");
+        assert_eq!(
+            spec.authors.as_deref(),
+            Some("Hiroshi SHIBATA, Eric Hodel, Jim Weirich"),
+        );
+    }
+
+    #[test]
+    fn parse_gemspec_full_extracts_singular_author() {
+        let text = r#"Gem::Specification.new do |s|
+  s.name = "solo"
+  s.version = "1.0.0"
+  s.author = "Solo Dev"
+end
+"#;
+        let spec = parse_gemspec_full(text).unwrap();
+        assert_eq!(spec.authors.as_deref(), Some("Solo Dev"));
+    }
+
+    #[test]
+    fn parse_gemspec_full_no_authors_field_is_none() {
+        let text = r#"Gem::Specification.new do |s|
+  s.name = "noauth"
+  s.version = "1.0"
+end
+"#;
+        let spec = parse_gemspec_full(text).unwrap();
+        assert!(spec.authors.is_none());
+    }
+
+    #[test]
+    fn gemspec_to_entry_populates_maintainer_from_authors() {
+        let entry = gemspec_to_entry(
+            "rake",
+            "13.0.6",
+            Some("Hiroshi SHIBATA, Eric Hodel"),
+            "/test.gemspec",
+        )
+        .unwrap();
+        assert_eq!(
+            entry.maintainer.as_deref(),
+            Some("Hiroshi SHIBATA, Eric Hodel"),
+        );
     }
 
     #[test]

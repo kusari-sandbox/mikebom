@@ -236,6 +236,7 @@ pub async fn enrich_dep_graph(
                         binary_packed: None,
                         npm_role: None,
                         raw_version: None,
+                        external_references: Vec::new(),
                     });
                     added_components += 1;
                 }

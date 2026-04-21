@@ -40,6 +40,15 @@ pub const TAG_NAME: u32 = 1000;
 pub const TAG_VERSION: u32 = 1001;
 pub const TAG_RELEASE: u32 = 1002;
 pub const TAG_EPOCH: u32 = 1003;
+/// Organization responsible for the rpm build (e.g. `Fedora Project`,
+/// `CentOS`, `Rocky Enterprise Software Foundation`). Maps to
+/// `component.supplier.name` when present. See `rpm_file.rs` for the
+/// matching .rpm-file-level extraction.
+pub const TAG_VENDOR: u32 = 1006;
+/// Individual or team who built this specific rpm. Populated on
+/// user-rebuilt rpms and some distro builds; the vendor→packager
+/// fallback chain lives in `rpm.rs::build_entry_from_header`.
+pub const TAG_PACKAGER: u32 = 1007;
 pub const TAG_LICENSE: u32 = 1014;
 pub const TAG_ARCH: u32 = 1022;
 pub const TAG_REQUIRENAME: u32 = 1049;

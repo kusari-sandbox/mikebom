@@ -105,10 +105,12 @@ fn polyglot_monorepo_include_dev_surfaces_both_ecosystems_dev_deps() {
 }
 
 #[test]
-fn polyglot_monorepo_marks_npm_authoritative_but_not_pypi_design_only() {
-    // The frontend has a lockfile → npm ecosystem is marked
-    // `aggregate: complete`. The backend only has requirements.txt
-    // (design tier) → pypi is NOT marked complete per R13.
+fn polyglot_monorepo_marks_both_ecosystems_authoritative_when_pinned() {
+    // Frontend has a lockfile → npm is source-tier → complete.
+    // Backend has pinned requirements.txt (all `==`) → pypi is
+    // also source-tier → complete. Pinned requirements.txt is
+    // authoritative for the versions it carries (same semantics as
+    // a lockfile for the purpose of `aggregate: complete`).
     let sbom = scan(false);
     let compositions = sbom["compositions"].as_array().expect("compositions array");
 
@@ -131,7 +133,7 @@ fn polyglot_monorepo_marks_npm_authoritative_but_not_pypi_design_only() {
         "npm ecosystem must be aggregate=complete (lockfile-sourced)"
     );
     assert!(
-        !has_complete_for("pkg:pypi/"),
-        "pypi ecosystem must NOT be aggregate=complete (design-tier only)"
+        has_complete_for("pkg:pypi/"),
+        "pypi ecosystem must be aggregate=complete when requirements.txt is fully pinned"
     );
 }

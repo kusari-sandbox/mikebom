@@ -306,6 +306,19 @@ fn build_entry_from_header(
         .string(rpm_header::TAG_LICENSE)
         .unwrap_or("")
         .to_string();
+    // Prefer VENDOR over PACKAGER — Fedora / RHEL / Rocky rpms carry
+    // the distro identity in VENDOR (e.g. `Fedora Project`); PACKAGER
+    // is per-build and often absent. `rpm_file.rs:342` uses the same
+    // precedence for standalone .rpm files.
+    let packager = header
+        .string(rpm_header::TAG_VENDOR)
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            header
+                .string(rpm_header::TAG_PACKAGER)
+                .filter(|s| !s.is_empty())
+        })
+        .map(|s| s.to_string());
     let depends: Vec<String> = header
         .string_array(rpm_header::TAG_REQUIRENAME)
         .unwrap_or_default()
@@ -323,7 +336,7 @@ fn build_entry_from_header(
         epoch_val,
         arch,
         license_str,
-        None, // packager: not extracted from header today
+        packager,
         depends,
         distro_version,
     ))
@@ -589,7 +602,8 @@ mod tests {
 
     use super::super::rpmdb_sqlite::rpm_header::{
         build_test_header, TagValue, TAG_ARCH, TAG_BASENAMES, TAG_DIRINDEXES, TAG_DIRNAMES,
-        TAG_EPOCH, TAG_LICENSE, TAG_NAME, TAG_RELEASE, TAG_REQUIRENAME, TAG_VERSION,
+        TAG_EPOCH, TAG_LICENSE, TAG_NAME, TAG_PACKAGER, TAG_RELEASE, TAG_REQUIRENAME,
+        TAG_VENDOR, TAG_VERSION,
     };
 
     /// Production path — a header-shaped blob should decode all fields
@@ -634,6 +648,55 @@ mod tests {
                 PathBuf::from("/usr/share/man/man1/bash.1.gz"),
             ]
         );
+    }
+
+    /// VENDOR wins over PACKAGER when both are present — matches the
+    /// precedence in `rpm_file.rs::extract_metadata` for .rpm files so
+    /// rpmdb-sqlite and file-level scanners emit the same supplier.
+    #[test]
+    fn row_to_entry_extracts_vendor_as_maintainer() {
+        let blob = build_test_header(&[
+            (TAG_NAME, TagValue::Str("bash")),
+            (TAG_VERSION, TagValue::Str("5.2.15")),
+            (TAG_RELEASE, TagValue::Str("1.fc40")),
+            (TAG_ARCH, TagValue::Str("x86_64")),
+            (TAG_VENDOR, TagValue::Str("Fedora Project")),
+            (TAG_PACKAGER, TagValue::Str("Fedora Build <build@fedoraproject.org>")),
+        ]);
+        let (entry, _) =
+            row_to_entry(&[], &blob, "redhat", "/fake/rpmdb.sqlite", None).unwrap();
+        assert_eq!(entry.maintainer.as_deref(), Some("Fedora Project"));
+    }
+
+    /// PACKAGER used as fallback when VENDOR is missing (common on
+    /// user-rebuilt rpms).
+    #[test]
+    fn row_to_entry_falls_back_to_packager_when_vendor_absent() {
+        let blob = build_test_header(&[
+            (TAG_NAME, TagValue::Str("mytool")),
+            (TAG_VERSION, TagValue::Str("1.0")),
+            (TAG_RELEASE, TagValue::Str("1")),
+            (TAG_ARCH, TagValue::Str("x86_64")),
+            (TAG_PACKAGER, TagValue::Str("Alice <alice@example.com>")),
+        ]);
+        let (entry, _) =
+            row_to_entry(&[], &blob, "redhat", "/fake/rpmdb.sqlite", None).unwrap();
+        assert_eq!(entry.maintainer.as_deref(), Some("Alice <alice@example.com>"));
+    }
+
+    /// Neither tag present → maintainer stays None (matches behavior
+    /// for minimal / third-party rpms that strip provenance).
+    #[test]
+    fn row_to_entry_maintainer_none_when_both_tags_missing() {
+        let blob = build_test_header(&[
+            (TAG_NAME, TagValue::Str("stripped")),
+            (TAG_VERSION, TagValue::Str("1.0")),
+            (TAG_RELEASE, TagValue::Str("1")),
+            (TAG_ARCH, TagValue::Str("x86_64")),
+        ]);
+        let (entry, _) =
+            row_to_entry(&[], &blob, "redhat", "/fake/rpmdb.sqlite", None).unwrap();
+        assert!(entry.maintainer.is_none());
     }
 
     /// Fixture path — a production-magic-free row with text columns

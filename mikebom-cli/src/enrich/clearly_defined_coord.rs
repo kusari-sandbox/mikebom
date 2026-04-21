@@ -115,6 +115,13 @@ pub fn cd_coord_for(component: &ResolvedComponent) -> Option<CdCoord> {
             // name = `logrus`. CD takes the full path: type=go,
             // provider=golang, namespace=URL-encoded prefix,
             // name=last segment, revision=v-prefixed semver.
+            //
+            // `component.name` in mikebom is the FULL module path for
+            // Go (`github.com/sirupsen/logrus`), not just the last
+            // segment, so we can't use it directly — that would double
+            // the prefix into the URL and produce 404s. Read the short
+            // name from the PURL where `name` is canonically the last
+            // path segment.
             let ns = namespace.unwrap_or("");
             let revision = if component.version.starts_with('v') {
                 component.version.clone()
@@ -125,7 +132,7 @@ pub fn cd_coord_for(component: &ResolvedComponent) -> Option<CdCoord> {
                 cd_type: "go".to_string(),
                 provider: "golang".to_string(),
                 namespace: if ns.is_empty() { "-".to_string() } else { ns.to_string() },
-                name: component.name.clone(),
+                name: component.purl.name().to_string(),
                 revision,
             })
         }
@@ -204,6 +211,7 @@ mod tests {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
         }
     }
 

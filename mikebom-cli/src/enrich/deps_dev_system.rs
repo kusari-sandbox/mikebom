@@ -40,10 +40,21 @@ pub fn deps_dev_package_name(ecosystem: &str, namespace: Option<&str>, name: &st
             Some(g) if !g.is_empty() => format!("{g}:{name}"),
             _ => name.to_string(),
         },
-        "golang" | "go" => match namespace {
-            Some(ns) if !ns.is_empty() => format!("{ns}/{name}"),
-            _ => name.to_string(),
-        },
+        "golang" | "go" => {
+            // `ResolvedComponent.name` for Go is the FULL module path
+            // (e.g. `github.com/sirupsen/logrus`), not the short name.
+            // Prepending the namespace would double the host+org prefix
+            // and produce 404s against deps.dev. If the caller happened
+            // to pass a short name, fall back to the old behaviour.
+            if name.contains('/') {
+                name.to_string()
+            } else {
+                match namespace {
+                    Some(ns) if !ns.is_empty() => format!("{ns}/{name}"),
+                    _ => name.to_string(),
+                }
+            }
+        }
         "npm" => match namespace {
             Some(ns) if !ns.is_empty() => {
                 let trimmed = ns.trim_start_matches('@');
@@ -95,6 +106,22 @@ mod tests {
         assert_eq!(
             deps_dev_package_name("golang", Some("github.com/spf13"), "cobra"),
             "github.com/spf13/cobra",
+        );
+    }
+
+    #[test]
+    fn go_name_does_not_double_when_caller_passes_full_module_path() {
+        // Production path: `ResolvedComponent.name` for Go is already
+        // the full module path, not the short name. Prepending the
+        // namespace would produce `github.com/sirupsen/github.com/sirupsen/logrus`
+        // and 404 at deps.dev. The helper detects this via `/` in name.
+        assert_eq!(
+            deps_dev_package_name(
+                "golang",
+                Some("github.com/sirupsen"),
+                "github.com/sirupsen/logrus",
+            ),
+            "github.com/sirupsen/logrus",
         );
     }
 

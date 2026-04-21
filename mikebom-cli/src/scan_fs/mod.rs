@@ -158,6 +158,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            external_references: Vec::new(),
         });
     }
 
@@ -373,6 +374,21 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
             // populated by the npm / cargo readers; empty for other
             // ecosystems, in which case this is a no-op.
             component_hashes.extend(entry.hashes.iter().cloned());
+            // OS-package ecosystems (deb/apk/rpm) read licenses
+            // directly from the installed-package metadata or the
+            // shipped copyright file — those sources ARE the
+            // result of build-time analysis by the distro
+            // maintainers. Emit them as both declared AND concluded
+            // so sbomqs's `comp_with_licenses` / valid-licenses /
+            // deprecated / restrictive checks (which key off
+            // concluded) give full credit. Non-OS ecosystems are
+            // filled by the CD enrichment pass and stay empty here.
+            let os_ecosystem = matches!(entry.purl.ecosystem(), "deb" | "apk" | "rpm");
+            let concluded_licenses_for_os = if os_ecosystem && !licenses.is_empty() {
+                licenses.clone()
+            } else {
+                Vec::new()
+            };
             components.push(ResolvedComponent {
                 name: entry.name.clone(),
                 version: entry.version.clone(),
@@ -385,9 +401,12 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
                     deps_dev_match: None,
                 },
                 licenses,
-                concluded_licenses: Vec::new(),
+                concluded_licenses: concluded_licenses_for_os,
                 hashes: component_hashes,
-                supplier: entry.maintainer.clone(),
+                supplier: entry
+                    .maintainer
+                    .clone()
+                    .or_else(|| supplier_from_purl(&entry.purl)),
                 cpes: vec![],
                 advisories: vec![],
                 occurrences,
@@ -409,6 +428,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
                 binary_packed: entry.binary_packed.clone(),
                 npm_role: entry.npm_role.clone(),
                 raw_version: entry.raw_version.clone(),
+                external_references: external_refs_from_purl(&entry.purl),
             });
 
             // Emit a Relationship edge for each dependency that
@@ -469,6 +489,119 @@ fn normalize_dep_name(ecosystem: &str, name: &str) -> String {
     match ecosystem {
         "pypi" => name.replace('_', "-").to_lowercase(),
         _ => name.to_lowercase(),
+    }
+}
+
+/// Derive a best-effort supplier string from a PURL when the
+/// component's source didn't carry explicit maintainer metadata.
+/// Drives CycloneDX `component.supplier.name` (sbomqs
+/// `comp_with_supplier`).
+///
+/// - `pkg:golang/<host>/<org>/<repo>` → `<host>/<org>`.
+/// - `pkg:maven/<group>/<artifact>` → `<group>`.
+/// - `pkg:npm/@<scope>/<name>` → `@<scope>`; unscoped npm → `None`.
+/// - Anything else → `None` (let deb/apk maintainer fields or later
+///   enrichment fill in).
+fn supplier_from_purl(purl: &mikebom_common::types::purl::Purl) -> Option<String> {
+    let ecosystem = purl.ecosystem();
+    let namespace = purl.namespace()?;
+    match ecosystem {
+        "golang" => {
+            let segments: Vec<&str> = namespace.split('/').collect();
+            if segments.len() >= 2 {
+                Some(format!("{}/{}", segments[0], segments[1]))
+            } else {
+                Some(namespace.to_string())
+            }
+        }
+        "maven" => Some(namespace.to_string()),
+        "npm" => {
+            if namespace.starts_with('@') {
+                Some(namespace.to_string())
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+/// Derive VCS / website external references from a PURL when the
+/// module path embeds them. Currently limited to Go modules whose
+/// canonical form starts with a known repo host — that's where the
+/// signal is unambiguous. npm / cargo / pypi / maven need deps.dev
+/// or registry metadata to find the repo URL and are populated
+/// elsewhere (out of scope for this pass).
+fn external_refs_from_purl(
+    purl: &mikebom_common::types::purl::Purl,
+) -> Vec<mikebom_common::resolution::ExternalReference> {
+    use mikebom_common::resolution::ExternalReference;
+    let mut out = Vec::new();
+    if purl.ecosystem() != "golang" {
+        return out;
+    }
+    let Some(namespace) = purl.namespace() else {
+        return out;
+    };
+    // `pkg:golang/github.com/sirupsen/logrus@v1.9.3` → namespace
+    // `github.com/sirupsen`, name `logrus` → vcs
+    // `https://github.com/sirupsen/logrus`. Same shape for gitlab
+    // and bitbucket. Anything else (gopkg.in, custom vanity
+    // domains) needs deps.dev and skips here.
+    let segments: Vec<&str> = namespace.split('/').collect();
+    if segments.len() < 2 {
+        return out;
+    }
+    let host = segments[0];
+    if !matches!(host, "github.com" | "gitlab.com" | "bitbucket.org") {
+        return out;
+    }
+    let org = segments[1];
+    let repo = purl.name();
+    out.push(ExternalReference {
+        ref_type: "vcs".to_string(),
+        url: format!("https://{host}/{org}/{repo}"),
+    });
+    out
+}
+
+#[cfg(test)]
+#[cfg_attr(test, allow(clippy::unwrap_used))]
+mod supplier_tests {
+    use super::supplier_from_purl;
+    use mikebom_common::types::purl::Purl;
+
+    #[test]
+    fn golang_host_and_org() {
+        let p = Purl::new("pkg:golang/github.com/sirupsen/logrus@v1.9.3").unwrap();
+        assert_eq!(supplier_from_purl(&p), Some("github.com/sirupsen".to_string()));
+    }
+
+    #[test]
+    fn maven_group_id() {
+        let p = Purl::new("pkg:maven/com.fasterxml.jackson.core/jackson-core@2.17.2").unwrap();
+        assert_eq!(
+            supplier_from_purl(&p),
+            Some("com.fasterxml.jackson.core".to_string()),
+        );
+    }
+
+    #[test]
+    fn npm_scoped_has_supplier() {
+        let p = Purl::new("pkg:npm/%40types/node@20.1.0").unwrap();
+        assert_eq!(supplier_from_purl(&p), Some("@types".to_string()));
+    }
+
+    #[test]
+    fn npm_unscoped_has_none() {
+        let p = Purl::new("pkg:npm/express@4.22.1").unwrap();
+        assert_eq!(supplier_from_purl(&p), None);
+    }
+
+    #[test]
+    fn cargo_has_none() {
+        let p = Purl::new("pkg:cargo/serde@1.0.197").unwrap();
+        assert_eq!(supplier_from_purl(&p), None);
     }
 }
 
