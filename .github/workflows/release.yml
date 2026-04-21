@@ -21,7 +21,7 @@ jobs:
     name: Build eBPF object
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install eBPF build deps
         run: |
@@ -62,7 +62,7 @@ jobs:
     env:
       TARGET: x86_64-unknown-linux-gnu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
@@ -135,7 +135,7 @@ jobs:
     env:
       TARGET: aarch64-unknown-linux-gnu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install stable Rust (aarch64 target)
         uses: dtolnay/rust-toolchain@stable
@@ -203,7 +203,7 @@ jobs:
     env:
       TARGET: aarch64-apple-darwin
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install stable Rust (aarch64-apple-darwin)
         uses: dtolnay/rust-toolchain@stable
