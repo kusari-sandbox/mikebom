@@ -1015,6 +1015,13 @@ fn note_package_to_entry(
         }
     };
 
+    // purl-spec § Character encoding: `+` and other non-allowed chars
+    // MUST be percent-encoded in the name segment. The note.name came
+    // out of an ELF `.note.package` section and can carry real-world
+    // RPM-style names (`libstdc++`, `perl-Text-Tabs+Wrap`, …). Route
+    // it through the canonical encoder so all five arms below emit
+    // spec-conformant PURLs.
+    let encoded_name = mikebom_common::types::purl::encode_purl_segment(&note.name);
     let purl_str = match note.note_type.as_str() {
         "rpm" => {
             let raw_vendor = resolve_vendor(note.distro.as_deref(), "rpm");
@@ -1023,30 +1030,30 @@ fn note_package_to_entry(
             let vendor = rpm_vendor_from_id(&raw_vendor);
             append_distro_qualifier(&mut qualifiers, &vendor);
             format!(
-                "pkg:rpm/{vendor}/{}@{}{qualifiers}",
-                note.name, note.version,
+                "pkg:rpm/{vendor}/{encoded_name}@{}{qualifiers}",
+                note.version,
             )
         }
         "deb" => {
             let vendor = resolve_vendor(note.distro.as_deref(), "debian");
             append_distro_qualifier(&mut qualifiers, &vendor);
             format!(
-                "pkg:deb/{vendor}/{}@{}{qualifiers}",
-                note.name, note.version,
+                "pkg:deb/{vendor}/{encoded_name}@{}{qualifiers}",
+                note.version,
             )
         }
         "apk" => {
             let vendor = resolve_vendor(note.distro.as_deref(), "alpine");
             append_distro_qualifier(&mut qualifiers, &vendor);
             format!(
-                "pkg:apk/{vendor}/{}@{}{qualifiers}",
-                note.name, note.version,
+                "pkg:apk/{vendor}/{encoded_name}@{}{qualifiers}",
+                note.version,
             )
         }
         "alpm" | "pacman" => {
-            format!("pkg:alpm/arch/{}@{}{qualifiers}", note.name, note.version)
+            format!("pkg:alpm/arch/{encoded_name}@{}{qualifiers}", note.version)
         }
-        _ => format!("pkg:generic/{}@{}", note.name, note.version),
+        _ => format!("pkg:generic/{encoded_name}@{}", note.version),
     };
 
     let purl = Purl::new(&purl_str).ok()?;
@@ -1153,6 +1160,61 @@ mod tests {
         assert_eq!(
             entry.purl.as_str(),
             "pkg:rpm/rocky/curl@8.2.1?arch=x86_64&distro=rocky-9"
+        );
+    }
+
+    /// purl-spec § Character encoding: `+` in the ELF-note name must
+    /// percent-encode to `%2B` just like the rpmdb path. Mirror of the
+    /// regression tests in `scan_fs::package_db::rpm::tests`.
+    #[test]
+    fn note_package_rpm_percent_encodes_plus_in_name() {
+        let note = elf::ElfNotePackage {
+            note_type: "rpm".into(),
+            name: "libstdc++".into(),
+            version: "14.2.1-3.fc40".into(),
+            architecture: Some("aarch64".into()),
+            distro: Some("fedora".into()),
+            os_cpe: None,
+        };
+        let entry = note_package_to_entry(
+            &note,
+            Path::new("/usr/lib64/libstdc++.so.6"),
+            Some("fedora"),
+            Some("40"),
+        )
+        .unwrap();
+        let purl = entry.purl.as_str();
+        assert!(
+            purl.contains("/libstdc%2B%2B@"),
+            "expected percent-encoded `++` in ELF-note PURL; got {purl}",
+        );
+        assert!(
+            !purl.contains("libstdc++"),
+            "literal `++` must not appear; got {purl}",
+        );
+    }
+
+    #[test]
+    fn note_package_rpm_percent_encodes_mid_name_plus() {
+        let note = elf::ElfNotePackage {
+            note_type: "rpm".into(),
+            name: "perl-Text-Tabs+Wrap".into(),
+            version: "2024.001-1.fc40".into(),
+            architecture: Some("noarch".into()),
+            distro: Some("fedora".into()),
+            os_cpe: None,
+        };
+        let entry = note_package_to_entry(
+            &note,
+            Path::new("/usr/share/perl5/Text/Tabs.pm"),
+            Some("fedora"),
+            Some("40"),
+        )
+        .unwrap();
+        assert!(
+            entry.purl.as_str().contains("/perl-Text-Tabs%2BWrap@"),
+            "mid-name `+` must percent-encode; got {}",
+            entry.purl.as_str()
         );
     }
 

@@ -468,7 +468,15 @@ fn assemble_entry(
             qualifiers.push_str(dv);
         }
     }
-    let purl_str = format!("pkg:rpm/{vendor}/{name}@{version}-{release}{qualifiers}");
+    // purl-spec § Character encoding: `+` and other non-allowed chars
+    // MUST be percent-encoded in the name segment. Real-world RPMs
+    // carry `+` regularly (libstdc++, perl-Text-Tabs+Wrap, …); route
+    // the name through the canonical encoder the deb builder already
+    // uses so ground-truth comparisons and reference-impl round-trips
+    // match.
+    let encoded_name = mikebom_common::types::purl::encode_purl_segment(&name);
+    let purl_str =
+        format!("pkg:rpm/{vendor}/{encoded_name}@{version}-{release}{qualifiers}");
     // Fall back to a minimal PURL if assembly fails — shouldn't happen
     // with valid RPM names, but defense-in-depth. A panic in the
     // unwrap path would kill the scan.
@@ -884,6 +892,69 @@ mod tests {
         assert!(
             !entry.purl.as_str().contains("epoch="),
             "expected no epoch qualifier; got {}",
+            entry.purl.as_str()
+        );
+    }
+
+    /// purl-spec § Character encoding: `+` in the name segment MUST
+    /// be percent-encoded as `%2B`. Real Fedora ships packages like
+    /// `libstdc++` (trailing double-plus) and `perl-Text-Tabs+Wrap`
+    /// (mid-name plus) — both failed reference-impl round-trip
+    /// before this fix because `assemble_entry` emitted the name raw.
+    #[test]
+    fn name_with_trailing_plus_plus_percent_encodes_both() {
+        let blob = build_test_header(&[
+            (TAG_NAME, TagValue::Str("libstdc++")),
+            (TAG_VERSION, TagValue::Str("14.2.1")),
+            (TAG_RELEASE, TagValue::Str("3.fc40")),
+            (TAG_ARCH, TagValue::Str("aarch64")),
+        ]);
+        let (entry, _paths) =
+            row_to_entry(&[], &blob, "fedora", "/fake/rpmdb.sqlite", None).unwrap();
+        let purl = entry.purl.as_str();
+        assert!(
+            purl.contains("/libstdc%2B%2B@"),
+            "expected name to percent-encode both `+` as %2B; got {purl}",
+        );
+        assert!(
+            !purl.contains("libstdc++"),
+            "literal `++` must not appear in canonical PURL; got {purl}",
+        );
+    }
+
+    #[test]
+    fn name_with_mid_plus_percent_encodes_it() {
+        let blob = build_test_header(&[
+            (TAG_NAME, TagValue::Str("perl-Text-Tabs+Wrap")),
+            (TAG_VERSION, TagValue::Str("2024.001")),
+            (TAG_RELEASE, TagValue::Str("1.fc40")),
+            (TAG_ARCH, TagValue::Str("noarch")),
+        ]);
+        let (entry, _paths) =
+            row_to_entry(&[], &blob, "fedora", "/fake/rpmdb.sqlite", None).unwrap();
+        let purl = entry.purl.as_str();
+        assert!(
+            purl.contains("/perl-Text-Tabs%2BWrap@"),
+            "expected mid-name `+` to percent-encode as %2B; got {purl}",
+        );
+    }
+
+    /// Negative: a name with no non-allowed characters must pass
+    /// through verbatim — the encoder leaves alphanumerics and
+    /// `-._~:` alone.
+    #[test]
+    fn plain_name_passes_through_unchanged() {
+        let blob = build_test_header(&[
+            (TAG_NAME, TagValue::Str("bash")),
+            (TAG_VERSION, TagValue::Str("5.2.15")),
+            (TAG_RELEASE, TagValue::Str("5.fc40")),
+            (TAG_ARCH, TagValue::Str("x86_64")),
+        ]);
+        let (entry, _paths) =
+            row_to_entry(&[], &blob, "fedora", "/fake/rpmdb.sqlite", None).unwrap();
+        assert!(
+            entry.purl.as_str().contains("/bash@"),
+            "plain name must not be rewritten; got {}",
             entry.purl.as_str()
         );
     }

@@ -319,10 +319,18 @@ fn parse_rpm_file(
         }
         _ => String::new(),
     };
+    // purl-spec § Character encoding: route the name through the
+    // canonical encoder (`encode_purl_segment` in `mikebom-common`)
+    // that the deb builder and the rpmdb reader also use, so all
+    // three RPM-emission paths (rpmdb, .rpm artefact, ELF-note) agree
+    // on the same percent-encoding rules for `+` and friends. The
+    // vendor/version/qualifier slots keep the local encoders below —
+    // they follow different (stricter) rules that don't affect `+`
+    // in the name and are out of scope for this change.
     let purl_str = format!(
         "pkg:rpm/{}/{}@{}?arch={}{}{}",
         percent_encode_purl_segment(&vendor_slug),
-        percent_encode_purl_segment(&name),
+        mikebom_common::types::purl::encode_purl_segment(&name),
         percent_encode_purl_version(&version_tok),
         percent_encode_purl_qualifier(&arch),
         epoch_seg,
