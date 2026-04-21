@@ -64,18 +64,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install stable Rust
+      - name: Install stable Rust (x86_64 target)
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-gnu
 
-      - name: Cache cargo + userspace build
+      - name: Cache cargo + cross-compiled build
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ env.TARGET }}
 
-      - name: Install userspace build deps
-        run: sudo apt-get update && sudo apt-get install -y pkg-config
+      # Use `cross` on both Linux targets so binaries pin a wide-compat
+      # glibc baseline (~2.17/2.18) instead of whatever the
+      # ubuntu-latest runner ships (currently 2.39, which breaks Debian
+      # 11/12, Ubuntu 22.04, RHEL 8/9 at load time). Matches the
+      # aarch64 job below.
+      - name: Install cross
+        run: cargo install cross --locked
 
       - name: Download eBPF artifact
         uses: actions/download-artifact@v4
@@ -88,8 +93,8 @@ jobs:
           mkdir -p mikebom-ebpf/target/bpfel-unknown-none/release
           cp ebpf-download/mikebom-ebpf mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf
 
-      - name: Build userspace binary
-        run: cargo build --release --target "$TARGET" --package mikebom
+      - name: Build userspace binary (cross)
+        run: cross build --release --target "$TARGET" --package mikebom
 
       - name: Package tarball
         run: |
