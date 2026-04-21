@@ -1,0 +1,265 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*-alpha.*'
+      - 'v*-beta.*'
+      - 'v*-rc.*'
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Build the target-independent bpfel-unknown-none bytecode once and share
+  # it with both Linux userspace-build jobs via artifact upload.
+  build-ebpf:
+    name: Build eBPF object
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install eBPF build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm libelf-dev pkg-config
+
+      - name: Install nightly Rust with rust-src
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
+
+      - name: Cache cargo + nightly build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ebpf-nightly
+          workspaces: |
+            .
+            mikebom-ebpf
+
+      - name: Install bpf-linker
+        run: cargo +nightly install bpf-linker --locked
+
+      - name: Build eBPF object
+        run: cargo run --package xtask -- ebpf
+
+      - name: Upload eBPF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mikebom-ebpf-object
+          path: mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf
+          if-no-files-found: error
+          retention-days: 7
+
+  build-linux-x86_64:
+    name: Build — linux-x86_64
+    needs: build-ebpf
+    runs-on: ubuntu-latest
+    env:
+      TARGET: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Cache cargo + userspace build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ env.TARGET }}
+
+      - name: Install userspace build deps
+        run: sudo apt-get update && sudo apt-get install -y pkg-config
+
+      - name: Download eBPF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mikebom-ebpf-object
+          path: ebpf-download
+
+      - name: Place eBPF at loader's expected path
+        run: |
+          mkdir -p mikebom-ebpf/target/bpfel-unknown-none/release
+          cp ebpf-download/mikebom-ebpf mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf
+
+      - name: Build userspace binary
+        run: cargo build --release --target "$TARGET" --package mikebom
+
+      - name: Package tarball
+        run: |
+          set -euo pipefail
+          stage="mikebom-${{ github.ref_name }}-${TARGET}"
+          mkdir -p "$stage"
+          cp "target/${TARGET}/release/mikebom" "$stage/mikebom"
+          cp ebpf-download/mikebom-ebpf "$stage/mikebom-ebpf"
+          cp README.md "$stage/README.md"
+          if [[ -f LICENSE ]]; then cp LICENSE "$stage/LICENSE"; fi
+          cat > "$stage/mikebom.sh" <<'WRAPPER'
+          #!/usr/bin/env bash
+          # mikebom wrapper — ensures the eBPF object is visible to the loader.
+          # The loader's default path is mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf
+          # relative to CWD. This script builds that layout via symlink
+          # (with copy fallback) and execs the userspace binary.
+          set -euo pipefail
+          here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+          ebpf_expected_dir="$here/mikebom-ebpf/target/bpfel-unknown-none/release"
+          mkdir -p "$ebpf_expected_dir"
+          if [[ ! -e "$ebpf_expected_dir/mikebom-ebpf" ]]; then
+            ln -s "$here/mikebom-ebpf" "$ebpf_expected_dir/mikebom-ebpf" 2>/dev/null \
+              || cp "$here/mikebom-ebpf" "$ebpf_expected_dir/mikebom-ebpf"
+          fi
+          cd "$here"
+          exec "$here/mikebom" "$@"
+          WRAPPER
+          chmod +x "$stage/mikebom.sh"
+          tar -czf "${stage}.tar.gz" "$stage"
+          ls -la "${stage}.tar.gz"
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mikebom-${{ github.ref_name }}-x86_64-unknown-linux-gnu
+          path: mikebom-${{ github.ref_name }}-${{ env.TARGET }}.tar.gz
+          if-no-files-found: error
+
+  build-linux-aarch64:
+    name: Build — linux-aarch64
+    needs: build-ebpf
+    runs-on: ubuntu-latest
+    env:
+      TARGET: aarch64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable Rust (aarch64 target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Cache cargo + cross-compiled build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ env.TARGET }}
+
+      - name: Install cross
+        run: cargo install cross --locked
+
+      - name: Download eBPF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mikebom-ebpf-object
+          path: ebpf-download
+
+      - name: Place eBPF at loader's expected path
+        run: |
+          mkdir -p mikebom-ebpf/target/bpfel-unknown-none/release
+          cp ebpf-download/mikebom-ebpf mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf
+
+      - name: Build userspace binary (cross)
+        run: cross build --release --target "$TARGET" --package mikebom
+
+      - name: Package tarball
+        run: |
+          set -euo pipefail
+          stage="mikebom-${{ github.ref_name }}-${TARGET}"
+          mkdir -p "$stage"
+          cp "target/${TARGET}/release/mikebom" "$stage/mikebom"
+          cp ebpf-download/mikebom-ebpf "$stage/mikebom-ebpf"
+          cp README.md "$stage/README.md"
+          if [[ -f LICENSE ]]; then cp LICENSE "$stage/LICENSE"; fi
+          cat > "$stage/mikebom.sh" <<'WRAPPER'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+          ebpf_expected_dir="$here/mikebom-ebpf/target/bpfel-unknown-none/release"
+          mkdir -p "$ebpf_expected_dir"
+          if [[ ! -e "$ebpf_expected_dir/mikebom-ebpf" ]]; then
+            ln -s "$here/mikebom-ebpf" "$ebpf_expected_dir/mikebom-ebpf" 2>/dev/null \
+              || cp "$here/mikebom-ebpf" "$ebpf_expected_dir/mikebom-ebpf"
+          fi
+          cd "$here"
+          exec "$here/mikebom" "$@"
+          WRAPPER
+          chmod +x "$stage/mikebom.sh"
+          tar -czf "${stage}.tar.gz" "$stage"
+          ls -la "${stage}.tar.gz"
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mikebom-${{ github.ref_name }}-aarch64-unknown-linux-gnu
+          path: mikebom-${{ github.ref_name }}-${{ env.TARGET }}.tar.gz
+          if-no-files-found: error
+
+  build-macos-aarch64:
+    name: Build — macos-aarch64
+    runs-on: macos-14
+    env:
+      TARGET: aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable Rust (aarch64-apple-darwin)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Cache cargo + build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ env.TARGET }}
+
+      - name: Build userspace binary
+        run: cargo build --release --target "$TARGET" --package mikebom
+
+      - name: Package tarball
+        run: |
+          set -euo pipefail
+          stage="mikebom-${{ github.ref_name }}-${TARGET}"
+          mkdir -p "$stage"
+          cp "target/${TARGET}/release/mikebom" "$stage/mikebom"
+          cp README.md "$stage/README.md"
+          if [[ -f LICENSE ]]; then cp LICENSE "$stage/LICENSE"; fi
+          tar -czf "${stage}.tar.gz" "$stage"
+          ls -la "${stage}.tar.gz"
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mikebom-${{ github.ref_name }}-aarch64-apple-darwin
+          path: mikebom-${{ github.ref_name }}-${{ env.TARGET }}.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub pre-release
+    needs: [build-linux-x86_64, build-linux-aarch64, build-macos-aarch64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all tarball artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mikebom-${{ github.ref_name }}-*
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS
+        run: |
+          set -euo pipefail
+          sha256sum mikebom-*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          generate_release_notes: true
+          files: |
+            mikebom-*.tar.gz
+            SHA256SUMS
