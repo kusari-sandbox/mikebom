@@ -421,13 +421,25 @@ fn assemble_entry(
     // `pkg:rpm/rocky/bash@5.1.8-6.el9_1?arch=aarch64&distro=rocky-9.3`).
     // Only emitted when `distro_version` is `Some(non_empty)`.
     //
-    // Feature 005 US4: epoch handling. When the rpmdb header carried an
-    // explicit `EPOCH` tag (even value 0), we emit the qualifier. When
-    // the tag was absent, we omit. The caller encodes the distinction
-    // as `Option<i64>` — `Some(v)` → emit, `None` → omit.
+    // Epoch handling. RPM treats "no epoch" and "epoch = 0" as
+    // equivalent for version comparison; `rpm -qa`'s default display
+    // omits epoch when it is 0; the purl-spec rpm example never shows
+    // `epoch=0`. Mikebom omits the qualifier in both the absent and
+    // zero cases — only non-zero epochs surface. This matches the
+    // sbom-conformance framework's canonical interpretation and drops
+    // 27 exact-match failures on Fedora images where ~5% of packages
+    // carry an explicit `EPOCH = 0` header.
+    //
+    // Trade-off vs the prior milestone-005 behavior (round-trip
+    // `rpm -qa --queryformat '%{EPOCH}'` exactly): callers that need
+    // to distinguish "tag absent" from "tag present, value 0" have
+    // lost that signal in the PURL. Acceptable because the distinction
+    // has no semantic meaning for RPM tooling, and the PURL is for
+    // consumer SBOM tools (vuln matchers, license scanners) which
+    // treat both the same.
     let epoch_seg = match epoch {
-        Some(v) => format!("&epoch={v}"),
-        None => String::new(),
+        Some(v) if v != 0 => format!("&epoch={v}"),
+        _ => String::new(),
     };
     let mut qualifiers = if arch.is_empty() {
         String::new()
@@ -491,6 +503,7 @@ fn assemble_entry(
         // without having to infer which ecosystem the entry came from.
         raw_version: Some(full_version),
         npm_role: None,
+        hashes: Vec::new(),
     }
 }
 
@@ -602,13 +615,16 @@ mod tests {
         assert_eq!(entry.name, "bash");
         assert_eq!(entry.version, "5.2.15-1.fc40");
         assert_eq!(entry.arch.as_deref(), Some("x86_64"));
-        // Feature 005 US4: header has `TAG_EPOCH` present with value 0
-        // → PURL must carry `&epoch=0` to round-trip `rpm -qa`'s
-        // display convention. Previously the branch collapsed this with
-        // "EPOCH tag absent" and omitted.
+        // Conformance fix (2026-04-20): epoch=0 is omitted from the
+        // PURL — it's the implicit default in RPM semantics and the
+        // purl-spec rpm example never includes it. The previous
+        // milestone-005 behavior emitted `&epoch=0` to round-trip
+        // `rpm -qa --queryformat '%{EPOCH}'`, but that distinction
+        // has no consumer-side meaning and produced 27 framework
+        // mismatches.
         assert_eq!(
             entry.purl.as_str(),
-            "pkg:rpm/redhat/bash@5.2.15-1.fc40?arch=x86_64&epoch=0"
+            "pkg:rpm/redhat/bash@5.2.15-1.fc40?arch=x86_64"
         );
         assert_eq!(entry.depends, vec!["glibc", "ncurses-libs"]);
         assert_eq!(
@@ -764,11 +780,16 @@ mod tests {
         );
     }
 
-    /// T047a — EPOCH tag present with value 0 must surface in the PURL
-    /// as `&epoch=0` (the US4 behaviour change). Ground truth: stock
-    /// Fedora 40 ships 26 packages in this state.
+    /// Conformance fix: EPOCH = 0 is treated as semantically "no epoch"
+    /// (RPM convention) and the qualifier is OMITTED from the PURL,
+    /// regardless of whether the tag was explicitly present in the
+    /// header. Stock Fedora 40 ships 26 packages with explicit EPOCH=0;
+    /// the previous milestone-005 behavior emitted `&epoch=0` for them
+    /// to round-trip `rpm -qa --queryformat '%{EPOCH}'`, but that
+    /// distinction has no consumer-side meaning and produced 27
+    /// framework mismatches.
     #[test]
-    fn explicit_zero_epoch_surfaces_in_purl() {
+    fn explicit_zero_epoch_is_omitted_from_purl() {
         let blob = build_test_header(&[
             (TAG_NAME, TagValue::Str("aopalliance")),
             (TAG_VERSION, TagValue::Str("1.0")),
@@ -779,8 +800,8 @@ mod tests {
         let (entry, _paths) =
             row_to_entry(&[], &blob, "fedora", "/fake/rpmdb.sqlite", None).unwrap();
         assert!(
-            entry.purl.as_str().contains("&epoch=0"),
-            "expected &epoch=0 qualifier, got {}",
+            !entry.purl.as_str().contains("epoch="),
+            "EPOCH=0 must NOT surface as a PURL qualifier; got {}",
             entry.purl.as_str()
         );
     }

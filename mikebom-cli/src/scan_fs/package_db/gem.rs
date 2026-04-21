@@ -270,6 +270,7 @@ fn spec_to_entry(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
+        hashes: Vec::new(),
         sbom_tier: Some("source".to_string()),
     })
 }
@@ -306,6 +307,7 @@ fn gemspec_to_entry(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
+        hashes: Vec::new(),
         sbom_tier: Some("analyzed".to_string()),
     })
 }

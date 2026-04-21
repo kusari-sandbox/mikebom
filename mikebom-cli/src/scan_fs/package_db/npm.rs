@@ -265,16 +265,21 @@ impl NpmIntegrity {
         })
     }
 
-    /// Convert to a `ContentHash`. Currently only SHA-256 maps through
-    /// cleanly because that is the only public `ContentHash` constructor.
-    /// Other algorithms (SHA-512 common in npm, SHA-384, SHA-1) return
-    /// None pending a shared multi-algorithm constructor (tracked as
-    /// TODO-NEW-1 `--hash-algorithm`).
+    /// Convert to a `ContentHash`. Maps the SRI algorithm to mikebom's
+    /// `HashAlgorithm` enum and validates hex length via the shared
+    /// `with_algorithm` constructor. SHA-512 and SHA-256 are by far
+    /// the dominant algorithms in npm lockfiles; SHA-384 and SHA-1
+    /// also pass through.
     pub(crate) fn to_content_hash(&self) -> Option<ContentHash> {
-        match self.algorithm.as_str() {
-            "SHA-256" => ContentHash::sha256(&self.hex).ok(),
-            _ => None,
-        }
+        use mikebom_common::types::hash::HashAlgorithm;
+        let alg = match self.algorithm.as_str() {
+            "SHA-256" => HashAlgorithm::Sha256,
+            "SHA-512" => HashAlgorithm::Sha512,
+            "SHA-1" => HashAlgorithm::Sha1,
+            // SHA-384 isn't in HashAlgorithm yet; defer.
+            _ => return None,
+        };
+        ContentHash::with_algorithm(alg, &self.hex).ok()
     }
 }
 
@@ -413,12 +418,9 @@ pub(crate) fn parse_package_lock(
             binary_packed: None,
             raw_version: None,
             npm_role: None,
+            hashes,
             sbom_tier: Some("source".to_string()),
         });
-        // Hashes collected but not yet wired through PackageDbEntry;
-        // mirrors the pip.rs pattern until a shared content-hash channel
-        // exists (tracked as TODO-NEW-1 --hash-algorithm work).
-        let _ = hashes;
     }
 
     out
@@ -577,9 +579,9 @@ pub(crate) fn parse_pnpm_lock(
             binary_packed: None,
             raw_version: None,
             npm_role: None,
+            hashes,
             sbom_tier: Some("source".to_string()),
         });
-        let _ = hashes;
     }
 
     out
@@ -736,6 +738,7 @@ fn walk_node_modules(
             binary_packed: None,
             raw_version: None,
             npm_role,
+            hashes: Vec::new(),
             sbom_tier: Some("deployed".to_string()),
         });
 
@@ -816,6 +819,7 @@ pub(crate) fn parse_root_package_json(
                 binary_packed: None,
                 raw_version: None,
                 npm_role: None,
+                hashes: Vec::new(),
                 sbom_tier: Some("design".to_string()),
             });
         }

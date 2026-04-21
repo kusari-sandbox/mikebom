@@ -558,6 +558,7 @@ fn version_match_to_entry(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
+        hashes: Vec::new(),
     })
 }
 
@@ -939,6 +940,7 @@ fn make_file_level_component(
         binary_packed: scan.packer.map(|p| p.as_str().to_string()),
         raw_version: None,
         npm_role: None,
+        hashes: Vec::new(),
     }
     .with_sha256_placeholder(hash)
 }
@@ -1071,6 +1073,7 @@ fn note_package_to_entry(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
+        hashes: Vec::new(),
     })
 }
 

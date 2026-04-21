@@ -14,14 +14,19 @@ use mikebom_common::resolution::ResolvedComponent;
 ///   bom-refs (PURL strings) of every component whose
 ///   `purl.ecosystem()` matches.
 /// - One final `incomplete_first_party_only` / `incomplete` / `unknown`
-///   record covering the target itself, with the trace-integrity
-///   counters attached as properties. This is the existing behaviour —
-///   every BOM gets at least this one record.
+///   record covering the target itself.
 ///
 /// Target-record aggregate mapping:
 /// - All zeros, no failures → `"incomplete_first_party_only"`
 /// - `ring_buffer_overflows > 0` or `events_dropped > 0` → `"incomplete"`
 /// - Any probe attach failures → `"unknown"`
+///
+/// Note: trace-integrity counters (`ring_buffer_overflows`,
+/// `events_dropped`, attach-failure counts) used to live on the target
+/// composition record as `properties`. CDX 1.6's `compositions` schema
+/// sets `additionalProperties: false`, so they're now surfaced via
+/// [`super::metadata::build_metadata`] as `mikebom:trace-integrity-*`
+/// properties instead (sbomqs conformance fix).
 pub fn build_compositions(
     integrity: &TraceIntegrity,
     target_ref: &str,
@@ -47,6 +52,15 @@ pub fn build_compositions(
     // Group components by ecosystem once; each ecosystem referenced in
     // `complete_ecosystems` gets an `aggregate: complete` record listing
     // every PURL in that bucket. BTreeMap → deterministic output order.
+    //
+    // Both `assemblies` and `dependencies` are populated with the same
+    // set of component refs:
+    // - `assemblies`: declares the components themselves are completely
+    //   enumerated for that ecosystem (the original semantic).
+    // - `dependencies`: declares the dep graph is complete for those
+    //   components. Required for sbomqs's `comp_with_dependencies`
+    //   feature, which only credits components listed here under an
+    //   `aggregate: complete` composition.
     if !complete_ecosystems.is_empty() {
         let mut by_eco: BTreeMap<String, Vec<String>> = BTreeMap::new();
         for c in components {
@@ -56,41 +70,40 @@ pub fn build_compositions(
                 .push(c.purl.as_str().to_string());
         }
         for eco in complete_ecosystems {
-            if let Some(assemblies) = by_eco.get(eco.as_str()) {
-                if !assemblies.is_empty() {
+            if let Some(refs) = by_eco.get(eco.as_str()) {
+                if !refs.is_empty() {
                     out.push(json!({
                         "aggregate": "complete",
-                        "assemblies": assemblies,
+                        "assemblies": refs,
+                        "dependencies": refs,
                     }));
                 }
             }
         }
     }
 
-    // Trailing record always present: covers the target itself with the
-    // trace-integrity counters.
+    // Trailing record always present: covers the target itself with an
+    // assemblies-only entry whose `aggregate` encodes the integrity
+    // state (see mapping above; raw counters on metadata.properties).
     out.push(json!({
         "aggregate": target_aggregate,
         "assemblies": [target_ref],
-        "properties": [
-            {
-                "name": "mikebom:ring-buffer-overflows",
-                "value": integrity.ring_buffer_overflows.to_string()
-            },
-            {
-                "name": "mikebom:events-dropped",
-                "value": integrity.events_dropped.to_string()
-            },
-            {
-                "name": "mikebom:uprobe-attach-failures",
-                "value": integrity.uprobe_attach_failures.len().to_string()
-            },
-            {
-                "name": "mikebom:kprobe-attach-failures",
-                "value": integrity.kprobe_attach_failures.len().to_string()
-            }
-        ]
     }));
+
+    // sbomqs `comp_with_dependencies` requires the primary to be
+    // listed in a composition with `aggregate: complete` and a
+    // `dependencies` field. The integrity-driven target record above
+    // can't satisfy this (its aggregate isn't always `complete`), so
+    // emit a separate dep-completeness record when no integrity issues
+    // were observed and at least one outbound dep edge will be
+    // synthesized for the primary (build_dependencies handles the
+    // synthesis when no real edges exist).
+    if !has_probe_failures && !has_data_loss && !components.is_empty() {
+        out.push(json!({
+            "aggregate": "complete",
+            "dependencies": [target_ref],
+        }));
+    }
 
     json!(out)
 }
@@ -197,15 +210,23 @@ mod tests {
     }
 
     #[test]
-    fn properties_include_integrity_metrics() {
+    fn compositions_do_not_carry_properties_per_cdx_1_6_schema() {
+        // CDX 1.6 `compositions` schema sets additionalProperties=false,
+        // which disallows `properties` on composition records. Trace-
+        // integrity counters moved to metadata.properties — see
+        // `build_metadata` for the new home. The integrity state is
+        // still encoded here via the `aggregate` value.
         let mut integrity = clean_integrity();
         integrity.ring_buffer_overflows = 2;
         integrity.events_dropped = 3;
         let result = build_compositions(&integrity, "myapp@0.1.0", &[], &[]);
-        let props = result[0]["properties"].as_array().expect("properties array");
-        assert_eq!(props.len(), 4);
-        assert_eq!(props[0]["value"], "2");
-        assert_eq!(props[1]["value"], "3");
+        assert!(
+            result[0].get("properties").is_none(),
+            "composition records must not carry properties (CDX 1.6 schema): {:?}",
+            result[0]
+        );
+        // Aggregate reflects the data-loss state.
+        assert_eq!(result[0]["aggregate"], "incomplete");
     }
 
     #[test]
@@ -224,13 +245,17 @@ mod tests {
             &ecosystems,
         );
         let arr = result.as_array().expect("array");
-        // Two complete records (deb, apk in BTreeMap key order — apk
-        // sorts before deb) plus the target-integrity record.
-        assert_eq!(arr.len(), 3);
+        // Two per-ecosystem complete records, the target-integrity
+        // assemblies record, and the primary-dep-completeness record
+        // (added for sbomqs comp_with_dependencies). Total: 4.
+        assert_eq!(arr.len(), 4);
         assert_eq!(arr[0]["aggregate"], "complete");
         assert_eq!(arr[1]["aggregate"], "complete");
         assert_eq!(arr[2]["aggregate"], "incomplete_first_party_only");
         assert_eq!(arr[2]["assemblies"][0], "myapp@0.1.0");
+        // Last record: primary-dep-completeness for sbomqs.
+        assert_eq!(arr[3]["aggregate"], "complete");
+        assert_eq!(arr[3]["dependencies"][0], "myapp@0.1.0");
     }
 
     #[test]
@@ -260,7 +285,8 @@ mod tests {
             &ecosystems,
         );
         let arr = result.as_array().expect("array");
-        assert_eq!(arr.len(), 2);
+        // 1 deb-complete + 1 target-integrity + 1 primary-dep-complete = 3.
+        assert_eq!(arr.len(), 3);
         let assemblies = arr[0]["assemblies"].as_array().expect("assemblies");
         assert_eq!(assemblies.len(), 1);
         assert!(assemblies[0]

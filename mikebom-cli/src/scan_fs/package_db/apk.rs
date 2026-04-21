@@ -176,6 +176,7 @@ fn parse_stanza(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
+        hashes: Vec::new(),
         sbom_tier: Some("deployed".to_string()),
     })
 }

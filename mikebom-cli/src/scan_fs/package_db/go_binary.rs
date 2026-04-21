@@ -574,6 +574,7 @@ fn emit_entries_from_info(
                     binary_packed: None,
                     raw_version: None,
                     npm_role: None,
+                    hashes: Vec::new(),
                     sbom_tier: Some("analyzed".to_string()),
                 });
             }
@@ -605,6 +606,7 @@ fn emit_entries_from_info(
                     binary_packed: None,
                     raw_version: None,
                     npm_role: None,
+                    hashes: Vec::new(),
                     sbom_tier: Some("analyzed".to_string()),
                 });
             }
@@ -651,6 +653,7 @@ fn emit_file_level_diagnostic(
         binary_packed: None,
         raw_version: None,
         npm_role: None,
+        hashes: Vec::new(),
         sbom_tier: Some("analyzed".to_string()),
     });
 }

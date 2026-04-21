@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::types::timestamp::Timestamp;
 
 /// Diagnostic information about the fidelity of the trace capture.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct TraceIntegrity {
     pub ring_buffer_overflows: u64,
     pub events_dropped: u64,

@@ -125,9 +125,29 @@ distinguishes how a coord was discovered:
 ### OS-release reader
 - **Rootfs-aware fallback** (added 2026-04-20 for conformance bug 1): tries `<rootfs>/etc/os-release` first, falls back to `<rootfs>/usr/lib/os-release`. Fixes Ubuntu images where /etc/os-release is a relative symlink that can dangle after container-layer tar extraction.
 
+### PURL canonicalization
+- **Qualifiers sorted alphabetically** (added 2026-04-20): `Purl::new` re-canonicalizes the qualifier section so `?epoch=1&arch=x86_64&distro=fedora-40` becomes `?arch=x86_64&distro=fedora-40&epoch=1`. Required by purl-spec `docs/how-to-build.md` ("Sort this list of qualifier strings lexicographically"). Affects every ecosystem uniformly. Already-sorted inputs pass through unchanged (preserves caller-side `encode_purl_segment` work).
+- **RPM `epoch=0` omitted** (added 2026-04-20): treats `Some(0)` as semantically "no epoch" and drops the qualifier. RPM treats absent and 0 as equivalent for version comparison; `rpm -qa` default display omits; purl-spec rpm example never shows `epoch=0`. Reverses the milestone-005 round-trip-`rpm -qa` decision (see `specs/005-purl-and-scope-alignment/research.md` for the trade-off).
+
 ### CycloneDX 1.6 serialization
 - **`evidence.identity` is an array** (added 2026-04-20 for sbomqs parse failure): the single-object form was deprecated in CDX 1.5→1.6. Every component emits `identity: [{...}]` with exactly one identity object.
 - **`evidence.identity[].tools` is never emitted**: per CDX 1.6 that field must contain bom-refs to items declared in the BOM (metadata/tools/services/formulation). mikebom's previous payload (TLS connection IDs + deps.dev markers) are not tools and don't exist elsewhere in the BOM. Both now land on the component as properties `mikebom:source-connection-ids` (comma-joined) and `mikebom:deps-dev-match` (`<system>:<name>@<version>`). The `pkg:generic/...` provenance semantics are preserved, just in the CDX-conformant location.
+- **License shape**: components emit `{"license": {"id": "<SPDX-id>"}}` for single-identifier licenses (via `SpdxExpression::as_spdx_id`) and `{"expression": "<expr>"}` for compound expressions. Required for sbomqs's `comp_with_valid_licenses` check.
+- **Component hashes from manifests**: npm's `package-lock.json::integrity` (sha256/sha384/sha512) and Cargo.lock's `checksum` (sha256) flow through `PackageDbEntry.hashes` → `ResolvedComponent.hashes` → `components[].hashes[]`. Other ecosystems (gem/maven/pypi/go) defer for now — see TODO.
+- **`metadata.component` carries synthetic `purl` + `cpe`**: scan subjects emit `pkg:generic/<name>@<version>` and `cpe:2.3:a:mikebom:<name>:<version>:*:*:*:*:*:*:*`. Required for sbomqs schema validity (the validator rejects empty cpe/purl on metadata.component even though the spec doesn't require them).
+- **`metadata.authors`, `metadata.supplier`, `metadata.licenses` (CC0-1.0)**: hardcoded SBOM-producer identity + dataLicense.
+- **Trace-integrity counters on `metadata.properties`**: `mikebom:trace-integrity-{ring-buffer-overflows,events-dropped,uprobe-attach-failures,kprobe-attach-failures}` instead of attached to a composition (CDX 1.6 compositions schema sets `additionalProperties: false`).
+- **Compositions emit both `assemblies` and `dependencies`** for each `complete` ecosystem record. Plus a separate dep-completeness composition listing the primary's bom-ref under `dependencies` when no integrity issues — needed for sbomqs's `comp_with_dependencies` to credit the primary.
+- **Primary-dependency fallback in `build_dependencies`**: when the scanned project's root entry was filtered out (npm path_key=="", cargo source=None) and no explicit edges connect the metadata.component to anything, synthesize edges from the primary to every "root" component (those nothing else depends on). Without this, sbomqs reports "no dependency graph present" even when transitive edges are populated.
+
+### sbomqs scoring baseline (2026-04-20)
+After the score-lift pass, source-scan SBOMs reach **7.5/10 (Grade C)** on npm and cargo fixtures, **7.1** on polyglot-monorepo, **5.9** on gem (Integrity + Licensing dragged down because Gemfile.lock has neither hashes nor licenses). Remaining deferred work (separate milestone):
+- `comp_with_strong_checksums` for gem/maven/pypi/go (need ecosystem-specific hash sources)
+- `comp_with_licenses` / `comp_no_deprecated_licenses` / `comp_no_restrictive_licenses` (needs CDX `acknowledgement: declared|concluded` distinction)
+- `comp_with_supplier` (needs walking node_modules / .m2 cache for author info; lockfiles alone don't carry it)
+- `comp_with_source_code` (needs VCS URL extraction per ecosystem)
+- `sbom_signature` (needs key/signing infra)
+- `sbom_completeness_declared` for gem (currently lockfile gem composition isn't tagged complete)
 
 ### General
 - **Same-artifact-different-group edge conflation** (see Maven note).
@@ -145,7 +165,7 @@ distinguishes how a coord was discovered:
 | Cache-warm tests | Synthetic `<rootfs>/root/.m2/repository/...` inside tempdirs | Avoids dependency on user's host `~/.m2` |
 | Online tests | Unit tests involving deps.dev are unit-tested only for name-formatting / URL construction; no HTTP roundtrips in CI | Integration tests that would need network are gated behind env-present checks |
 
-Full-suite regression: `cargo test --workspace` — 804 passing, 0 failed as of ELF-note + cargo-root fix pass (2026-04-20). Baseline was 585 at milestone 003.
+Full-suite regression: `cargo test --workspace` — 825 passing, 0 failed as of sbomqs-score-lift pass (2026-04-20). Baseline was 585 at milestone 003.
 
 ---
 

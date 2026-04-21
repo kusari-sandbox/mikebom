@@ -306,9 +306,12 @@ fn parse_rpm_file(
     // behaviour and ground truth
     // (`pkg:rpm/rocky/bash@5.1.8-6.el9_1?arch=aarch64&distro=rocky-9.3`).
     let version_tok = format!("{version}-{release}");
+    // Omit epoch=0; treat 0 as semantically "no epoch" (matches the
+    // rpmdb reader at rpm.rs::assemble_entry — same canonical-form
+    // rationale).
     let epoch_seg = match epoch {
-        Some(v) => format!("&epoch={v}"),
-        None => String::new(),
+        Some(v) if v != 0 => format!("&epoch={v}"),
+        _ => String::new(),
     };
     let distro_seg = match distro_version {
         Some(dv) if !dv.is_empty() => {
@@ -364,6 +367,7 @@ fn parse_rpm_file(
         // property at CycloneDX serialisation time.
         raw_version: Some(version_tok),
         npm_role: None,
+        hashes: Vec::new(),
     })
 }
 

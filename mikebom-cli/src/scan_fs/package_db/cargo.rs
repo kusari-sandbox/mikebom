@@ -148,6 +148,7 @@ fn package_to_entry(pkg: &CargoPackage, source_path: &str) -> Option<PackageDbEn
         binary_packed: None,
         raw_version: None,
         npm_role: None,
+        hashes: Vec::new(),
         sbom_tier: Some("source".to_string()),
     })
 }
@@ -225,16 +226,11 @@ fn parse_lockfile(path: &Path) -> Result<Vec<PackageDbEntry>, CargoError> {
         }
         if let Some(mut entry) = package_to_entry(pkg, &source_path) {
             // Attach SHA-256 ContentHash to registry crates only.
+            // Git / path entries don't carry a checksum in the lockfile.
             if classify_source(pkg.source.as_deref()) == SourceKind::Registry {
                 if let Some(ref checksum) = pkg.checksum {
-                    if let Some(_hash) = checksum_to_content_hash(checksum) {
-                        // The PackageDbEntry doesn't carry hashes; the
-                        // scan_fs layer promotes `ContentHash` via
-                        // different means. For now we keep the checksum
-                        // on the entry by writing it into the evidence
-                        // path — kept for a follow-up once the
-                        // component-hash plumbing is richer.
-                        let _ = _hash;
+                    if let Some(hash) = checksum_to_content_hash(checksum) {
+                        entry.hashes.push(hash);
                     }
                 }
             }

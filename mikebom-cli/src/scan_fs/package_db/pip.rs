@@ -470,6 +470,7 @@ impl PipDistInfoEntry {
             binary_packed: None,
             raw_version: None,
             npm_role: None,
+            hashes: Vec::new(),
             sbom_tier: Some("deployed".to_string()),
         })
     }
@@ -809,6 +810,7 @@ pub(crate) fn parse_poetry_lock(
             binary_packed: None,
             raw_version: None,
             npm_role: None,
+            hashes: Vec::new(),
             sbom_tier: Some("source".to_string()),
         });
         // `hashes` currently collected but not wired into ContentHash;
@@ -920,6 +922,7 @@ pub(crate) fn parse_pipfile_lock(
                 binary_packed: None,
                 raw_version: None,
                 npm_role: None,
+                hashes: Vec::new(),
                 sbom_tier: Some("source".to_string()),
             });
         }
@@ -1011,6 +1014,7 @@ impl RequirementsTxtEntry {
             binary_packed: None,
             raw_version: None,
             npm_role: None,
+            hashes: Vec::new(),
             sbom_tier: Some("design".to_string()),
         })
     }

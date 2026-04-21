@@ -165,6 +165,7 @@ impl LinkageAggregator {
                 binary_packed: None,
                 raw_version: None,
                 npm_role: None,
+                hashes: Vec::new(),
             })
             .collect()
     }

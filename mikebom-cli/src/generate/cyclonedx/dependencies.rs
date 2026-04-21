@@ -11,6 +11,18 @@ use mikebom_common::resolution::{Relationship, ResolvedComponent};
 ///
 /// Components without explicit dependencies still appear with an
 /// empty `dependsOn` array.
+///
+/// Primary-dependency fallback (sbomqs `comp_with_dependencies`): the
+/// CDX scoring tooling expects the primary component
+/// (`metadata.component`, here `target_ref`) to have at least one
+/// outgoing `dependsOn` edge — without it, sbomqs reports
+/// "no dependency graph present" even when component-to-component
+/// edges are populated. When mikebom skips the lockfile root entry
+/// (workspace root, npm path_key=""), the primary has no source for
+/// direct-dep names. Fall back to "primary depends on all root
+/// components" — i.e., every component that isn't pointed at by any
+/// other component's dependsOn. This produces a usable graph: the
+/// primary at the top, transitives correctly chained underneath.
 pub fn build_dependencies(
     components: &[ResolvedComponent],
     relationships: &[Relationship],
@@ -33,6 +45,31 @@ pub fn build_dependencies(
             .entry(rel.from.clone())
             .or_default()
             .insert(rel.to.clone());
+    }
+
+    // Primary-dependency fallback: if target_ref has no outgoing edges
+    // but we DO have components, synthesize edges from target_ref to
+    // every component that nothing else depends on (the roots of the
+    // component-side graph). For a flat scan with no relationships,
+    // this means target_ref → every component. For a transitive scan,
+    // it's just the top-level packages.
+    let target_has_no_edges = dep_map
+        .get(target_ref)
+        .map(|set| set.is_empty())
+        .unwrap_or(true);
+    if target_has_no_edges && !components.is_empty() {
+        let mut depended_on: BTreeSet<String> = BTreeSet::new();
+        for set in dep_map.values() {
+            depended_on.extend(set.iter().cloned());
+        }
+        let roots: BTreeSet<String> = components
+            .iter()
+            .map(|c| c.purl.as_str().to_string())
+            .filter(|r| !depended_on.contains(r))
+            .collect();
+        if !roots.is_empty() {
+            dep_map.insert(target_ref.to_string(), roots);
+        }
     }
 
     // Convert to CycloneDX format.
@@ -107,10 +144,96 @@ mod tests {
         // Should have 3 entries: myapp target + 2 components.
         assert_eq!(deps.len(), 3);
 
-        // All should have empty dependsOn arrays.
+        // Primary-dependency fallback (sbomqs comp_with_dependencies):
+        // when no relationships exist, the target_ref synthetically
+        // depends on all components. Here both serde and tokio are
+        // roots (nothing else points at them).
+        let target = deps
+            .iter()
+            .find(|d| d["ref"] == "myapp@0.1.0")
+            .expect("target dep entry");
+        let target_deps: Vec<&str> = target["dependsOn"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert_eq!(target_deps.len(), 2);
+        // Components themselves remain leaves.
         for dep in deps {
-            assert!(dep["dependsOn"].as_array().expect("array").is_empty());
+            if dep["ref"] != "myapp@0.1.0" {
+                assert!(dep["dependsOn"].as_array().expect("array").is_empty());
+            }
         }
+    }
+
+    #[test]
+    fn primary_fallback_only_lists_roots_not_transitives() {
+        // express depends on body-parser; body-parser depends on bytes.
+        // Roots = [express] (the only one nothing depends on).
+        // Target should depend on express only.
+        let components = vec![
+            make_component("express", "4.18.2"),
+            make_component("body-parser", "1.20.1"),
+            make_component("bytes", "3.1.2"),
+        ];
+        let relationships = vec![
+            Relationship {
+                from: "pkg:cargo/express@4.18.2".to_string(),
+                to: "pkg:cargo/body-parser@1.20.1".to_string(),
+                relationship_type: RelationshipType::DependsOn,
+                provenance: EnrichmentProvenance {
+                    source: "test".to_string(),
+                    data_type: "test".to_string(),
+                },
+            },
+            Relationship {
+                from: "pkg:cargo/body-parser@1.20.1".to_string(),
+                to: "pkg:cargo/bytes@3.1.2".to_string(),
+                relationship_type: RelationshipType::DependsOn,
+                provenance: EnrichmentProvenance {
+                    source: "test".to_string(),
+                    data_type: "test".to_string(),
+                },
+            },
+        ];
+
+        let result = build_dependencies(&components, &relationships, "myapp@0.1.0");
+        let deps = result.as_array().unwrap();
+        let target = deps.iter().find(|d| d["ref"] == "myapp@0.1.0").unwrap();
+        let target_deps: Vec<&str> = target["dependsOn"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert_eq!(target_deps, vec!["pkg:cargo/express@4.18.2"]);
+    }
+
+    #[test]
+    fn primary_fallback_skipped_when_target_already_has_deps() {
+        // If something already populated target's dependsOn, don't
+        // override it.
+        let components = vec![make_component("serde", "1.0.197")];
+        let relationships = vec![Relationship {
+            from: "myapp@0.1.0".to_string(),
+            to: "pkg:cargo/serde@1.0.197".to_string(),
+            relationship_type: RelationshipType::DependsOn,
+            provenance: EnrichmentProvenance {
+                source: "test".to_string(),
+                data_type: "test".to_string(),
+            },
+        }];
+        let result = build_dependencies(&components, &relationships, "myapp@0.1.0");
+        let deps = result.as_array().unwrap();
+        let target = deps.iter().find(|d| d["ref"] == "myapp@0.1.0").unwrap();
+        let target_deps: Vec<&str> = target["dependsOn"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert_eq!(target_deps, vec!["pkg:cargo/serde@1.0.197"]);
     }
 
     #[test]

@@ -58,16 +58,67 @@ pub fn encode_purl_version(v: &str) -> String {
     encode_purl_segment(v)
 }
 
+/// Reorder qualifiers in a PURL string to lexicographic order per
+/// purl-spec (`docs/how-to-build.md`).
+///
+/// Splits at the first `?` (qualifiers start) and `#` (subpath).
+/// If qualifiers are absent or already sorted, returns the input
+/// unchanged. Otherwise rebuilds the qualifier section preserving
+/// each pair's value verbatim (no re-encoding).
+fn canonicalize_qualifiers(raw: &str) -> String {
+    // Find qualifier start; bail early if absent.
+    let Some(q_start) = raw.find('?') else {
+        return raw.to_string();
+    };
+    // Subpath '#' must come AFTER qualifiers per PURL grammar.
+    let q_end = raw[q_start + 1..]
+        .find('#')
+        .map(|p| p + q_start + 1)
+        .unwrap_or(raw.len());
+    let prefix = &raw[..q_start]; // includes the path before '?'
+    let qualifier_str = &raw[q_start + 1..q_end];
+    let suffix = &raw[q_end..]; // includes '#' if present
+
+    // Split qualifiers into key=value pairs; preserve original ordering
+    // for the comparison.
+    let pairs: Vec<&str> = qualifier_str.split('&').collect();
+
+    // Detect already-sorted-and-non-empty case to skip the rebuild.
+    let mut sorted_pairs = pairs.clone();
+    sorted_pairs.sort_by(|a, b| {
+        let ak = a.split_once('=').map(|(k, _)| k).unwrap_or(*a);
+        let bk = b.split_once('=').map(|(k, _)| k).unwrap_or(*b);
+        ak.cmp(bk)
+    });
+    if sorted_pairs == pairs {
+        return raw.to_string();
+    }
+
+    // Rebuild: prefix + '?' + sorted-pairs.join('&') + suffix.
+    let mut out = String::with_capacity(raw.len());
+    out.push_str(prefix);
+    out.push('?');
+    out.push_str(&sorted_pairs.join("&"));
+    out.push_str(suffix);
+    out
+}
+
 impl Purl {
     /// Parse and validate a PURL string.
     ///
-    /// Stores `raw` verbatim as the canonical form rather than using
-    /// `parsed.to_string()`. The `packageurl` crate (v0.3) decodes
-    /// percent-escapes into typed accessors on parse but doesn't
-    /// re-encode them on serialize, so relying on `to_string()` would
-    /// drop the `%2B` encoding our callers constructed on purpose.
-    /// Callers build canonical strings via [`encode_purl_version`]
-    /// before calling `new`; this preserves that work.
+    /// Stores `raw` verbatim as the canonical form when the input is
+    /// already canonical (qualifiers in alphabetical order). When
+    /// qualifiers are present in non-alphabetical order, rebuilds the
+    /// canonical form with qualifiers sorted lexicographically by key
+    /// per purl-spec
+    /// (https://github.com/package-url/purl-spec/blob/main/docs/how-to-build.md):
+    /// > "Sort this list of qualifier strings lexicographically"
+    ///
+    /// The pass-through behavior preserves the percent-encoding work
+    /// callers do via [`encode_purl_segment`] for name + version
+    /// segments; the packageurl crate's `to_string()` would otherwise
+    /// drop those escapes. The resort path only kicks in when the
+    /// caller's qualifier order is wrong.
     pub fn new(raw: &str) -> Result<Self, PurlError> {
         let parsed: packageurl::PackageUrl =
             raw.parse().map_err(|e| PurlError::Invalid(format!("{e}")))?;
@@ -76,8 +127,10 @@ impl Purl {
             return Err(PurlError::MissingField("name"));
         }
 
+        let canonical = canonicalize_qualifiers(raw);
+
         Ok(Self {
-            canonical: raw.to_string(),
+            canonical,
             ecosystem: parsed.ty().to_string(),
             name: parsed.name().to_string(),
             version: parsed.version().map(|v| v.to_string()),
@@ -244,5 +297,54 @@ mod tests {
             literal,
             "Purl::new preserves caller's literal `+`; use encode_purl_version to canonicalise",
         );
+    }
+
+    // --- Qualifier sorting (purl-spec how-to-build.md) ----------------
+
+    #[test]
+    fn qualifiers_already_sorted_pass_through() {
+        // Already-canonical input: arch < distro alphabetically.
+        let raw = "pkg:rpm/fedora/curl@8.2.1-1.fc40?arch=x86_64&distro=fedora-40";
+        let p = Purl::new(raw).unwrap();
+        assert_eq!(p.as_str(), raw);
+    }
+
+    #[test]
+    fn qualifiers_resorted_when_out_of_order() {
+        // Input has epoch before distro (non-canonical). Per
+        // purl-spec how-to-build.md: alphabetical order required.
+        let raw = "pkg:rpm/fedora/dbus@1.14.10-3.fc40?arch=x86_64&epoch=1&distro=fedora-40";
+        let p = Purl::new(raw).unwrap();
+        assert_eq!(
+            p.as_str(),
+            "pkg:rpm/fedora/dbus@1.14.10-3.fc40?arch=x86_64&distro=fedora-40&epoch=1"
+        );
+    }
+
+    #[test]
+    fn qualifiers_three_keys_sorted() {
+        let raw = "pkg:deb/ubuntu/curl@8.5.0?distro=ubuntu-24.04&arch=arm64&epoch=1";
+        let p = Purl::new(raw).unwrap();
+        assert_eq!(
+            p.as_str(),
+            "pkg:deb/ubuntu/curl@8.5.0?arch=arm64&distro=ubuntu-24.04&epoch=1"
+        );
+    }
+
+    #[test]
+    fn no_qualifiers_round_trips_unchanged() {
+        let raw = "pkg:cargo/serde@1.0.197";
+        let p = Purl::new(raw).unwrap();
+        assert_eq!(p.as_str(), raw);
+    }
+
+    #[test]
+    fn qualifier_values_preserved_verbatim() {
+        // Sorting must NOT touch values — only key order.
+        let raw = "pkg:rpm/fedora/x@1.0?epoch=1&arch=x86_64&distro=fedora-40";
+        let p = Purl::new(raw).unwrap();
+        assert!(p.as_str().contains("&epoch=1"));
+        assert!(p.as_str().contains("arch=x86_64"));
+        assert!(p.as_str().contains("distro=fedora-40"));
     }
 }

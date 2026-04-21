@@ -96,18 +96,23 @@ pub struct ContentHash {
 
 impl ContentHash {
     pub fn sha256(hex: &str) -> Result<Self, HashError> {
+        Self::with_algorithm(HashAlgorithm::Sha256, hex)
+    }
+
+    /// Construct a `ContentHash` for any supported algorithm. Verifies
+    /// the hex length matches the algorithm's expected output (e.g.
+    /// 128 chars for SHA-512, 64 for SHA-256).
+    pub fn with_algorithm(algorithm: HashAlgorithm, hex: &str) -> Result<Self, HashError> {
         let value = HexString::new(hex)?;
-        if value.as_str().len() != HashAlgorithm::Sha256.expected_hex_len() {
+        let expected = algorithm.expected_hex_len();
+        if value.as_str().len() != expected {
             return Err(HashError::LengthMismatch {
-                algorithm: HashAlgorithm::Sha256,
-                expected: 64,
+                algorithm,
+                expected,
                 actual: value.as_str().len(),
             });
         }
-        Ok(Self {
-            algorithm: HashAlgorithm::Sha256,
-            value,
-        })
+        Ok(Self { algorithm, value })
     }
 }
 

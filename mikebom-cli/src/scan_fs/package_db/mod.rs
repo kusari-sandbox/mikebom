@@ -28,6 +28,7 @@ pub mod rpmdb_sqlite;
 
 use std::path::Path;
 
+use mikebom_common::types::hash::ContentHash;
 use mikebom_common::types::license::SpdxExpression;
 use mikebom_common::types::purl::Purl;
 
@@ -142,6 +143,14 @@ pub struct PackageDbEntry {
     /// reader on packages under the canonical `**/node_modules/npm/node_modules/**`
     /// glob. Drives the `mikebom:npm-role` CycloneDX component property.
     pub npm_role: Option<String>,
+    /// Content hashes carried by the source manifest. npm
+    /// `package-lock.json::integrity` (sha256 / sha384 / sha512) and
+    /// Cargo.lock's `checksum` (sha256 hex) land here; dpkg / rpm /
+    /// apk hashes are computed separately via `file_hashes.rs` and
+    /// attached to `ResolvedComponent.hashes` in `scan_fs::mod.rs`
+    /// after this reader returns. Empty by default; populated by
+    /// readers that have manifest-level hashes available.
+    pub hashes: Vec<ContentHash>,
 }
 
 /// Hard failures a database reader can raise that MUST abort the scan

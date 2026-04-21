@@ -88,6 +88,7 @@ impl CycloneDxBuilder {
             self.config.generation_context.clone(),
             components,
             &self.os_release_missing_fields,
+            integrity,
         );
         let cdx_components = self.build_components(components)?;
         let compositions =
@@ -143,14 +144,27 @@ impl CycloneDxBuilder {
             }
 
             // Include licenses if present.
+            //
+            // CDX 1.6 licenseChoice accepts two shapes:
+            // - `{"license": {"id": "<SPDX ID>"}}` for single-identifier
+            //   licenses that appear on the SPDX list. sbomqs requires
+            //   this form to give credit via `comp_with_valid_licenses`.
+            // - `{"expression": "<SPDX expression>"}` for compound forms
+            //   (AND / OR / WITH), unknown identifiers, or LicenseRefs.
+            //
+            // `SpdxExpression::as_spdx_id` returns `Some(id)` only for
+            // valid single-identifier cases; everything else falls
+            // through to the expression shape.
             if !component.licenses.is_empty() {
                 let licenses: Vec<serde_json::Value> = component
                     .licenses
                     .iter()
                     .map(|l| {
-                        json!({
-                            "expression": l.as_str()
-                        })
+                        if let Some(id) = l.as_spdx_id() {
+                            json!({ "license": { "id": id } })
+                        } else {
+                            json!({ "expression": l.as_str() })
+                        }
                     })
                     .collect();
                 entry["licenses"] = json!(licenses);
@@ -708,5 +722,89 @@ mod tests {
             .find(|p| p["name"] == "mikebom:deps-dev-match")
             .expect("deps-dev-match property must be present");
         assert_eq!(dd_prop["value"], "npm:express@4.19.2");
+    }
+
+    // --- License shape (sbomqs score lift Fix 1) -----------------------
+
+    #[test]
+    fn component_with_single_spdx_license_emits_id_form() {
+        // sbomqs's comp_with_valid_licenses expects CDX
+        // `{"license": {"id": "MIT"}}` for single SPDX identifiers.
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("serde", "1.0.197");
+        component.licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new("MIT").unwrap(),
+        ];
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"]
+            .as_array()
+            .expect("licenses must be an array");
+        assert_eq!(licenses.len(), 1);
+        assert_eq!(
+            licenses[0]["license"]["id"], "MIT",
+            "single SPDX id must use license.id shape: {:?}",
+            licenses[0]
+        );
+        assert!(
+            licenses[0].get("expression").is_none(),
+            "license.id form must not also carry a bare expression"
+        );
+    }
+
+    #[test]
+    fn component_with_compound_license_emits_expression_form() {
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("anyhow", "1.0.80");
+        component.licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new(
+                "Apache-2.0 OR MIT",
+            )
+            .unwrap(),
+        ];
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"]
+            .as_array()
+            .expect("licenses must be an array");
+        assert_eq!(licenses.len(), 1);
+        // Compound OR expressions stay as expression form.
+        assert_eq!(licenses[0]["expression"], "Apache-2.0 OR MIT");
+        assert!(licenses[0].get("license").is_none());
+    }
+
+    #[test]
+    fn component_license_unknown_identifier_falls_back_to_expression() {
+        // A non-SPDX free-text license (e.g. from dpkg copyright) must
+        // still emit as expression form; it just won't score under
+        // comp_with_valid_licenses.
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("myapp", "0.1.0");
+        component.licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new(
+                "Custom-In-House-License",
+            )
+            .unwrap(),
+        ];
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"].as_array().unwrap();
+        assert_eq!(licenses[0]["expression"], "Custom-In-House-License");
+        assert!(licenses[0].get("license").is_none());
     }
 }

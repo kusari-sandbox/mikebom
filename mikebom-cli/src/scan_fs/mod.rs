@@ -348,7 +348,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
             // capturing the dpkg-recorded MD5 per file for cross-ref.
             // The fast path SHA-256s the dpkg `.md5sums` file content
             // as a per-package fingerprint with no per-file occurrences.
-            let (occurrences, component_hashes) = if is_dpkg {
+            let (occurrences, mut component_hashes) = if is_dpkg {
                 if deep_hash {
                     let (occs, root_hash) = package_db::file_hashes::hash_package_files(
                         root,
@@ -356,7 +356,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
                         entry.arch.as_deref(),
                     );
                     (occs, root_hash.into_iter().collect::<Vec<_>>())
-                } else {
+            } else {
                     let h = package_db::file_hashes::hash_md5sums_only(
                         root,
                         &entry.name,
@@ -367,6 +367,11 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
             } else {
                 (Vec::new(), Vec::new())
             };
+            // Thread manifest-provided hashes (npm integrity, cargo
+            // checksum) onto the component. `entry.hashes` is
+            // populated by the npm / cargo readers; empty for other
+            // ecosystems, in which case this is a no-op.
+            component_hashes.extend(entry.hashes.iter().cloned());
             components.push(ResolvedComponent {
                 name: entry.name.clone(),
                 version: entry.version.clone(),

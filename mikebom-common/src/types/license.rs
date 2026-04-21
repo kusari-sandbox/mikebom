@@ -66,6 +66,58 @@ impl SpdxExpression {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// If the stored expression is a single SPDX identifier (no AND /
+    /// OR / WITH operators, no parentheses, no ref prefix), return it
+    /// verbatim. Otherwise return `None`.
+    ///
+    /// Used by the CycloneDX serializer to decide between the
+    /// `license.id` shape (required for single SPDX identifiers per
+    /// sbomqs's `comp_with_valid_licenses` check) and the
+    /// `license.expression` shape (for compound expressions).
+    ///
+    /// Examples:
+    /// - `"MIT"` → `Some("MIT")`
+    /// - `"Apache-2.0+"` → `Some("Apache-2.0+")` (trailing `+` is
+    ///   part of the identifier, not an operator)
+    /// - `"MIT OR Apache-2.0"` → `None`
+    /// - `"GPL-2.0-or-later WITH Classpath-exception-2.0"` → `None`
+    /// - `"LicenseRef-foo"` → `None` (license refs aren't canonical IDs)
+    pub fn as_spdx_id(&self) -> Option<&str> {
+        let trimmed = self.0.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        // License refs aren't SPDX-list identifiers.
+        if trimmed.starts_with("LicenseRef-")
+            || trimmed.starts_with("DocumentRef-")
+        {
+            return None;
+        }
+        // Compound expressions contain whitespace-separated operators
+        // or parentheses. A bare identifier contains none of those.
+        if trimmed.contains(char::is_whitespace) || trimmed.contains('(') {
+            return None;
+        }
+        // Validate against the SPDX list via the spdx crate. `+` suffix
+        // is part of the identifier and accepted. An unknown identifier
+        // returns None (falls through to the expression shape).
+        if spdx::Expression::parse(trimmed).is_err() {
+            return None;
+        }
+        // Additional guard: the parsed expression must be a single
+        // identifier, not a compound that happens to lack whitespace
+        // (shouldn't exist in practice, but be defensive).
+        //
+        // spdx::Expression::requirements() yields one entry per
+        // identifier in the expression; == 1 means single ID.
+        let expr = spdx::Expression::parse(trimmed).ok()?;
+        if expr.requirements().count() == 1 {
+            Some(trimmed)
+        } else {
+            None
+        }
+    }
 }
 
 impl core::fmt::Display for SpdxExpression {
@@ -155,5 +207,64 @@ mod tests {
             SpdxExpression::try_canonical("   "),
             Err(LicenseError::Empty)
         ));
+    }
+
+    // --- as_spdx_id (sbomqs score lift Fix 1) ----------------------------
+
+    #[test]
+    fn as_spdx_id_returns_single_identifier() {
+        let l = SpdxExpression::new("MIT").unwrap();
+        assert_eq!(l.as_spdx_id(), Some("MIT"));
+    }
+
+    #[test]
+    fn as_spdx_id_returns_apache_2_0() {
+        let l = SpdxExpression::new("Apache-2.0").unwrap();
+        assert_eq!(l.as_spdx_id(), Some("Apache-2.0"));
+    }
+
+    #[test]
+    fn as_spdx_id_accepts_trailing_plus() {
+        // `+` suffix is part of the identifier (means "this version
+        // or later"), not an operator.
+        let l = SpdxExpression::new("Apache-2.0+").unwrap();
+        assert_eq!(l.as_spdx_id(), Some("Apache-2.0+"));
+    }
+
+    #[test]
+    fn as_spdx_id_returns_none_for_or_expression() {
+        let l = SpdxExpression::new("MIT OR Apache-2.0").unwrap();
+        assert_eq!(l.as_spdx_id(), None);
+    }
+
+    #[test]
+    fn as_spdx_id_returns_none_for_with_exception() {
+        let l =
+            SpdxExpression::new("GPL-2.0-or-later WITH Classpath-exception-2.0").unwrap();
+        assert_eq!(l.as_spdx_id(), None);
+    }
+
+    #[test]
+    fn as_spdx_id_returns_none_for_and_expression() {
+        let l = SpdxExpression::new("MIT AND Apache-2.0").unwrap();
+        assert_eq!(l.as_spdx_id(), None);
+    }
+
+    #[test]
+    fn as_spdx_id_returns_none_for_parenthesized() {
+        let l = SpdxExpression::new("(MIT OR Apache-2.0)").unwrap();
+        assert_eq!(l.as_spdx_id(), None);
+    }
+
+    #[test]
+    fn as_spdx_id_returns_none_for_license_ref() {
+        let l = SpdxExpression::new("LicenseRef-my-custom-license").unwrap();
+        assert_eq!(l.as_spdx_id(), None);
+    }
+
+    #[test]
+    fn as_spdx_id_returns_none_for_unknown_identifier() {
+        let l = SpdxExpression::new("SomethingNotOnTheSpdxList").unwrap();
+        assert_eq!(l.as_spdx_id(), None);
     }
 }

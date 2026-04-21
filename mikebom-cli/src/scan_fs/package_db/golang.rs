@@ -490,6 +490,7 @@ pub(crate) fn build_entries_from_go_module(
                     binary_packed: None,
                     raw_version: None,
                     npm_role: None,
+                    hashes: Vec::new(),
                     sbom_tier: Some("source".to_string()),
                 });
             }
@@ -545,6 +546,7 @@ pub(crate) fn build_entries_from_go_module(
             binary_packed: None,
             raw_version: None,
             npm_role: None,
+            hashes: Vec::new(),
             sbom_tier: Some("source".to_string()),
         });
     }
