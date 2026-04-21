@@ -95,11 +95,14 @@ fn detect_kernel_version() -> String {
     "unknown".to_string()
 }
 
-/// Read the distro codename from the trace host's own `/etc/os-release`.
-/// Delegates to the shared scan_fs helper so scan-mode and build-time
-/// paths parse the file identically.
+/// Read the canonical distro tag from the trace host's own
+/// `/etc/os-release`. Delegates to the shared scan_fs helper so
+/// scan-mode and build-time paths produce the same
+/// `<ID>-<VERSION_ID>` shape (with VERSION_CODENAME fallback).
+/// The attestation struct field is still named `distro_codename` for
+/// backwards compat; the value it carries is the canonical tag.
 fn detect_distro_codename() -> Option<String> {
-    crate::scan_fs::os_release::detect_host_codename()
+    crate::scan_fs::os_release::detect_host_distro_tag()
 }
 
 #[cfg(test)]

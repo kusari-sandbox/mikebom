@@ -146,7 +146,10 @@ fn pypi_metadata(name: &str, version: &str, license: &str) -> String {
 #[test]
 fn scan_python_image_emits_mixed_deb_and_pypi_components() {
     let files = vec![
-        // Distro identity — drives deb PURLs' `distro=bookworm` qualifier.
+        // Distro identity — this synthetic image carries no VERSION_ID, so
+        // the distro tag falls back to VERSION_CODENAME and deb PURLs get
+        // `distro=bookworm`. Real images with ID + VERSION_ID would emit
+        // `distro=debian-12` (the canonical form) instead.
         ImageFile {
             path: "etc/os-release",
             content: b"ID=debian\nVERSION_CODENAME=bookworm\n".to_vec(),

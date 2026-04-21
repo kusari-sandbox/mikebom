@@ -142,16 +142,18 @@ pub async fn execute(
                 .unwrap_or("filesystem-scan")
                 .to_string();
             // If --path points at an extracted rootfs (has /etc/os-release
-            // at the top), auto-populate codename from it. Harmless when
+            // at the top), auto-populate the distro tag from it — the
+            // canonical `<ID>-<VERSION_ID>` shape (falling back to
+            // VERSION_CODENAME when VERSION_ID is absent). Harmless when
             // the path is just a cache dir — the file isn't there and we
             // get None.
-            let codename = scan_fs::os_release::read_version_codename(
+            let codename = scan_fs::os_release::read_distro_tag(
                 &path.join("etc/os-release"),
             );
             if let Some(ref c) = codename {
                 tracing::info!(
-                    codename = %c,
-                    "detected distro codename from <path>/etc/os-release"
+                    distro_tag = %c,
+                    "detected distro tag from <path>/etc/os-release"
                 );
             }
             (

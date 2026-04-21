@@ -1,10 +1,18 @@
 //! Shared `/etc/os-release` reader.
 //!
-//! Two call sites want the distro codename: the build-time attestation
+//! Two call sites want the distro identity: the build-time attestation
 //! builder (which reads the trace host's own os-release via the fixed
 //! path `/etc/os-release`), and the scan pipeline (which reads it out
 //! of an extracted container image rootfs or a --path root). Same
 //! parsing rules in both cases — one small helper in one place.
+//!
+//! The canonical output is the **distro tag** — `<ID>-<VERSION_ID>`
+//! (e.g. `debian-12`, `ubuntu-24.04`, `alpine-3.19`, `rocky-9.3`). When
+//! `VERSION_ID` is missing (rolling-release distros, some older images)
+//! the readers fall back to `VERSION_CODENAME` (e.g. `bookworm`), so
+//! callers can still produce a `distro=` qualifier. The fallback path
+//! is deliberately narrow — code that already knows what it wants can
+//! still call [`parse_id`] and [`parse_version_id`] directly.
 
 use std::path::{Path, PathBuf};
 
@@ -55,18 +63,31 @@ pub fn read_version_id_from_rootfs(rootfs: &Path) -> Option<String> {
     read_os_release_contents(rootfs).and_then(|t| parse_version_id(&t))
 }
 
-/// Read `os-release` at an explicit path and pluck out `VERSION_CODENAME`.
-/// Used by the scan-mode pipelines to grab the codename from an extracted
-/// image's rootfs (`<rootfs>/etc/os-release`) or a user-supplied
-/// rootfs-shaped directory (`<path>/etc/os-release`).
+/// Read `os-release` at an explicit path and return the canonical
+/// **distro tag** — `<ID>-<VERSION_ID>` when both are present
+/// (e.g. `debian-12`, `ubuntu-24.04`, `alpine-3.19`), falling back to
+/// a bare `VERSION_CODENAME` (or `UBUNTU_CODENAME`) when `VERSION_ID`
+/// is absent.
 ///
-/// Returns `None` when the file is absent, unreadable, or lacks the
-/// `VERSION_CODENAME=` key. Empty values are also treated as absent —
-/// some distros set `VERSION_CODENAME=""` during rolling-release cycles
-/// and that carries no useful meaning for our `distro=` qualifier.
-pub fn read_version_codename(os_release_path: &Path) -> Option<String> {
+/// Used by the trace attestation builder, the docker-image extractor,
+/// and the scan pipeline's `--path` auto-detection. All three produce
+/// the same shape so downstream consumers can match a single form of
+/// `distro=` qualifier.
+///
+/// Returns `None` when the file is absent, unreadable, or carries
+/// neither an `ID`+`VERSION_ID` pair nor a `VERSION_CODENAME`.
+pub fn read_distro_tag(os_release_path: &Path) -> Option<String> {
     let text = std::fs::read_to_string(os_release_path).ok()?;
-    parse_version_codename(&text)
+    parse_distro_tag(&text)
+}
+
+/// Rootfs-aware variant of [`read_distro_tag`]. Tries
+/// `<rootfs>/etc/os-release` first, falls back to
+/// `<rootfs>/usr/lib/os-release` per the os-release spec — fixes
+/// Ubuntu 24.04 style images where `/etc/os-release` is a symlink
+/// that may dangle after container-layer extraction.
+pub fn read_distro_tag_from_rootfs(rootfs: &Path) -> Option<String> {
+    read_os_release_contents(rootfs).and_then(|t| parse_distro_tag(&t))
 }
 
 /// Read `os-release` at an explicit path and pluck out the raw `ID=` value
@@ -96,17 +117,36 @@ pub fn read_version_id(os_release_path: &Path) -> Option<String> {
     parse_version_id(&text)
 }
 
-/// Read the trace host's own `/etc/os-release` on Linux, returning the
-/// codename if present. Non-Linux always returns `None`. Equivalent to
-/// the helper that used to live in `attestation::builder`.
-pub fn detect_host_codename() -> Option<String> {
+/// Read the trace host's own `/etc/os-release` on Linux and return the
+/// canonical distro tag (see [`read_distro_tag`] for the priority
+/// ladder). Non-Linux always returns `None`. Equivalent to the helper
+/// that used to live in `attestation::builder`.
+pub fn detect_host_distro_tag() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
-        read_version_codename(Path::new("/etc/os-release"))
+        read_distro_tag(Path::new("/etc/os-release"))
     }
     #[cfg(not(target_os = "linux"))]
     {
         None
+    }
+}
+
+/// Compose the canonical distro tag from raw os-release contents.
+///
+/// Priority ladder:
+///   1. `<ID>-<VERSION_ID>` when both are non-empty (canonical form;
+///      matches scan-mode package-db emission).
+///   2. Bare `VERSION_CODENAME` (or `UBUNTU_CODENAME` fallback) when
+///      `VERSION_ID` is missing — rolling-release distros or older
+///      images that don't carry a numeric version.
+///   3. `None` when neither is determinable.
+fn parse_distro_tag(text: &str) -> Option<String> {
+    match (parse_id(text), parse_version_id(text)) {
+        (Some(id), Some(vid)) if !id.is_empty() && !vid.is_empty() => {
+            Some(format!("{id}-{vid}"))
+        }
+        _ => parse_version_codename(text),
     }
 }
 
@@ -218,17 +258,133 @@ mod tests {
 
     #[test]
     fn reads_from_a_real_file_via_path() {
+        // File carries only VERSION_CODENAME (no VERSION_ID) — the
+        // codename fallback path in read_distro_tag should surface it.
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("os-release");
         std::fs::write(&path, "VERSION_CODENAME=bullseye\n").unwrap();
-        assert_eq!(read_version_codename(&path), Some("bullseye".to_string()));
+        assert_eq!(read_distro_tag(&path), Some("bullseye".to_string()));
     }
 
     #[test]
     fn missing_file_is_none() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("does-not-exist");
-        assert_eq!(read_version_codename(&path), None);
+        assert_eq!(read_distro_tag(&path), None);
+    }
+
+    // --- read_distro_tag priority ladder -------------------------------
+
+    #[test]
+    fn distro_tag_prefers_id_version_pair() {
+        let text = "NAME=Debian\nID=debian\nVERSION_ID=12\nVERSION_CODENAME=bookworm\n";
+        assert_eq!(parse_distro_tag(text), Some("debian-12".to_string()));
+    }
+
+    #[test]
+    fn distro_tag_handles_ubuntu() {
+        let text = "ID=ubuntu\nVERSION_ID=\"24.04\"\nVERSION_CODENAME=noble\n";
+        assert_eq!(parse_distro_tag(text), Some("ubuntu-24.04".to_string()));
+    }
+
+    #[test]
+    fn distro_tag_handles_alpine() {
+        let text = "ID=alpine\nVERSION_ID=3.19\n";
+        assert_eq!(parse_distro_tag(text), Some("alpine-3.19".to_string()));
+    }
+
+    #[test]
+    fn distro_tag_falls_back_to_codename_when_version_id_missing() {
+        // Rolling-release cycle: no VERSION_ID, codename still useful.
+        let text = "NAME=Debian\nID=debian\nVERSION_CODENAME=trixie\n";
+        assert_eq!(parse_distro_tag(text), Some("trixie".to_string()));
+    }
+
+    #[test]
+    fn distro_tag_falls_back_to_codename_when_id_missing() {
+        // Pathological input; tolerate it. Codename still usable.
+        let text = "VERSION_ID=12\nVERSION_CODENAME=bookworm\n";
+        assert_eq!(parse_distro_tag(text), Some("bookworm".to_string()));
+    }
+
+    #[test]
+    fn distro_tag_falls_back_to_ubuntu_codename_when_version_id_absent() {
+        let text = "ID=ubuntu\nUBUNTU_CODENAME=devel\n";
+        assert_eq!(parse_distro_tag(text), Some("devel".to_string()));
+    }
+
+    #[test]
+    fn distro_tag_empty_version_id_is_treated_as_absent() {
+        // Some distros set VERSION_ID="" during rolling cycles — treat
+        // it like missing and fall through to the codename.
+        let text = "ID=debian\nVERSION_ID=\"\"\nVERSION_CODENAME=bookworm\n";
+        assert_eq!(parse_distro_tag(text), Some("bookworm".to_string()));
+    }
+
+    #[test]
+    fn distro_tag_neither_field_is_none() {
+        let text = "NAME=ExoticDistro\n";
+        assert_eq!(parse_distro_tag(text), None);
+    }
+
+    #[test]
+    fn distro_tag_preserves_hyphenated_id() {
+        // openSUSE Leap's ID is `opensuse-leap` — the tag is
+        // `opensuse-leap-15.5` (a triple-segment form); caller decides
+        // what to do with that, we just pass it through.
+        let text = "ID=\"opensuse-leap\"\nVERSION_ID=\"15.5\"\n";
+        assert_eq!(
+            parse_distro_tag(text),
+            Some("opensuse-leap-15.5".to_string())
+        );
+    }
+
+    #[test]
+    fn distro_tag_reads_from_a_real_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("os-release");
+        std::fs::write(&path, "ID=ubuntu\nVERSION_ID=24.04\n").unwrap();
+        assert_eq!(read_distro_tag(&path), Some("ubuntu-24.04".to_string()));
+    }
+
+    #[test]
+    fn distro_tag_from_rootfs_prefers_etc() {
+        let dir = tempfile::tempdir().unwrap();
+        let rootfs = dir.path();
+        std::fs::create_dir_all(rootfs.join("etc")).unwrap();
+        std::fs::create_dir_all(rootfs.join("usr/lib")).unwrap();
+        std::fs::write(
+            rootfs.join("etc/os-release"),
+            "ID=debian\nVERSION_ID=12\n",
+        )
+        .unwrap();
+        std::fs::write(
+            rootfs.join("usr/lib/os-release"),
+            "ID=ubuntu\nVERSION_ID=24.04\n",
+        )
+        .unwrap();
+        assert_eq!(
+            read_distro_tag_from_rootfs(rootfs),
+            Some("debian-12".to_string())
+        );
+    }
+
+    #[test]
+    fn distro_tag_from_rootfs_falls_back_to_usr_lib() {
+        // Ubuntu 24.04 style: /etc/os-release is a symlink that may
+        // dangle after extraction; the real file lives in /usr/lib.
+        let dir = tempfile::tempdir().unwrap();
+        let rootfs = dir.path();
+        std::fs::create_dir_all(rootfs.join("usr/lib")).unwrap();
+        std::fs::write(
+            rootfs.join("usr/lib/os-release"),
+            "ID=ubuntu\nVERSION_ID=24.04\n",
+        )
+        .unwrap();
+        assert_eq!(
+            read_distro_tag_from_rootfs(rootfs),
+            Some("ubuntu-24.04".to_string())
+        );
     }
 
     #[test]

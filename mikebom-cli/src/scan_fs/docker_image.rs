@@ -100,13 +100,15 @@ pub fn extract(archive_path: &Path) -> Result<ExtractedImage> {
             .with_context(|| format!("extracting layer {layer_name}"))?;
     }
 
-    // After the rootfs is fully assembled, grab the codename from
-    // <rootfs>/etc/os-release so `mikebom sbom scan --image` can stamp
-    // `distro=bookworm` on deb PURLs without the user having to pass
-    // --deb-codename. Absent or unreadable is not an error — not every
-    // image carries os-release (minimal FROM scratch images, busybox).
-    let distro_codename =
-        super::os_release::read_version_codename(&rootfs.join("etc/os-release"));
+    // After the rootfs is fully assembled, read the distro tag (see
+    // `os_release::read_distro_tag_from_rootfs`) so `mikebom sbom scan
+    // --image` can stamp `distro=<ID>-<VERSION_ID>` (e.g. `debian-12`)
+    // on deb PURLs without the user having to pass --deb-codename.
+    // Rootfs-aware because /etc/os-release is commonly a symlink into
+    // /usr/lib/os-release that can dangle after layer extraction.
+    // Absent or unreadable is not an error — not every image carries
+    // os-release (minimal FROM scratch, busybox).
+    let distro_codename = super::os_release::read_distro_tag_from_rootfs(&rootfs);
 
     Ok(ExtractedImage {
         tempdir,
