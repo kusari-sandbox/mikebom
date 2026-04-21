@@ -118,7 +118,7 @@ Exactly one of **`--path <DIR>`** or **`--image <TAR>`** is required.
 | `--format <fmt>` | `cyclonedx-json` | See [output formats](#output-formats). Only `cyclonedx-json` is actually written today. |
 | `--max-file-size <bytes>` | `268435456` (256 MB) | Skip hashing files larger than this |
 | `--no-hashes` | off | Omit per-component content hashes from the SBOM |
-| `--deb-codename <codename>` | auto | Distro codename to stamp on deb PURLs (`bookworm`, `noble`, `jammy`, …). Overrides the codename auto-detected from `<root>/etc/os-release`. |
+| `--deb-codename <value>` | auto | Value to stamp as the `distro=` qualifier on deb PURLs (e.g., `debian-12`, `ubuntu-24.04`, `kali-rolling`). Stamped verbatim. Overrides the value auto-derived from `<root>/etc/os-release` (`ID` + `VERSION_ID` → `distro=<id>-<version_id>`). Despite the flag name, it accepts any string; the canonical shape is `<namespace>-<VERSION_ID>` matching rpm and apk. |
 | `--no-package-db` | off (DB reading is on by default) | Skip reading `/var/lib/dpkg/status` and `/lib/apk/db/installed`. Falls back to artefact-file-only scanning. Use when you want to verify a download cache and ignore the installed set. |
 | `--no-deep-hash` | off | Skip per-file SHA-256 of installed-package contents. Falls back to a fast SHA-256 of each package's dpkg `.md5sums` file. Produces component-level identity but no `evidence.occurrences[]`. |
 | `--json` | off | JSON summary to stdout |

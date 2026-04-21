@@ -54,11 +54,13 @@ mikebom sbom scan --image alpine.tar --output alpine.cdx.json --json
 ```
 
 `--image` takes a `docker save` tarball. mikebom extracts the layers (honouring
-OCI whiteouts), auto-reads `<rootfs>/etc/os-release` for the distro codename,
-reads the installed-package databases (`/var/lib/dpkg/status` for Debian and
-derivatives, `/lib/apk/db/installed` for Alpine, `rpmdb.sqlite` for RPM-based
-images), and emits a CycloneDX SBOM with a real dependency graph from the
-db's `Depends:` fields.
+OCI whiteouts), auto-reads `<rootfs>/etc/os-release` for `ID` + `VERSION_ID`
+(feeding the `distro=<namespace>-<version>` PURL qualifier — e.g.,
+`distro=debian-12`, `distro=alpine-3.19`), reads the installed-package
+databases (`/var/lib/dpkg/status` for Debian and derivatives,
+`/lib/apk/db/installed` for Alpine, `rpmdb.sqlite` for RPM-based images),
+and emits a CycloneDX SBOM with a real dependency graph from the db's
+`Depends:` fields.
 
 `--json` prints a summary to stdout:
 
@@ -99,9 +101,11 @@ mikebom sbom scan --path ~/.cargo/registry/cache --output cargo.cdx.json --json
 Every resolved crate carries a SHA-256 that byte-matches the `.crate` file on
 disk plus a CycloneDX `evidence.identity` block at confidence 0.70 with
 `technique: "filename"`. If the directory happens to be a rootfs-shaped tree
-(has `etc/os-release` at the top), mikebom reads the codename from there and
-stamps it on deb PURLs automatically. Override with `--deb-codename <codename>`
-when you're scanning a bare directory of `.deb` files.
+(has `etc/os-release` at the top), mikebom reads `ID` + `VERSION_ID` from
+there and stamps the `distro=<namespace>-<VERSION_ID>` qualifier on deb
+PURLs automatically. Override with `--deb-codename <value>` (e.g.,
+`--deb-codename debian-12`) when you're scanning a bare directory of
+`.deb` files.
 
 ---
 

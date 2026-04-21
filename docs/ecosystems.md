@@ -31,7 +31,9 @@ concluded licenses apply to the ecosystem. Both honour the global
 **Detection:** stanza parser over `/lib/apk/db/installed`. Reads `P:`
 (name), `V:` (version), `A:` (arch), `D:` (direct dependencies).
 
-**PURL format:** `pkg:apk/alpine/<name>@<version>?arch=<arch>&distro=<version>`.
+**PURL format:** `pkg:apk/alpine/<name>@<version>?arch=<arch>&distro=alpine-<VERSION_ID>`
+(e.g., `distro=alpine-3.19`). Same `<namespace>-<VERSION_ID>` shape as
+deb and rpm.
 
 **Evidence:** `PackageDatabase` / `manifest-analysis` at confidence 0.85.
 
@@ -99,7 +101,8 @@ hashing in `scan_fs/package_db/file_hashes.rs`.
 **Detection:** stanza parser over `/var/lib/dpkg/status`, plus per-package
 `/var/lib/dpkg/info/<pkg>.list` manifests for deep-hash occurrences.
 
-**PURL format:** `pkg:deb/debian/<name>@<version>?arch=<arch>&distro=<codename>`.
+**PURL format:** `pkg:deb/debian/<name>@<version>?arch=<arch>&distro=<namespace>-<ver>`
+(e.g., `distro=debian-12`, `distro=ubuntu-24.04`, `distro=kali-rolling`).
 
 Canonicalization (strict — reference-implementation-conformant):
 
@@ -107,10 +110,13 @@ Canonicalization (strict — reference-implementation-conformant):
 - `:` in version (epoch separator) → literal, inside `@<version>`, not as
   a qualifier.
 - `~` in version → literal.
-- `distro=<codename>` is a bare codename (`bookworm`), not `debian-12`.
-- Codename auto-detected from `<rootfs>/etc/os-release` `VERSION_CODENAME`
-  (with `UBUNTU_CODENAME` fallback for older Ubuntu images), overridable
-  via `--deb-codename`.
+- `distro=<namespace>-<VERSION_ID>` is the canonical form across deb, rpm,
+  and apk — one shape so downstream consumers don't need per-ecosystem
+  branching. Namespace is the debian/ubuntu/kali/etc. slug; `VERSION_ID`
+  is the numeric or codename value from `/etc/os-release`.
+- Auto-detected from `<rootfs>/etc/os-release` (`ID` + `VERSION_ID`);
+  overridable via `--deb-codename <value>` which stamps the full
+  qualifier value verbatim.
 
 See [purls-and-cpes.md](architecture/purls-and-cpes.md) for the full
 rationale.

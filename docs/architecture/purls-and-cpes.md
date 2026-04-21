@@ -42,10 +42,15 @@ These apply uniformly across all ecosystems:
    `Some(0)`. See
    [design-notes §PURL canonicalization](../design-notes.md#purl-canonicalization).
 
-4. **`distro=<codename>` is a plain codename.** `bookworm`, not
-   `debian-12`. `noble`, not `ubuntu-24.04`. Sourced from `/etc/os-release`
-   `VERSION_CODENAME` (with `UBUNTU_CODENAME` fallback for older Ubuntu
-   images) or from `--deb-codename`.
+4. **`distro=<vendor>-<version>` across all OS-packaged ecosystems.** deb,
+   rpm, and apk all emit the same shape: vendor slug (`debian`, `ubuntu`,
+   `redhat`, `rocky`, `fedora`, `alpine`, …) joined with the upstream
+   `VERSION_ID` from `/etc/os-release`. Examples: `distro=debian-12`,
+   `distro=ubuntu-24.04`, `distro=redhat-9`, `distro=alpine-3.19`. A single
+   shape across three package managers means downstream consumers (vuln
+   scanners, SBOM merge tools) don't need per-ecosystem branching. Override
+   with `--deb-codename <value>`, which stamps whatever string you pass
+   verbatim.
 
 5. **No non-identity qualifiers.** `download_url`, `upstream`, `source`, and
    `repository_url` never appear — they don't identify the package, they
@@ -64,15 +69,16 @@ NVD matching.
 {
   "name": "base-files",
   "version": "12.4+deb12u13",                                     // human/NVD
-  "purl": "pkg:deb/debian/base-files@12.4%2Bdeb12u13?arch=arm64&distro=bookworm",
+  "purl": "pkg:deb/debian/base-files@12.4%2Bdeb12u13?arch=arm64&distro=debian-12",
   "cpe":  "cpe:2.3:a:debian:base-files:12.4\\+deb12u13:*:..."     // CPE-escaped literal
 }
 ```
 
 ### Per-ecosystem notes
 
-- **deb**: `pkg:deb/debian/<name>@<version>?arch=<arch>&distro=<codename>`.
-  Epoch goes inside `<version>` (`1:2.38.1`), never as a qualifier.
+- **deb**: `pkg:deb/debian/<name>@<version>?arch=<arch>&distro=<vendor>-<ver>`
+  (e.g., `distro=debian-12`, `distro=ubuntu-24.04`). Epoch goes inside
+  `<version>` (`1:2.38.1`), never as a qualifier.
 - **rpm**: `pkg:rpm/<vendor>/<name>@<version>?arch=<arch>&distro=<vendor>-<ver>`.
   Vendor is the distro slug (`redhat`, `rocky`, `fedora`, `suse`, `opensuse`).
   `epoch=0` omitted.
@@ -86,7 +92,8 @@ NVD matching.
   Module-prefix is url-encoded in ClearlyDefined coords but literal in PURL.
 - **cargo**: `pkg:cargo/<name>@<version>`. No namespace (crates.io is flat).
 - **gem**: `pkg:gem/<name>@<version>`.
-- **apk**: `pkg:apk/alpine/<name>@<version>?arch=<arch>&distro=<version>`.
+- **apk**: `pkg:apk/alpine/<name>@<version>?arch=<arch>&distro=alpine-<version>`
+  (e.g., `distro=alpine-3.19`).
 
 ## CPEs — multi-candidate emission
 

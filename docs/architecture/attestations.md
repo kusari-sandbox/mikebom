@@ -64,7 +64,11 @@ digest.
   start and end.
 - **`target_process`**: `{ pid, command, cgroup_id }` of the traced command.
 - **`host`**: `{ os, kernel_version, arch, distro_codename }`. The
-  `distro_codename` is what feeds into deb PURLs' `distro=` qualifier.
+  `distro_codename` field carries the value that feeds the
+  `distro=<namespace>-<VERSION_ID>` qualifier on deb / rpm / apk PURLs
+  (e.g., `debian-12`, `ubuntu-24.04`, `alpine-3.19`). The field name is
+  historical — it holds the full `<namespace>-<VERSION_ID>` form, not a
+  bare codename.
 - **`generation_context`**: `BuildTimeTrace` when the attestation was
   produced by `trace capture` / `trace run`.
 

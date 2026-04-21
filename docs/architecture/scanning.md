@@ -15,8 +15,9 @@ events.
 - `mikebom-cli/src/scan_fs/docker_image.rs` — `docker save` tarball extractor:
   layer merging, OCI whiteout handling, os-release reader.
 - `mikebom-cli/src/scan_fs/os_release.rs` — `/etc/os-release` + fallback
-  `/usr/lib/os-release` parser. Populates the deb `distro=<codename>` PURL
-  qualifier.
+  `/usr/lib/os-release` parser. Reads `ID` + `VERSION_ID` and populates the
+  `distro=<namespace>-<VERSION_ID>` PURL qualifier shared by deb, rpm, and
+  apk (e.g., `distro=debian-12`, `distro=ubuntu-24.04`, `distro=alpine-3.19`).
 - `mikebom-cli/src/scan_fs/package_db/*.rs` — one module per ecosystem.
 
 ## The three evidence sources
@@ -48,10 +49,11 @@ Layers are extracted in manifest order into a tempdir; OCI whiteout files
 directories from lower layers. The result is a rootfs-shaped tempdir that the
 scanner processes as if `--path <tempdir>` had been passed. `/etc/os-release`
 (with fallback to `/usr/lib/os-release`) is read to auto-detect the distro
-codename — this becomes the `distro=<codename>` PURL qualifier on every deb
-component. See the [PURL canonicalization](purls-and-cpes.md) page for why the
-codename is a bare value (`bookworm`) rather than a prefixed form
-(`debian-12`).
+identity — `ID` + `VERSION_ID` become the `distro=<namespace>-<VERSION_ID>`
+PURL qualifier (e.g., `distro=debian-12`). See
+[PURL canonicalization](purls-and-cpes.md) for the full rule — the same
+shape applies across deb, rpm, and apk so downstream consumers don't need
+per-ecosystem branching.
 
 ## Per-ecosystem detection
 
