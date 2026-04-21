@@ -216,6 +216,7 @@ pub async fn enrich_dep_graph(
                             deps_dev_match: None,
                         },
                         licenses: Vec::new(),
+                        concluded_licenses: Vec::new(),
                         hashes: Vec::new(),
                         supplier: None,
                         cpes: Vec::new(),

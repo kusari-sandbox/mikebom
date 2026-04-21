@@ -143,31 +143,58 @@ impl CycloneDxBuilder {
                 entry["hashes"] = json!(hashes);
             }
 
-            // Include licenses if present.
+            // CDX 1.6 license emission. Two shapes per item:
+            // - `{"license": {"id": "<SPDX>", "acknowledgement": "..."}}`
+            //   for single-identifier licenses on the SPDX list.
+            //   sbomqs's `comp_with_valid_licenses` requires this form.
+            // - `{"expression": "<expr>", "acknowledgement": "..."}` for
+            //   compound (AND/OR/WITH), unknown identifiers, LicenseRefs.
             //
-            // CDX 1.6 licenseChoice accepts two shapes:
-            // - `{"license": {"id": "<SPDX ID>"}}` for single-identifier
-            //   licenses that appear on the SPDX list. sbomqs requires
-            //   this form to give credit via `comp_with_valid_licenses`.
-            // - `{"expression": "<SPDX expression>"}` for compound forms
-            //   (AND / OR / WITH), unknown identifiers, or LicenseRefs.
-            //
-            // `SpdxExpression::as_spdx_id` returns `Some(id)` only for
-            // valid single-identifier cases; everything else falls
-            // through to the expression shape.
-            if !component.licenses.is_empty() {
-                let licenses: Vec<serde_json::Value> = component
-                    .licenses
-                    .iter()
-                    .map(|l| {
-                        if let Some(id) = l.as_spdx_id() {
-                            json!({ "license": { "id": id } })
-                        } else {
-                            json!({ "expression": l.as_str() })
+            // The `acknowledgement` enum (CDX 1.6) distinguishes:
+            // - "declared" — what the package author asserted in their
+            //   manifest (mikebom: `component.licenses`)
+            // - "concluded" — result of comprehensive analysis
+            //   (mikebom: `component.concluded_licenses`, populated by
+            //   the ClearlyDefined enrichment source)
+            // sbomqs's `comp_with_licenses`, `comp_with_valid_licenses`,
+            // `comp_no_deprecated_licenses`, `comp_no_restrictive_licenses`
+            // all read concluded; `comp_with_declared_licenses` reads
+            // declared.
+            let mut all_licenses: Vec<serde_json::Value> = Vec::new();
+            for l in &component.licenses {
+                let entry_obj = if let Some(id) = l.as_spdx_id() {
+                    json!({
+                        "license": {
+                            "id": id,
+                            "acknowledgement": "declared",
                         }
                     })
-                    .collect();
-                entry["licenses"] = json!(licenses);
+                } else {
+                    json!({
+                        "expression": l.as_str(),
+                        "acknowledgement": "declared",
+                    })
+                };
+                all_licenses.push(entry_obj);
+            }
+            for l in &component.concluded_licenses {
+                let entry_obj = if let Some(id) = l.as_spdx_id() {
+                    json!({
+                        "license": {
+                            "id": id,
+                            "acknowledgement": "concluded",
+                        }
+                    })
+                } else {
+                    json!({
+                        "expression": l.as_str(),
+                        "acknowledgement": "concluded",
+                    })
+                };
+                all_licenses.push(entry_obj);
+            }
+            if !all_licenses.is_empty() {
+                entry["licenses"] = json!(all_licenses);
             }
 
             // Include supplier if present.
@@ -412,6 +439,7 @@ mod tests {
                 deps_dev_match: None,
             },
             licenses: vec![],
+            concluded_licenses: Vec::new(),
             hashes: vec![],
             supplier: None,
             cpes: vec![],
@@ -727,9 +755,7 @@ mod tests {
     // --- License shape (sbomqs score lift Fix 1) -----------------------
 
     #[test]
-    fn component_with_single_spdx_license_emits_id_form() {
-        // sbomqs's comp_with_valid_licenses expects CDX
-        // `{"license": {"id": "MIT"}}` for single SPDX identifiers.
+    fn component_with_single_spdx_license_emits_id_form_with_acknowledgement() {
         let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
         let mut component = make_component("serde", "1.0.197");
         component.licenses = vec![
@@ -742,23 +768,14 @@ mod tests {
             .expect("build bom");
 
         let comp = &bom["components"].as_array().expect("components")[0];
-        let licenses = comp["licenses"]
-            .as_array()
-            .expect("licenses must be an array");
+        let licenses = comp["licenses"].as_array().unwrap();
         assert_eq!(licenses.len(), 1);
-        assert_eq!(
-            licenses[0]["license"]["id"], "MIT",
-            "single SPDX id must use license.id shape: {:?}",
-            licenses[0]
-        );
-        assert!(
-            licenses[0].get("expression").is_none(),
-            "license.id form must not also carry a bare expression"
-        );
+        assert_eq!(licenses[0]["license"]["id"], "MIT");
+        assert_eq!(licenses[0]["license"]["acknowledgement"], "declared");
     }
 
     #[test]
-    fn component_with_compound_license_emits_expression_form() {
+    fn component_with_compound_license_emits_expression_form_with_acknowledgement() {
         let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
         let mut component = make_component("anyhow", "1.0.80");
         component.licenses = vec![
@@ -774,20 +791,14 @@ mod tests {
             .expect("build bom");
 
         let comp = &bom["components"].as_array().expect("components")[0];
-        let licenses = comp["licenses"]
-            .as_array()
-            .expect("licenses must be an array");
-        assert_eq!(licenses.len(), 1);
-        // Compound OR expressions stay as expression form.
+        let licenses = comp["licenses"].as_array().unwrap();
         assert_eq!(licenses[0]["expression"], "Apache-2.0 OR MIT");
+        assert_eq!(licenses[0]["acknowledgement"], "declared");
         assert!(licenses[0].get("license").is_none());
     }
 
     #[test]
     fn component_license_unknown_identifier_falls_back_to_expression() {
-        // A non-SPDX free-text license (e.g. from dpkg copyright) must
-        // still emit as expression form; it just won't score under
-        // comp_with_valid_licenses.
         let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
         let mut component = make_component("myapp", "0.1.0");
         component.licenses = vec![
@@ -805,6 +816,68 @@ mod tests {
         let comp = &bom["components"].as_array().expect("components")[0];
         let licenses = comp["licenses"].as_array().unwrap();
         assert_eq!(licenses[0]["expression"], "Custom-In-House-License");
-        assert!(licenses[0].get("license").is_none());
+        assert_eq!(licenses[0]["acknowledgement"], "declared");
+    }
+
+    #[test]
+    fn concluded_licenses_emit_with_acknowledgement_concluded() {
+        // Simulates the ClearlyDefined enrichment having added a
+        // concluded SPDX expression after the package's manifest
+        // declared one.
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("express", "4.18.2");
+        component.licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new("MIT").unwrap(),
+        ];
+        component.concluded_licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new("MIT").unwrap(),
+        ];
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"].as_array().unwrap();
+        assert_eq!(licenses.len(), 2);
+        // First entry: declared MIT (from manifest).
+        assert_eq!(licenses[0]["license"]["id"], "MIT");
+        assert_eq!(licenses[0]["license"]["acknowledgement"], "declared");
+        // Second entry: concluded MIT (from CD enrichment).
+        assert_eq!(licenses[1]["license"]["id"], "MIT");
+        assert_eq!(licenses[1]["license"]["acknowledgement"], "concluded");
+    }
+
+    #[test]
+    fn concluded_licenses_can_differ_from_declared() {
+        // CD's analysis may yield a different SPDX expression than the
+        // package's own declared license — emit both side by side.
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut component = make_component("foo", "1.0.0");
+        component.licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new("MIT").unwrap(),
+        ];
+        component.concluded_licenses = vec![
+            mikebom_common::types::license::SpdxExpression::new("Apache-2.0").unwrap(),
+        ];
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&[component], &[], &integrity, "myapp", &[])
+            .expect("build bom");
+
+        let comp = &bom["components"].as_array().expect("components")[0];
+        let licenses = comp["licenses"].as_array().unwrap();
+        assert_eq!(licenses.len(), 2);
+        let mut seen = std::collections::HashSet::new();
+        for l in licenses {
+            seen.insert((
+                l["license"]["id"].as_str().unwrap().to_string(),
+                l["license"]["acknowledgement"].as_str().unwrap().to_string(),
+            ));
+        }
+        assert!(seen.contains(&("MIT".to_string(), "declared".to_string())));
+        assert!(seen.contains(&("Apache-2.0".to_string(), "concluded".to_string())));
     }
 }

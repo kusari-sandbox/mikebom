@@ -156,6 +156,7 @@ impl ResolutionPipeline {
                             deps_dev_match: None,
                         },
                         licenses: vec![],
+                        concluded_licenses: Vec::new(),
                         hashes,
                         supplier: None,
                         cpes: vec![],
@@ -209,6 +210,7 @@ impl ResolutionPipeline {
                                         ),
                                     },
                                     licenses: vec![],
+                                    concluded_licenses: Vec::new(),
                                     hashes: collect_connection_hashes(conn),
                                     supplier: None,
                                     cpes: vec![],
@@ -271,6 +273,7 @@ impl ResolutionPipeline {
                         deps_dev_match: None,
                     },
                     licenses: vec![],
+                    concluded_licenses: Vec::new(),
                     hashes: file_op
                         .content_hash
                         .as_ref()

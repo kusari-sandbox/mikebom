@@ -109,6 +109,7 @@ mod tests {
                 deps_dev_match: None,
             },
             licenses: vec![],
+            concluded_licenses: Vec::new(),
             hashes: vec![],
             supplier: None,
             cpes: vec![],

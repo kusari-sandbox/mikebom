@@ -8,3 +8,6 @@ pub mod deps_dev_system;
 pub mod license_resolver;
 pub mod vex_builder;
 pub mod supplier_resolver;
+pub mod clearly_defined_client;
+pub mod clearly_defined_coord;
+pub mod clearly_defined_source;

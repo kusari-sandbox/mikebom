@@ -288,6 +288,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
                 deps_dev_match: None,
             },
             licenses: vec![],
+            concluded_licenses: Vec::new(),
             hashes: vec![],
             supplier: None,
             cpes: vec![],

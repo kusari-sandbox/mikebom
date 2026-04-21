@@ -140,14 +140,23 @@ distinguishes how a coord was discovered:
 - **Compositions emit both `assemblies` and `dependencies`** for each `complete` ecosystem record. Plus a separate dep-completeness composition listing the primary's bom-ref under `dependencies` when no integrity issues — needed for sbomqs's `comp_with_dependencies` to credit the primary.
 - **Primary-dependency fallback in `build_dependencies`**: when the scanned project's root entry was filtered out (npm path_key=="", cargo source=None) and no explicit edges connect the metadata.component to anything, synthesize edges from the primary to every "root" component (those nothing else depends on). Without this, sbomqs reports "no dependency graph present" even when transitive edges are populated.
 
-### sbomqs scoring baseline (2026-04-20)
-After the score-lift pass, source-scan SBOMs reach **7.5/10 (Grade C)** on npm and cargo fixtures, **7.1** on polyglot-monorepo, **5.9** on gem (Integrity + Licensing dragged down because Gemfile.lock has neither hashes nor licenses). Remaining deferred work (separate milestone):
-- `comp_with_strong_checksums` for gem/maven/pypi/go (need ecosystem-specific hash sources)
-- `comp_with_licenses` / `comp_no_deprecated_licenses` / `comp_no_restrictive_licenses` (needs CDX `acknowledgement: declared|concluded` distinction)
+### sbomqs scoring baseline (2026-04-20, post-CD pass)
+After the ClearlyDefined enrichment integration, source-scan SBOMs reach **8.8/10 (Grade B)** on npm fixtures, **7.0–7.8 (C)** on cargo / gem / polyglot, **6.1 (D)** on RPM image scans (Integrity 0/10 still — rpmdb has no per-package hashes mikebom can use). Remaining deferred work (separate milestone):
+- `comp_with_strong_checksums` for gem/maven/pypi/go/rpm (need ecosystem-specific hash sources)
+- `comp_no_deprecated_licenses` / `comp_no_restrictive_licenses` (the spdx crate has the data; needs threading through)
 - `comp_with_supplier` (needs walking node_modules / .m2 cache for author info; lockfiles alone don't carry it)
 - `comp_with_source_code` (needs VCS URL extraction per ecosystem)
 - `sbom_signature` (needs key/signing infra)
 - `sbom_completeness_declared` for gem (currently lockfile gem composition isn't tagged complete)
+
+### ClearlyDefined enrichment (added 2026-04-20)
+- Post-scan enricher mirroring the `deps.dev` pattern. Lives at `mikebom-cli/src/enrich/clearly_defined_{client,coord,source}.rs`.
+- Queries `https://api.clearlydefined.io/definitions/{type}/{provider}/{ns}/{name}/{rev}` per supported component (npm, cargo, gem, pypi, maven, golang). CD's `licensed.declared` becomes mikebom's `acknowledgement: "concluded"` license entry.
+- Honors the existing `--offline` flag (no HTTP when set).
+- In-memory cache (per-scan, not persistent). 5s timeout per request.
+- Sequential per-component (matches deps.dev). Bounded concurrency deferred until profiling shows it matters.
+- Unsupported ecosystems (deb / apk / rpm / generic / alpm) skipped silently.
+- When CD has no entry for a package, no concluded entry emitted (declared remains). `NOASSERTION` is intentionally never emitted — sbomqs's `ValidateLicenseText` rejects it, so it would add cost without unlocking score.
 
 ### General
 - **Same-artifact-different-group edge conflation** (see Maven note).
@@ -165,7 +174,7 @@ After the score-lift pass, source-scan SBOMs reach **7.5/10 (Grade C)** on npm a
 | Cache-warm tests | Synthetic `<rootfs>/root/.m2/repository/...` inside tempdirs | Avoids dependency on user's host `~/.m2` |
 | Online tests | Unit tests involving deps.dev are unit-tested only for name-formatting / URL construction; no HTTP roundtrips in CI | Integration tests that would need network are gated behind env-present checks |
 
-Full-suite regression: `cargo test --workspace` — 825 passing, 0 failed as of sbomqs-score-lift pass (2026-04-20). Baseline was 585 at milestone 003.
+Full-suite regression: `cargo test --workspace` — 854 passing, 0 failed as of ClearlyDefined enrichment pass (2026-04-20). Baseline was 585 at milestone 003.
 
 ---
 
@@ -220,6 +229,19 @@ Ordered rough priority (highest-value first):
 10. **Multiple cached versions of the same `(g, a)` in `~/.m2`** — the JAR walker's `coord_index` currently keeps the first-observed version. Good enough for most cases; a project-specific resolution would require reading the project's pom + running Maven's "nearest wins" algorithm.
 11. **Go source-tree scope** — investigate switching from go.sum-driven to `go.mod Require`-driven component enumeration for Go 1.17+ sources. Would align with trivy's default behavior (syft default uses `packages.Load` which is even more inclusive). Full context in `docs/research/go-binary-scope.md`.
 12. **Binary-scanner jq detection** — `version_strings.rs` has a curated 7-library scanner (OpenSSL/BoringSSL/zlib/SQLite/curl/PCRE/PCRE2). Unmanaged binaries like a curl'd `/usr/local/bin/jq` emit only as `pkg:generic/jq?file-sha256=...` (hash, no version). Options: (a) add jq-specific pattern to the curated list — doesn't scale; (b) generic version-string heuristic (`<name>-<ver>` / `<name> version <ver>`) — high FP surface; (c) investigate trivy's `binaries` analyzer and port the subset that has low FP risk.
+
+### Deferred: sbomqs score lift
+
+Tracked separately because each item has its own design depth. Current source-scan baseline is 7.0–8.8/10 depending on fixture (post-CD enrichment, 2026-04-20).
+
+13. **CDX `comp_no_deprecated_licenses` + `comp_no_restrictive_licenses`** — sbomqs reads these off `concluded_licenses[]`. The `spdx` crate exposes `is_deprecated()` and OSI/copyleft classifications; need to thread that through `SpdxExpression` (e.g. `as_spdx_id_info() -> Option<{id, deprecated, restrictive}>`) so the CDX serializer can emit `properties` flagging each. ~6.4% in Licensing for npm/cargo fixtures.
+14. **Component supplier extraction** — npm `package.json::author.name`, cargo `Cargo.toml::package.authors[0]`, maven `pom.xml::organization`. Lockfile scans currently miss these because lockfiles don't carry author info; adding a node_modules / .m2 walk for the supplier field would unlock `comp_with_supplier` (2.2%). Heuristic for npm scoped packages: treat `@scope` as supplier when `author` absent.
+15. **Component VCS URL externalReferences** — emit `externalReferences[{type: "vcs", url: ...}]` from each ecosystem's manifest (cargo `repository`, npm `repository.url`, maven `<scm>`). Unlocks `comp_with_source_code` (2.2%). Most ecosystems have this in the manifest so it's mostly extraction work.
+16. **SBOM signature** (`sbom_signature` 1.8%) — sign the emitted CDX BOM in-place (CycloneDX defines a `signature` block). Needs key management story (CLI flag for key path? KMS?). Separate from this effort.
+17. **Per-ecosystem manifest hashes** — gem/maven/pypi/go currently emit no per-component hashes. gem: defer (Gemfile.lock has no hashes). maven: SHA-1 sidecar files (`.jar.sha1`) accompany each artifact in `~/.m2`. pypi: `requirements.txt --hash=` form + dist-info `RECORD` file. go: `go.sum` H1 hashes are Merkle trie roots (NOT file SHA-256) — would need a custom CDX hash type.
+18. **ClearlyDefined ecosystem expansion** — current scope is npm/cargo/gem/pypi/maven/golang. CD also has `deb` (Debian src), `composer`, `pod`, `conda`, `nuget`. Add coord mappers + verify CD coverage is non-trivial before turning each on.
+19. **ClearlyDefined bounded concurrency** — current implementation is sequential per-component (matches `deps.dev`). For scans of 100+ components this can be 10–30 seconds. Concrete optimization: `tokio::task::JoinSet` with 8 in-flight + reqwest connection pool reuse. Deferred until profiling shows it dominates scan time.
+20. **ClearlyDefined harvest endpoint** — CD has `/notices`, `/curations`, search APIs that could enrich provenance further (license texts, attributions, copyright statements). Out of scope for this milestone but unlock more sbomqs categories if added.
 
 ---
 

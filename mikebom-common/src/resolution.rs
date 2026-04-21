@@ -11,7 +11,22 @@ pub struct ResolvedComponent {
     pub name: String,
     pub version: String,
     pub evidence: ResolutionEvidence,
+    /// Licenses asserted by the package author in their manifest
+    /// (npm package.json, Cargo.toml, etc.) or by the OS package
+    /// metadata (dpkg copyright, rpm header). Mapped to CycloneDX
+    /// `licenses[]` entries with `acknowledgement: "declared"`.
     pub licenses: Vec<SpdxExpression>,
+    /// Licenses determined through external analysis (currently:
+    /// ClearlyDefined.io's curated `licensed.declared` field, which
+    /// is itself the result of CD's automated analysis pass). Mapped
+    /// to CycloneDX `licenses[]` entries with
+    /// `acknowledgement: "concluded"`. Empty when no enrichment was
+    /// performed (offline mode, ecosystem unsupported by the
+    /// enricher, or the package isn't curated by ClearlyDefined).
+    /// May overlap with [`licenses`] when both sources agree; the
+    /// CDX serializer emits each side once.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub concluded_licenses: Vec<SpdxExpression>,
     pub hashes: Vec<ContentHash>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub supplier: Option<String>,
@@ -274,6 +289,7 @@ mod tests {
                 deps_dev_match: None,
             },
             licenses: vec![],
+            concluded_licenses: Vec::new(),
             hashes: vec![],
             supplier: None,
             cpes: vec![],
@@ -319,6 +335,7 @@ mod tests {
                 }),
             },
             licenses: vec![],
+            concluded_licenses: Vec::new(),
             hashes: vec![],
             supplier: Some("Lodash contributors".to_string()),
             cpes: vec![],

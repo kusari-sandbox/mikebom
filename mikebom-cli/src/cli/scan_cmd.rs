@@ -7,6 +7,9 @@ use mikebom_common::attestation::metadata::GenerationContext;
 
 use crate::enrich::deps_dev_client::DepsDevClient;
 use crate::enrich::depsdev_source::{enrich_components, DepsDevSource};
+use crate::enrich::clearly_defined_source::{
+    enrich_components as cd_enrich_components, ClearlyDefinedSource,
+};
 use crate::generate::cyclonedx::builder::{CycloneDxBuilder, CycloneDxConfig};
 use crate::generate::cyclonedx::serializer::write_cyclonedx_json;
 use crate::scan_fs;
@@ -208,6 +211,21 @@ pub async fn execute(
     let enriched = enrich_components(&deps_dev_source, &mut components).await;
     if enriched > 0 {
         tracing::info!(enriched, "deps.dev added licenses to components");
+    }
+
+    // ClearlyDefined enrichment runs after deps.dev and populates each
+    // component's `concluded_licenses` with CD's curated SPDX
+    // expression. Fed by the same `--offline` flag — a no-op when set.
+    // CD's coverage is good for npm / cargo / gem / pypi / maven /
+    // golang and shaky elsewhere; unsupported ecosystems are skipped
+    // silently inside the source.
+    let cd_source = ClearlyDefinedSource::new(offline);
+    let cd_enriched = cd_enrich_components(&cd_source, &mut components).await;
+    if cd_enriched > 0 {
+        tracing::info!(
+            cd_enriched,
+            "ClearlyDefined added concluded licenses to components"
+        );
     }
 
     // deps.dev transitive dep-graph enrichment fills in edges the
