@@ -256,6 +256,88 @@ fn scan_maven_pulls_transitive_edges_from_cached_m2_repo() {
     );
 }
 
+// --- Cache-only scan: .m2/repository populated but no pom.xml, no JARs ---
+// This is the polyglot case where mikebom reported 7/46 vs trivy's 46/46.
+// A warm `.m2` cache with no seed source (no scanned pom.xml, no packed
+// JAR with META-INF/maven) should still surface every cached artifact as
+// a component via the unconditional cache walk.
+
+#[test]
+fn scan_maven_cached_only_rootfs_emits_all_cached_coords() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    // Build a synthetic rootfs with a `.m2/repository/` containing
+    // three unrelated cached artifacts — none of which is referenced
+    // by any scanned pom.xml or packed JAR (there are none).
+    let cache = dir.path().join("root/.m2/repository");
+    let alpha_dir = cache.join("com/example/alpha/1.0.0");
+    let beta_dir = cache.join("org/sample/beta/2.1.5");
+    let gamma_dir = cache.join("io/test/gamma/0.9.0");
+    for d in [&alpha_dir, &beta_dir, &gamma_dir] {
+        std::fs::create_dir_all(d).unwrap();
+    }
+    std::fs::write(
+        alpha_dir.join("alpha-1.0.0.pom"),
+        r#"<?xml version="1.0"?>
+<project>
+  <groupId>com.example</groupId>
+  <artifactId>alpha</artifactId>
+  <version>1.0.0</version>
+</project>"#,
+    )
+    .unwrap();
+    std::fs::write(
+        beta_dir.join("beta-2.1.5.pom"),
+        r#"<?xml version="1.0"?>
+<project>
+  <groupId>org.sample</groupId>
+  <artifactId>beta</artifactId>
+  <version>2.1.5</version>
+</project>"#,
+    )
+    .unwrap();
+    std::fs::write(
+        gamma_dir.join("gamma-0.9.0.pom"),
+        r#"<?xml version="1.0"?>
+<project>
+  <groupId>io.test</groupId>
+  <artifactId>gamma</artifactId>
+  <version>0.9.0</version>
+</project>"#,
+    )
+    .unwrap();
+
+    let sbom = scan_path(dir.path());
+    let maven = maven_components(&sbom);
+    let purls: Vec<String> = maven
+        .iter()
+        .filter_map(|c| c["purl"].as_str().map(String::from))
+        .collect();
+
+    // Every cached coord must surface as a Maven component.
+    for expected in [
+        "pkg:maven/com.example/alpha@1.0.0",
+        "pkg:maven/org.sample/beta@2.1.5",
+        "pkg:maven/io.test/gamma@0.9.0",
+    ] {
+        assert!(
+            purls.iter().any(|p| p == expected),
+            "cache-walk missed {expected}; got: {purls:?}",
+        );
+    }
+
+    // Each cache-walk-discovered coord must carry source_type = "transitive"
+    // (matches the BFS emission shape; no schema divergence).
+    for c in &maven {
+        let src_type = prop_value(c, "mikebom:source-type").unwrap_or("");
+        assert_eq!(
+            src_type,
+            "transitive",
+            "cache-walked component {} has wrong source_type: {src_type}",
+            c["name"].as_str().unwrap_or(""),
+        );
+    }
+}
+
 // --- Container-like scan: JARs only, no project pom.xml, no .m2 ------
 
 #[test]

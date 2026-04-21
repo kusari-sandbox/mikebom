@@ -38,76 +38,140 @@ const MAX_JAR_ENTRY_BYTES: u64 = 64 * 1024 * 1024;
 
 /// Candidate local-repo roots for a given scan. Populated once per
 /// scan. Layout: `<root>/<group-as-path>/<artifact>/<version>/<artifact>-<version>.pom`.
+///
+/// Roots are split by scope: `rootfs_roots` sit under the scanned
+/// rootfs and are safe to walk unconditionally (they belong to the
+/// scan target); `host_roots` come from the invoker's environment
+/// (`$HOME`, `$M2_REPO`, `$MAVEN_HOME`) and are used for per-coord
+/// BFS lookups but never enumerated wholesale — otherwise a developer
+/// running mikebom against a project fixture would drag every cached
+/// artifact on their laptop into the SBOM.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct MavenRepoCache {
-    roots: Vec<PathBuf>,
+    rootfs_roots: Vec<PathBuf>,
+    host_roots: Vec<PathBuf>,
 }
 
 impl MavenRepoCache {
     /// Discover candidate `~/.m2/repository` style directories.
-    /// Priority order:
-    /// 1. `$M2_REPO` / `$MAVEN_HOME/repository` when set.
-    /// 2. `$HOME/.m2/repository` (most dev machines).
-    /// 3. `<rootfs>/root/.m2/repository` (conventional container images
-    ///    that pre-populate the cache as root).
-    /// 4. `<rootfs>/home/*/.m2/repository`.
-    /// 5. `<rootfs>/usr/share/maven-repo` (Debian's system-Maven repo).
+    /// Priority order (earlier entries win when multiple roots carry
+    /// the same pom):
+    /// 1. `$M2_REPO` / `$MAVEN_HOME/repository` when set.  *(host)*
+    /// 2. `$HOME/.m2/repository` (most dev machines).        *(host)*
+    /// 3. `<rootfs>/root/.m2/repository` (conventional container
+    ///    images that pre-populate the cache as root).      *(rootfs)*
+    /// 4. `<rootfs>/home/*/.m2/repository`.                 *(rootfs)*
+    /// 5. `<rootfs>/usr/share/maven-repo` (Debian's system-Maven
+    ///    repo).                                             *(rootfs)*
     ///
-    /// Each candidate is included only when the directory actually
-    /// exists. Earlier entries win when the same pom is present in
-    /// multiple caches.
+    /// Only rootfs-scoped roots are visited by
+    /// [`walk_rootfs_poms`](Self::walk_rootfs_poms). Host roots are
+    /// still consulted by [`read_pom`](Self::read_pom) and
+    /// [`read_artifact_hash`](Self::read_artifact_hash) — the BFS
+    /// benefits from them when resolving transitive deps.
     pub(crate) fn discover(rootfs: &Path) -> Self {
-        let mut roots: Vec<PathBuf> = Vec::new();
+        let mut rootfs_roots: Vec<PathBuf> = Vec::new();
+        let mut host_roots: Vec<PathBuf> = Vec::new();
         let mut seen: HashSet<PathBuf> = HashSet::new();
 
-        let mut try_add = |candidate: PathBuf, roots: &mut Vec<PathBuf>| {
+        let try_add = |candidate: PathBuf,
+                       bucket: &mut Vec<PathBuf>,
+                       seen: &mut HashSet<PathBuf>| {
             let canonical = std::fs::canonicalize(&candidate).unwrap_or(candidate.clone());
             if !seen.insert(canonical) {
                 return;
             }
             if candidate.is_dir() {
-                roots.push(candidate);
+                bucket.push(candidate);
             }
         };
 
         if let Ok(env) = std::env::var("M2_REPO") {
             if !env.is_empty() {
-                try_add(PathBuf::from(&env), &mut roots);
+                try_add(PathBuf::from(&env), &mut host_roots, &mut seen);
             }
         }
         if let Ok(env) = std::env::var("MAVEN_HOME") {
             if !env.is_empty() {
-                try_add(PathBuf::from(&env).join("repository"), &mut roots);
+                try_add(
+                    PathBuf::from(&env).join("repository"),
+                    &mut host_roots,
+                    &mut seen,
+                );
             }
         }
         if let Ok(home) = std::env::var("HOME") {
             if !home.is_empty() {
-                try_add(PathBuf::from(&home).join(".m2/repository"), &mut roots);
+                try_add(
+                    PathBuf::from(&home).join(".m2/repository"),
+                    &mut host_roots,
+                    &mut seen,
+                );
             }
         }
-        try_add(rootfs.join("root/.m2/repository"), &mut roots);
+        try_add(
+            rootfs.join("root/.m2/repository"),
+            &mut rootfs_roots,
+            &mut seen,
+        );
         if let Ok(home_dir) = std::fs::read_dir(rootfs.join("home")) {
             for entry in home_dir.flatten() {
                 let candidate = entry.path().join(".m2/repository");
-                try_add(candidate, &mut roots);
+                try_add(candidate, &mut rootfs_roots, &mut seen);
             }
         }
-        try_add(rootfs.join("usr/share/maven-repo"), &mut roots);
+        try_add(
+            rootfs.join("usr/share/maven-repo"),
+            &mut rootfs_roots,
+            &mut seen,
+        );
 
-        MavenRepoCache { roots }
+        MavenRepoCache {
+            rootfs_roots,
+            host_roots,
+        }
+    }
+
+    /// Test-only helper: build a cache whose roots are treated as
+    /// rootfs-scoped. Lets existing unit tests (written before the
+    /// rootfs/host split) construct a cache without reaching into
+    /// private fields.
+    #[cfg(test)]
+    pub(crate) fn for_tests(rootfs_roots: Vec<PathBuf>) -> Self {
+        Self {
+            rootfs_roots,
+            host_roots: Vec::new(),
+        }
+    }
+
+    /// Total number of discovered roots (rootfs + host). Useful for
+    /// log messages.
+    pub(crate) fn total_roots(&self) -> usize {
+        self.rootfs_roots.len() + self.host_roots.len()
+    }
+
+    /// Iterate every discovered root in priority order: host roots
+    /// first (they win pom/hash lookups per the discover ordering),
+    /// then rootfs roots. Used by [`read_pom`] and
+    /// [`read_artifact_hash`].
+    fn all_roots(&self) -> impl Iterator<Item = &Path> {
+        self.host_roots
+            .iter()
+            .chain(self.rootfs_roots.iter())
+            .map(|p| p.as_path())
     }
 
     /// Read `<root>/<group-as-path>/<artifact>/<version>/<artifact>-<version>.pom`
     /// from the first cache root that has it. Returns `None` when no
     /// cache has the artefact or IO fails.
     pub(crate) fn read_pom(&self, group: &str, artifact: &str, version: &str) -> Option<Vec<u8>> {
-        if self.roots.is_empty() {
+        if self.total_roots() == 0 {
             return None;
         }
         let group_path = group.replace('.', "/");
         let relative =
             format!("{group_path}/{artifact}/{version}/{artifact}-{version}.pom");
-        for root in &self.roots {
+        for root in self.all_roots() {
             let path = root.join(&relative);
             if let Ok(bytes) = std::fs::read(&path) {
                 return Some(bytes);
@@ -133,13 +197,13 @@ impl MavenRepoCache {
         artifact: &str,
         version: &str,
     ) -> Vec<mikebom_common::types::hash::ContentHash> {
-        if self.roots.is_empty() {
+        if self.total_roots() == 0 {
             return Vec::new();
         }
         let group_path = group.replace('.', "/");
         let base = format!("{group_path}/{artifact}/{version}/{artifact}-{version}.jar");
         let mut out: Vec<mikebom_common::types::hash::ContentHash> = Vec::new();
-        for root in &self.roots {
+        for root in self.all_roots() {
             let jar_path = root.join(&base);
             if let Some(hash) = read_sidecar(&jar_path) {
                 out.push(hash);
@@ -157,6 +221,142 @@ impl MavenRepoCache {
         }
         out
     }
+
+    /// Walk every `.pom` file under the rootfs-scoped cache roots and
+    /// extract `(group, artifact, version)` from the path structure:
+    ///   `<root>/<group-as-path>/<artifact>/<version>/<artifact>-<version>.pom`
+    ///
+    /// This is the "unconditional cache walk" that closes the gap where
+    /// a scan finds no scanned `pom.xml` and no packed-JAR `META-INF/maven/`
+    /// metadata — trivy walks the whole `.m2/repository/` tree for
+    /// exactly this case. The returned coords are deduplicated and
+    /// ordered as discovered.
+    ///
+    /// Host-scoped roots (`$HOME/.m2`, `$M2_REPO`, `$MAVEN_HOME`) are
+    /// intentionally skipped: they belong to the invoker, not the scan
+    /// target. Walking them would leak the dev's unrelated cache
+    /// contents into every scan.
+    ///
+    /// Stops emitting new coords once `cap` distinct `.pom` files have
+    /// been visited across all rootfs roots; a `warn` log fires when
+    /// truncation happens so users know the output is bounded.
+    /// I/O errors on individual directory entries are silently skipped
+    /// so a single unreadable subtree doesn't abort the whole walk.
+    pub(crate) fn walk_rootfs_poms(
+        &self,
+        cap: usize,
+    ) -> Vec<(String, String, String)> {
+        if self.rootfs_roots.is_empty() || cap == 0 {
+            return Vec::new();
+        }
+        let mut seen: HashSet<(String, String, String)> = HashSet::new();
+        let mut out: Vec<(String, String, String)> = Vec::new();
+        let mut files_visited: usize = 0;
+        let mut truncated = false;
+
+        'roots: for root in &self.rootfs_roots {
+            // Manual stack-based walker mirroring `scan_fs/walker.rs`.
+            // Using `walkdir` would pull a new transitive dep; the
+            // std-library form is short enough to inline.
+            let mut stack: Vec<PathBuf> = vec![root.clone()];
+            while let Some(dir) = stack.pop() {
+                let entries = match std::fs::read_dir(&dir) {
+                    Ok(it) => it,
+                    Err(_) => continue,
+                };
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    let ft = match entry.file_type() {
+                        Ok(t) => t,
+                        Err(_) => continue,
+                    };
+                    if ft.is_dir() {
+                        stack.push(path);
+                        continue;
+                    }
+                    if !ft.is_file() {
+                        continue;
+                    }
+                    // Cheap extension check before we do the path
+                    // arithmetic: skip non-.pom files immediately.
+                    let is_pom = path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .map(|e| e.eq_ignore_ascii_case("pom"))
+                        .unwrap_or(false);
+                    if !is_pom {
+                        continue;
+                    }
+                    files_visited += 1;
+                    if files_visited > cap {
+                        truncated = true;
+                        break 'roots;
+                    }
+                    if let Some(coord) = coord_from_m2_path(root, &path) {
+                        if seen.insert(coord.clone()) {
+                            tracing::debug!(
+                                group = %coord.0,
+                                artifact = %coord.1,
+                                version = %coord.2,
+                                "maven cache walk seed",
+                            );
+                            out.push(coord);
+                        }
+                    }
+                }
+            }
+        }
+
+        if truncated {
+            tracing::warn!(
+                cap,
+                visited = files_visited,
+                seeds = out.len(),
+                "maven cache walk truncated — .m2 cache has more .pom files than the safety cap; some coords will not be emitted",
+            );
+        }
+        out
+    }
+}
+
+/// Parse `(group, artifact, version)` from a Maven repo path of the
+/// shape `<root>/<g1>/<g2>/.../<artifact>/<version>/<artifact>-<version>.pom`.
+///
+/// The group is the path segments between `root` and `<artifact>`,
+/// joined with `.`. The filename must be `<artifact>-<version>.pom`
+/// (sanity-checks group/artifact/version consistency between path and
+/// filename — a sibling `<artifact>-<version>-sources.pom` or
+/// `maven-metadata.xml` would fail this check and be silently
+/// skipped).
+///
+/// Returns `None` for any path that doesn't fit the Maven layout.
+fn coord_from_m2_path(root: &Path, pom_path: &Path) -> Option<(String, String, String)> {
+    let rel = pom_path.strip_prefix(root).ok()?;
+    let segments: Vec<&str> = rel
+        .iter()
+        .filter_map(|s| s.to_str())
+        .collect();
+    // Need at least group/<artifact>/<version>/<file>, and the group
+    // must carry at least one segment (no artifact at the repo root).
+    if segments.len() < 4 {
+        return None;
+    }
+    let file_name = segments.last()?;
+    let version = segments[segments.len() - 2];
+    let artifact = segments[segments.len() - 3];
+    let group_parts = &segments[..segments.len() - 3];
+    if group_parts.is_empty() || artifact.is_empty() || version.is_empty() {
+        return None;
+    }
+    let expected_file = format!("{artifact}-{version}.pom");
+    if *file_name != expected_file.as_str() {
+        return None;
+    }
+    let group = group_parts.join(".");
+    if group.is_empty() {
+        return None;
+    }
+    Some((group, artifact.to_string(), version.to_string()))
 }
 
 /// Probe the three sidecar extensions in strongest-first order at
@@ -1209,10 +1409,10 @@ pub fn read_with_claims(
     // fetching it gives us that dep's own <dependencies> block for
     // transitive edges.
     let repo_cache = MavenRepoCache::discover(rootfs);
-    if !repo_cache.roots.is_empty() {
+    if repo_cache.total_roots() > 0 {
         tracing::debug!(
             rootfs = %rootfs.display(),
-            repo_roots = repo_cache.roots.len(),
+            repo_roots = repo_cache.total_roots(),
             "Maven repo cache discovered",
         );
     }
@@ -1356,6 +1556,48 @@ pub fn read_with_claims(
         // Append the transitive entries (deduped against direct coords
         // via PURL so we never emit the same coord twice).
         for entry in bfs_entries {
+            let key = entry.purl.as_str().to_string();
+            if seen_purls.insert(key) {
+                out.push(entry);
+            }
+        }
+    }
+
+    // Unconditional `.m2` cache walk — closes the coverage gap where
+    // the scan finds no project `pom.xml` and no packed-JAR metadata
+    // (e.g. shaded uber-JARs that strip `META-INF/maven/`, or
+    // container images pre-warmed with a `.m2/repository/` but no
+    // sources). Each cached `<artifact>-<version>.pom` seeds the BFS;
+    // it then fetches each coord's pom from the cache, parses its
+    // declared deps, and extends the transitive closure across the
+    // full cache.
+    //
+    // Ordering matters: runs AFTER the pom.xml loop so any direct-dep
+    // coord emitted as `source_type="workspace"` wins over the
+    // cache-walker's `"transitive"` tagging via the `seen_purls`
+    // dedup. JAR-meta emission below also wins since it runs after.
+    //
+    // Only rootfs-scoped roots are walked. Host-scoped roots
+    // (`$HOME/.m2`, `$M2_REPO`, `$MAVEN_HOME`) are still used by
+    // `read_pom` for BFS lookups but never walked wholesale — a dev
+    // running mikebom against a project fixture shouldn't drag every
+    // artifact on their laptop into the output.
+    const MAVEN_CACHE_POM_LIMIT: usize = 10_000;
+    let cache_seeds = repo_cache.walk_rootfs_poms(MAVEN_CACHE_POM_LIMIT);
+    if !cache_seeds.is_empty() {
+        tracing::info!(
+            cache_seeds = cache_seeds.len(),
+            "seeding Maven BFS from unconditional .m2 cache walk",
+        );
+        let cache_source_path = rootfs.to_string_lossy().into_owned();
+        let cache_entries = bfs_transitive_poms(
+            &repo_cache,
+            &pom_store,
+            &cache_seeds,
+            include_dev,
+            &cache_source_path,
+        );
+        for entry in cache_entries {
             let key = entry.purl.as_str().to_string();
             if seen_purls.insert(key) {
                 out.push(entry);
@@ -2036,9 +2278,7 @@ mod tests {
   </dependencies>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let bytes = cache
             .read_pom("com.google.guava", "guava", "32.1.3-jre")
             .expect("cached pom readable");
@@ -2084,9 +2324,7 @@ mod tests {
             "4",
             r#"<project><groupId>ex</groupId><artifactId>d</artifactId><version>4</version></project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let entries = bfs_transitive_poms(
             &cache,
             &HashMap::new(),
@@ -2133,9 +2371,7 @@ mod tests {
 <dependencies><dependency><groupId>ex</groupId><artifactId>a</artifactId><version>1</version></dependency></dependencies>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let entries = bfs_transitive_poms(
             &cache,
             &HashMap::new(),
@@ -2166,9 +2402,7 @@ mod tests {
 <dependencies><dependency><groupId>ex</groupId><artifactId>b</artifactId><version>1</version></dependency></dependencies>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let entries = bfs_transitive_poms(
             &cache,
             &HashMap::new(),
@@ -2214,9 +2448,7 @@ mod tests {
             "1",
             r#"<project><groupId>ex</groupId><artifactId>c</artifactId><version>1</version></project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         // include_dev = false: test-scope B not followed, so BFS emits only A.
         let entries = bfs_transitive_poms(
             &cache,
@@ -2263,9 +2495,7 @@ mod tests {
 <dependencies><dependency><groupId>${unresolved}</groupId><artifactId>x</artifactId><version>1</version></dependency></dependencies>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let entries = bfs_transitive_poms(
             &cache,
             &HashMap::new(),
@@ -2340,9 +2570,7 @@ mod tests {
 <properties><foo>parent</foo><bar>parent</bar></properties>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let child = parse_pom_xml(
             br#"<project>
 <parent><groupId>ex</groupId><artifactId>parent</artifactId><version>1</version></parent>
@@ -2373,9 +2601,7 @@ mod tests {
 </dependencies></dependencyManagement>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let child = parse_pom_xml(
             br#"<project>
 <parent><groupId>ex</groupId><artifactId>parent</artifactId><version>1</version></parent>
@@ -2415,9 +2641,7 @@ mod tests {
 <parent><groupId>ex</groupId><artifactId>grand</artifactId><version>1</version></parent>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let child = parse_pom_xml(
             br#"<project>
 <parent><groupId>ex</groupId><artifactId>parent</artifactId><version>1</version></parent>
@@ -2445,9 +2669,7 @@ mod tests {
 </dependencies></dependencyManagement>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let child = parse_pom_xml(
             br#"<project>
 <parent><groupId>ex</groupId><artifactId>parent</artifactId><version>1</version></parent>
@@ -2485,9 +2707,7 @@ mod tests {
 </dependencies></dependencyManagement>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let child = parse_pom_xml(
             br#"<project>
 <parent><groupId>ex</groupId><artifactId>parent</artifactId><version>1</version></parent>
@@ -2528,9 +2748,7 @@ mod tests {
 <parent><groupId>ex</groupId><artifactId>a</artifactId><version>1</version></parent>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let doc = parse_pom_xml(
             br#"<project><groupId>ex</groupId><artifactId>a</artifactId><version>1</version>
 <parent><groupId>ex</groupId><artifactId>b</artifactId><version>1</version></parent>
@@ -2577,9 +2795,7 @@ mod tests {
 </dependencies></dependencyManagement>
 </project>"#,
         );
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let child = parse_pom_xml(
             br#"<project>
 <groupId>ex</groupId><artifactId>child</artifactId><version>1</version>
@@ -2664,9 +2880,7 @@ mod tests {
                 &format!("<project><groupId>{g}</groupId><artifactId>{a}</artifactId><version>{v}</version></project>"),
             );
         }
-        let cache = MavenRepoCache {
-            roots: vec![repo_root.clone()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
         let entries = bfs_transitive_poms(
             &cache,
             &HashMap::new(),
@@ -2859,9 +3073,7 @@ mod tests {
         let hex = "f".repeat(64);
         write_sidecar(&jar, "sha256", &hex);
 
-        let cache = MavenRepoCache {
-            roots: vec![dir.path().to_path_buf()],
-        };
+        let cache = MavenRepoCache::for_tests(vec![dir.path().to_path_buf()]);
         let hashes = cache.read_artifact_hash("com.example", "myapp", "1.0.0");
         assert_eq!(hashes.len(), 1);
         assert_eq!(hashes[0].value.as_str(), &hex);
@@ -2869,8 +3081,176 @@ mod tests {
 
     #[test]
     fn read_artifact_hash_returns_empty_when_no_cache_roots() {
-        let cache = MavenRepoCache { roots: vec![] };
+        let cache = MavenRepoCache::for_tests(vec![]);
         let hashes = cache.read_artifact_hash("com.example", "myapp", "1.0.0");
         assert!(hashes.is_empty());
+    }
+
+    // --- walk_rootfs_poms ----------------------------------------------
+    // (reuses the existing `write_cached_pom` helper defined higher up
+    // in this tests module)
+
+    #[test]
+    fn walk_rootfs_poms_finds_multiple_cached_artifacts() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().to_path_buf();
+        write_cached_pom(
+            &repo_root,
+            "com.example",
+            "alpha",
+            "1.0.0",
+            r#"<project><groupId>com.example</groupId><artifactId>alpha</artifactId><version>1.0.0</version></project>"#,
+        );
+        write_cached_pom(
+            &repo_root,
+            "org.sample",
+            "beta",
+            "2.1.5",
+            r#"<project><groupId>org.sample</groupId><artifactId>beta</artifactId><version>2.1.5</version></project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests(vec![repo_root]);
+        let coords = cache.walk_rootfs_poms(1000);
+
+        assert_eq!(coords.len(), 2, "expected both cached coords: {coords:?}");
+        assert!(coords.contains(&(
+            "com.example".to_string(),
+            "alpha".to_string(),
+            "1.0.0".to_string()
+        )));
+        assert!(coords.contains(&(
+            "org.sample".to_string(),
+            "beta".to_string(),
+            "2.1.5".to_string()
+        )));
+    }
+
+    #[test]
+    fn walk_rootfs_poms_skips_host_scoped_roots() {
+        // A cache whose only root is in `host_roots` should produce
+        // zero seeds even if the directory contains cached .pom files.
+        // This is the invariant that prevents `$HOME/.m2` from
+        // leaking into the scan output.
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().to_path_buf();
+        write_cached_pom(
+            &repo_root,
+            "com.example",
+            "alpha",
+            "1.0.0",
+            r#"<project><groupId>com.example</groupId><artifactId>alpha</artifactId><version>1.0.0</version></project>"#,
+        );
+        let cache = MavenRepoCache {
+            rootfs_roots: Vec::new(),
+            host_roots: vec![repo_root.clone()],
+        };
+        let coords = cache.walk_rootfs_poms(1000);
+        assert!(
+            coords.is_empty(),
+            "host-scoped root must not be walked unconditionally: {coords:?}"
+        );
+        // But read_pom still finds host-cached artifacts — the BFS
+        // path consults host caches even when the walk ignores them.
+        assert!(cache
+            .read_pom("com.example", "alpine", "1.0.0")
+            .is_none());
+        assert!(cache.read_pom("com.example", "alpha", "1.0.0").is_some());
+    }
+
+    #[test]
+    fn walk_rootfs_poms_ignores_sibling_non_pom_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().to_path_buf();
+        write_cached_pom(
+            &repo_root,
+            "com.example",
+            "alpha",
+            "1.0.0",
+            r#"<project><groupId>com.example</groupId><artifactId>alpha</artifactId><version>1.0.0</version></project>"#,
+        );
+        // Sibling files that live alongside a real .pom in .m2: a
+        // sources-classifier pom variant, maven-metadata, sidecars.
+        // None of these should produce coords.
+        let dir_path = repo_root.join("com/example/alpha/1.0.0");
+        std::fs::write(dir_path.join("alpha-1.0.0.jar"), b"").unwrap();
+        std::fs::write(dir_path.join("alpha-1.0.0.jar.sha1"), b"deadbeef").unwrap();
+        std::fs::write(dir_path.join("alpha-1.0.0-sources.pom"), b"").unwrap();
+        std::fs::write(dir_path.join("maven-metadata.xml"), b"").unwrap();
+
+        let cache = MavenRepoCache::for_tests(vec![repo_root]);
+        let coords = cache.walk_rootfs_poms(1000);
+        assert_eq!(coords, vec![(
+            "com.example".to_string(),
+            "alpha".to_string(),
+            "1.0.0".to_string()
+        )]);
+    }
+
+    #[test]
+    fn walk_rootfs_poms_truncates_at_cap() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().to_path_buf();
+        for i in 0..5 {
+            write_cached_pom(
+                &repo_root,
+                "com.example",
+                "alpha",
+                &format!("{i}.0"),
+                &format!(
+                    "<project><groupId>com.example</groupId><artifactId>alpha</artifactId><version>{i}.0</version></project>",
+                ),
+            );
+        }
+        let cache = MavenRepoCache::for_tests(vec![repo_root]);
+        let coords = cache.walk_rootfs_poms(3);
+        assert_eq!(coords.len(), 3, "cap=3 must truncate 5 cached poms");
+    }
+
+    #[test]
+    fn walk_rootfs_poms_handles_deep_group_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().to_path_buf();
+        write_cached_pom(
+            &repo_root,
+            "org.apache.commons.collections",
+            "commons-collections4",
+            "4.4",
+            r#"<project><groupId>org.apache.commons.collections</groupId><artifactId>commons-collections4</artifactId><version>4.4</version></project>"#,
+        );
+        let cache = MavenRepoCache::for_tests(vec![repo_root]);
+        let coords = cache.walk_rootfs_poms(1000);
+        assert_eq!(coords, vec![(
+            "org.apache.commons.collections".to_string(),
+            "commons-collections4".to_string(),
+            "4.4".to_string(),
+        )]);
+    }
+
+    #[test]
+    fn walk_rootfs_poms_empty_cache_returns_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = MavenRepoCache::for_tests(vec![dir.path().to_path_buf()]);
+        assert!(cache.walk_rootfs_poms(1000).is_empty());
+    }
+
+    #[test]
+    fn coord_from_m2_path_rejects_malformed_paths() {
+        let root = Path::new("/fake/root");
+        // Short path (missing group segment entirely)
+        assert!(coord_from_m2_path(root, Path::new("/fake/root/a/1.0/a-1.0.pom")).is_none());
+        // File name doesn't match artifact-version.pom
+        assert!(coord_from_m2_path(
+            root,
+            Path::new("/fake/root/com/example/a/1.0/OTHER.pom")
+        )
+        .is_none());
+        // Well-formed path — accepts.
+        assert_eq!(
+            coord_from_m2_path(
+                root,
+                Path::new("/fake/root/com/example/a/1.0/a-1.0.pom"),
+            ),
+            Some(("com.example".to_string(), "a".to_string(), "1.0".to_string()))
+        );
     }
 }
