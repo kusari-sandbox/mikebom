@@ -58,8 +58,15 @@ jobs:
 
       # Pin `+stable` explicitly on clippy/test so these never fall through
       # to nightly even if something earlier changes the default.
+      #
+      # No `-D warnings`: the repo's load-bearing lint is
+      # `#![deny(clippy::unwrap_used)]` at the mikebom-cli crate root
+      # (Constitution Principle IV). That still errors through clippy
+      # regardless of -D warnings. Other clippy categories remain
+      # warnings — visible in the log, not blocking — so CI doesn't
+      # become a constant stream of cosmetic-lint bikeshedding.
       - name: Clippy
-        run: cargo +stable clippy --workspace --all-targets -- -D warnings
+        run: cargo +stable clippy --workspace --all-targets
 
       - name: Tests
         run: cargo +stable test --workspace

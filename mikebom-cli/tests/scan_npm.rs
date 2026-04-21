@@ -279,21 +279,15 @@ fn npm_dependency_tree_reflects_lockfile() {
         .collect();
 
     assert!(
-        depends_on
-            .iter()
-            .any(|s| *s == "pkg:npm/body-parser@1.20.1"),
+        depends_on.contains(&"pkg:npm/body-parser@1.20.1"),
         "express → body-parser@1.20.1 expected; got {depends_on:?}"
     );
     assert!(
-        depends_on
-            .iter()
-            .any(|s| *s == "pkg:npm/cookie-signature@1.0.6"),
+        depends_on.contains(&"pkg:npm/cookie-signature@1.0.6"),
         "express → cookie-signature@1.0.6 expected; got {depends_on:?}"
     );
     assert!(
-        depends_on
-            .iter()
-            .any(|s| *s == "pkg:npm/safe-buffer@5.2.1"),
+        depends_on.contains(&"pkg:npm/safe-buffer@5.2.1"),
         "express → safe-buffer@5.2.1 expected; got {depends_on:?}"
     );
 }

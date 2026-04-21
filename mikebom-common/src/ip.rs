@@ -67,7 +67,7 @@ impl core::fmt::Display for IpAddr {
                 }
                 let hi = self.octets[i * 2];
                 let lo = self.octets[i * 2 + 1];
-                write!(f, "{:x}{:02x}", hi, lo)?;
+                write!(f, "{hi:x}{lo:02x}")?;
             }
             Ok(())
         }
@@ -77,7 +77,7 @@ impl core::fmt::Display for IpAddr {
 #[cfg(feature = "std")]
 impl core::fmt::Debug for IpAddr {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "IpAddr({})", self)
+        write!(f, "IpAddr({self})")
     }
 }
 
