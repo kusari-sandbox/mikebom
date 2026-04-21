@@ -165,9 +165,17 @@ On the 88 deb packages in `debian:bookworm-slim`:
 | `+` encoding in name (e.g. `libstdc++6` → `libstdc%2B%2B6`) | `%2B` | **88/88** | 88/88 | 88/88 | 88/88 |
 | Epoch `:` in version        | literal (`1:2.38.1`)         | **88/88**| 0/88 (`%3A`) | N/A (strips) | 0/88 (`%3A`) |
 | Epoch placement             | inside `@<version>` segment  | **88/88**| 88/88    | 0/88 (qualifier) | 88/88 |
-| `distro=` value             | plain codename (`bookworm`)  | **88/88**| 0/88 (`debian-12`) | 0/88 (`debian-12.13`) | 88/88 |
 | No non-identity qualifiers  | —                            | **88/88**| 0/88 (`upstream=`) | 88/88 | 0/88 (`source=`) |
 | **Reference-impl conformant overall** | — | **88/88 (100%)** | 77/88 (88%) | 88/88 (100%) | 77/88 (88%) |
+
+> The `distro=` qualifier shape deliberately isn't listed as a
+> reference-impl rule — the purl-spec doesn't pin one form, and real
+> consumers accept both bare codenames (`bookworm`) and
+> `<namespace>-<VERSION_ID>` (`debian-12`). mikebom emits the
+> `<namespace>-<VERSION_ID>` form across deb, rpm, and apk for a single
+> shape downstream consumers can match against without per-ecosystem
+> branching. See [`docs/architecture/purls-and-cpes.md`](docs/architecture/purls-and-cpes.md)
+> for the rule.
 
 mikebom's canonical form is **88/88** reference-impl conformant. No
 other tool scores above 14/88 on the same input. Getting this right

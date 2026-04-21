@@ -15,8 +15,10 @@ pub fn resolve_path(path: &str) -> Option<Purl> {
 }
 
 /// Same as [`resolve_path`] but threads per-trace context (e.g. the distro
-/// codename from `/etc/os-release`) through to the deb resolver so the
-/// produced PURL can carry a `distro=bookworm`-style qualifier.
+/// identifier from `/etc/os-release`) through to the deb resolver so the
+/// produced PURL can carry a `distro=<value>` qualifier. The value is
+/// stamped verbatim — callers decide the shape (scan-mode package-DB
+/// readers use `<namespace>-<VERSION_ID>`, e.g. `debian-12`).
 pub fn resolve_path_with_context(path: &str, deb_codename: Option<&str>) -> Option<Purl> {
     None.or_else(|| resolve_cargo_path(path))
         .or_else(|| resolve_pip_path(path))
@@ -315,9 +317,10 @@ fn resolve_deb_path(path: &str, codename_hint: Option<&str>) -> Option<Purl> {
     // versions per the packageurl-python reference impl.
     let encoded_name = mikebom_common::types::purl::encode_purl_segment(name);
 
-    // PURL deb spec: `distro` qualifier is just the codename (`bookworm`),
-    // never `debian-bookworm` or `debian-12`. Omitted when we can't
-    // determine it from the trace host.
+    // The `distro` qualifier is stamped verbatim from whatever the caller
+    // passed — usually `<namespace>-<VERSION_ID>` (e.g. `debian-12`) to
+    // match what the scan-mode package-DB readers emit. Omitted entirely
+    // when no hint was supplied.
     let mut purl_str = format!("pkg:deb/debian/{encoded_name}@{version}?arch={arch}");
     if let Some(cn) = codename_hint {
         purl_str.push_str(&format!("&distro={cn}"));
@@ -660,20 +663,20 @@ mod tests {
     }
 
     #[test]
-    fn deb_path_carries_codename_when_hinted() {
+    fn deb_path_stamps_distro_hint_verbatim() {
+        // The resolver stamps whatever the caller passed. Scan-mode code
+        // paths pass `<namespace>-<VERSION_ID>` (e.g. `debian-12`); legacy
+        // trace-capture paths may still pass a bare codename. Either way,
+        // the function stamps it verbatim.
         let purl = super::resolve_path_with_context(
             "/var/cache/apt/archives/jq_1.7.1-3build1_arm64.deb",
-            Some("bookworm"),
+            Some("debian-12"),
         )
         .expect("should resolve");
-        let canonical = purl.as_str();
         assert!(
-            canonical.contains("distro=bookworm"),
-            "expected distro=bookworm in {canonical}"
-        );
-        assert!(
-            !canonical.contains("distro=debian-"),
-            "should not emit legacy `debian-<codename>` form: {canonical}"
+            purl.as_str().contains("distro=debian-12"),
+            "expected distro=debian-12 in {}",
+            purl.as_str()
         );
     }
 
