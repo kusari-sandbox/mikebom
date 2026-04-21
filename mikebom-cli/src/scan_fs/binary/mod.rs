@@ -247,6 +247,12 @@ pub fn read(
     let mut jdk_collapser = jdk_collapse::JdkCollapser::default();
     let rootfs_kind = detect_rootfs_kind(rootfs);
     let has_rpmdb = has_rpmdb_at(rootfs);
+    // Conformance bug 1 fix: the ELF-note-package PURL builder needs
+    // the scan's OS context to fall back on when the note itself
+    // doesn't carry a `distro` string. Read once per scan.
+    let os_release_id = crate::scan_fs::os_release::read_id_from_rootfs(rootfs);
+    let os_release_version_id =
+        crate::scan_fs::os_release::read_version_id_from_rootfs(rootfs);
     // v5 Phase A diagnostic: when MIKEBOM_WALKER_DEBUG=1 is set, every
     // filter decision emits a single line to stderr. Used to identify
     // which binaries get dropped by which rule (regression-diagnosis
@@ -477,9 +483,24 @@ pub fn read(
 
         // ELF-note-package component (authoritative, source-tier;
         // ELF-only — Mach-O / PE don't carry this section).
-        if let Some(note) = &scan.note_package {
-            if let Some(note_entry) = note_package_to_entry(note, &path) {
-                out.push(note_entry);
+        //
+        // v6 fix (conformance bug 1): gated on `skip_file_level_and_linkage`
+        // so claimed binaries (dpkg/rpm/apk-owned) don't double-emit
+        // `pkg:rpm/rpm/<source-package>@<ver>` ghosts alongside the
+        // authoritative `pkg:rpm/<vendor>/<deployed-subpackage>@<ver>`
+        // entry from the package-db reader. Fedora images previously
+        // produced 50 such ghosts. Unclaimed binaries still emit —
+        // this is the only identity source for them.
+        if !skip_file_level_and_linkage {
+            if let Some(note) = &scan.note_package {
+                if let Some(note_entry) = note_package_to_entry(
+                    note,
+                    &path,
+                    os_release_id.as_deref(),
+                    os_release_version_id.as_deref(),
+                ) {
+                    out.push(note_entry);
+                }
             }
         }
 
@@ -941,53 +962,87 @@ impl PackageDbEntry {
 /// Convert a parsed `.note.package` payload into a `PackageDbEntry`
 /// per FR-024. Vendor derived from `distro` via the milestone-003
 /// `rpm_vendor_from_id` map for RPM-family notes.
-fn note_package_to_entry(note: &elf::ElfNotePackage, path: &Path) -> Option<PackageDbEntry> {
+fn note_package_to_entry(
+    note: &elf::ElfNotePackage,
+    path: &Path,
+    os_release_id: Option<&str>,
+    os_release_version_id: Option<&str>,
+) -> Option<PackageDbEntry> {
     if note.name.is_empty() || note.version.is_empty() {
         return None;
     }
-    let arch_seg = note
+    let mut qualifiers = note
         .architecture
         .as_deref()
         .filter(|s| !s.is_empty())
         .map(|a| format!("?arch={a}"))
         .unwrap_or_default();
 
+    // v6 fix (conformance bug 1 / ELF-note ghosts): vendor namespace
+    // precedence is (1) the ELF note's own `distro` field when
+    // populated, then (2) the scan-wide `/etc/os-release` ID, then
+    // (3) a hardcoded default. Prior to this change, an unclaimed
+    // Fedora binary with no `distro` in its ELF note emitted
+    // `pkg:rpm/rpm/<name>@<ver>` — no OS context. Threading the
+    // os-release ID recovers the correct namespace for the fallback
+    // path.
+    let resolve_vendor = |note_distro: Option<&str>, default_fallback: &str| -> String {
+        let from_note = note_distro
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|d| d.to_lowercase());
+        if let Some(d) = from_note {
+            return d;
+        }
+        if let Some(id) = os_release_id.filter(|s| !s.is_empty()) {
+            return id.to_lowercase();
+        }
+        default_fallback.to_string()
+    };
+    let append_distro_qualifier = |qualifiers: &mut String, vendor: &str| {
+        // Emit `distro=<vendor>-<VERSION_ID>` only when both halves
+        // are available. Mirrors the dpkg / rpm / apk package-db
+        // readers' qualifier shape.
+        if let Some(version_id) = os_release_version_id.filter(|s| !s.is_empty()) {
+            let prefix = if qualifiers.is_empty() { '?' } else { '&' };
+            qualifiers.push(prefix);
+            qualifiers.push_str("distro=");
+            qualifiers.push_str(vendor);
+            qualifiers.push('-');
+            qualifiers.push_str(version_id);
+        }
+    };
+
     let purl_str = match note.note_type.as_str() {
         "rpm" => {
-            let vendor = note
-                .distro
-                .as_deref()
-                .map(|d| rpm_vendor_from_id(&d.to_lowercase()))
-                .unwrap_or_else(|| "rpm".to_string());
+            let raw_vendor = resolve_vendor(note.distro.as_deref(), "rpm");
+            // rpm_vendor_from_id normalizes `rhel`→`redhat`, `ol`→`oracle`,
+            // etc. Same mapping used by rpm.rs for the rpmdb reader.
+            let vendor = rpm_vendor_from_id(&raw_vendor);
+            append_distro_qualifier(&mut qualifiers, &vendor);
             format!(
-                "pkg:rpm/{vendor}/{}@{}{arch_seg}",
+                "pkg:rpm/{vendor}/{}@{}{qualifiers}",
                 note.name, note.version,
             )
         }
         "deb" => {
-            let vendor = note
-                .distro
-                .as_deref()
-                .map(|d| d.to_lowercase())
-                .unwrap_or_else(|| "debian".to_string());
+            let vendor = resolve_vendor(note.distro.as_deref(), "debian");
+            append_distro_qualifier(&mut qualifiers, &vendor);
             format!(
-                "pkg:deb/{vendor}/{}@{}{arch_seg}",
+                "pkg:deb/{vendor}/{}@{}{qualifiers}",
                 note.name, note.version,
             )
         }
         "apk" => {
-            let vendor = note
-                .distro
-                .as_deref()
-                .map(|d| d.to_lowercase())
-                .unwrap_or_else(|| "alpine".to_string());
+            let vendor = resolve_vendor(note.distro.as_deref(), "alpine");
+            append_distro_qualifier(&mut qualifiers, &vendor);
             format!(
-                "pkg:apk/{vendor}/{}@{}{arch_seg}",
+                "pkg:apk/{vendor}/{}@{}{qualifiers}",
                 note.name, note.version,
             )
         }
         "alpm" | "pacman" => {
-            format!("pkg:alpm/arch/{}@{}{arch_seg}", note.name, note.version)
+            format!("pkg:alpm/arch/{}@{}{qualifiers}", note.name, note.version)
         }
         _ => format!("pkg:generic/{}@{}", note.name, note.version),
     };
@@ -1034,13 +1089,87 @@ mod tests {
             distro: Some("fedora".into()),
             os_cpe: None,
         };
-        let entry = note_package_to_entry(&note, Path::new("/opt/curl")).unwrap();
+        let entry =
+            note_package_to_entry(&note, Path::new("/opt/curl"), None, None).unwrap();
         assert_eq!(
             entry.purl.as_str(),
             "pkg:rpm/fedora/curl@8.2.1?arch=x86_64"
         );
         assert_eq!(entry.evidence_kind.as_deref(), Some("elf-note-package"));
         assert_eq!(entry.sbom_tier.as_deref(), Some("source"));
+    }
+
+    #[test]
+    fn note_package_rpm_uses_os_release_namespace_when_note_distro_absent() {
+        // Conformance bug 1 fix: when the ELF note has no distro field
+        // but the scan's /etc/os-release ID is known, use the os-release
+        // ID instead of the bare "rpm" fallback. Fixes Fedora ghosts
+        // emitting pkg:rpm/rpm/<name>.
+        let note = elf::ElfNotePackage {
+            note_type: "rpm".into(),
+            name: "ModemManager".into(),
+            version: "1.22.0-3.fc40".into(),
+            architecture: Some("aarch64".into()),
+            distro: None,
+            os_cpe: None,
+        };
+        let entry = note_package_to_entry(
+            &note,
+            Path::new("/usr/libexec/mm-plugin-broadband"),
+            Some("fedora"),
+            Some("40"),
+        )
+        .unwrap();
+        assert_eq!(
+            entry.purl.as_str(),
+            "pkg:rpm/fedora/ModemManager@1.22.0-3.fc40?arch=aarch64&distro=fedora-40"
+        );
+    }
+
+    #[test]
+    fn note_package_rpm_prefers_note_distro_over_os_release() {
+        // Precedence: ELF note's own `distro` wins over os-release ID.
+        let note = elf::ElfNotePackage {
+            note_type: "rpm".into(),
+            name: "curl".into(),
+            version: "8.2.1".into(),
+            architecture: Some("x86_64".into()),
+            distro: Some("rocky".into()),
+            os_cpe: None,
+        };
+        // Note says rocky, os-release (hypothetically wrong) says fedora.
+        // rocky wins; rpm_vendor_from_id keeps rocky→rocky, then appends
+        // distro=rocky-9 from VERSION_ID.
+        let entry = note_package_to_entry(
+            &note,
+            Path::new("/usr/bin/curl"),
+            Some("fedora"),
+            Some("9"),
+        )
+        .unwrap();
+        assert_eq!(
+            entry.purl.as_str(),
+            "pkg:rpm/rocky/curl@8.2.1?arch=x86_64&distro=rocky-9"
+        );
+    }
+
+    #[test]
+    fn note_package_rpm_falls_back_to_rpm_when_no_context() {
+        // Final fallback: no note distro, no os-release. Emits the
+        // original bare "rpm" namespace. In practice this should never
+        // happen on a real scan (os-release is read first), but the
+        // defensive default preserves PURL validity.
+        let note = elf::ElfNotePackage {
+            note_type: "rpm".into(),
+            name: "foo".into(),
+            version: "1.0".into(),
+            architecture: None,
+            distro: None,
+            os_cpe: None,
+        };
+        let entry =
+            note_package_to_entry(&note, Path::new("/bin/foo"), None, None).unwrap();
+        assert_eq!(entry.purl.as_str(), "pkg:rpm/rpm/foo@1.0");
     }
 
     #[test]
@@ -1053,7 +1182,13 @@ mod tests {
             distro: Some("Arch Linux".into()),
             os_cpe: None,
         };
-        let entry = note_package_to_entry(&note, Path::new("/usr/bin/bash")).unwrap();
+        let entry = note_package_to_entry(
+            &note,
+            Path::new("/usr/bin/bash"),
+            None,
+            None,
+        )
+        .unwrap();
         assert_eq!(
             entry.purl.as_str(),
             "pkg:alpm/arch/bash@5.2.015-1?arch=x86_64"
@@ -1070,10 +1205,41 @@ mod tests {
             distro: None,
             os_cpe: None,
         };
-        let entry = note_package_to_entry(&note, Path::new("/usr/bin/vim")).unwrap();
+        // No os-release context either → "debian" fallback.
+        let entry = note_package_to_entry(
+            &note,
+            Path::new("/usr/bin/vim"),
+            None,
+            None,
+        )
+        .unwrap();
         assert_eq!(
             entry.purl.as_str(),
             "pkg:deb/debian/vim@9.0.0?arch=amd64"
+        );
+    }
+
+    #[test]
+    fn note_package_deb_uses_os_release_namespace_for_ubuntu() {
+        // Ubuntu image: ELF note lacks distro, os-release says ubuntu.
+        let note = elf::ElfNotePackage {
+            note_type: "deb".into(),
+            name: "openssh-server".into(),
+            version: "1:9.6p1-3ubuntu13".into(),
+            architecture: Some("amd64".into()),
+            distro: None,
+            os_cpe: None,
+        };
+        let entry = note_package_to_entry(
+            &note,
+            Path::new("/usr/sbin/sshd"),
+            Some("ubuntu"),
+            Some("24.04"),
+        )
+        .unwrap();
+        assert_eq!(
+            entry.purl.as_str(),
+            "pkg:deb/ubuntu/openssh-server@1:9.6p1-3ubuntu13?arch=amd64&distro=ubuntu-24.04"
         );
     }
 
@@ -1087,7 +1253,8 @@ mod tests {
             distro: None,
             os_cpe: None,
         };
-        let entry = note_package_to_entry(&note, Path::new("/bin/foo")).unwrap();
+        let entry =
+            note_package_to_entry(&note, Path::new("/bin/foo"), None, None).unwrap();
         assert_eq!(entry.purl.as_str(), "pkg:generic/foo@1.0");
     }
 

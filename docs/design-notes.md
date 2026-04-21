@@ -119,6 +119,7 @@ distinguishes how a coord was discovered:
 ### Binary scanner
 - **Version-string scanner is gated on `skip_file_level_and_linkage`** (added 2026-04-20 for conformance bug 6a). Claimed binaries no longer emit `pkg:generic/<library>@<version>` from the curated scanner. Trade-off: static-library version detection inside claimed binaries (e.g. statically-linked OpenSSL in a dpkg-owned binary) is lost. Accepted because the FP flood from self-identifying claimed binaries (curl reporting libcurl from /usr/bin/curl) was the larger correctness problem.
 - **Linkage aggregator probes standard library dirs** (added 2026-04-20 for conformance bug 6b) via `add_with_claim_check`. Sonames resolving to a claimed library path (e.g. libc.so.6 → /lib/x86_64-linux-gnu/libc.so.6 owned by libc6 deb) are skipped.
+- **ELF-note-package emission is claim-gated + OS-context-aware** (added 2026-04-20 for conformance bug 1). Previously unconditional — a claimed Fedora binary would emit both `pkg:rpm/fedora/<subpackage>@<ver>` (from rpmdb) AND a ghost `pkg:rpm/rpm/<source-package>@<ver>` (from the ELF `.note.package` section). Now the ELF-note emission is gated on `skip_file_level_and_linkage` (drops ghosts for claimed binaries). For unclaimed binaries, the signature of `note_package_to_entry` takes the scan's `/etc/os-release` `ID` and `VERSION_ID` — precedence is `note.distro` > os-release ID > hardcoded type default (rpm/debian/alpine). When VERSION_ID is known, a `distro=<vendor>-<version>` qualifier is appended. Trade-off: for claimed binaries we lose the ELF note's source-package identity; recovery is via rpm's `SOURCERPM` header if needed.
 - **Curated version-string scanner is a 7-library list** (OpenSSL/BoringSSL/zlib/SQLite/curl/PCRE/PCRE2). Binaries installed outside the package manager without matching patterns emit file-level only (hash-only PURL). Extending the list is case-by-case; see backlog item #12.
 
 ### OS-release reader
@@ -144,7 +145,7 @@ distinguishes how a coord was discovered:
 | Cache-warm tests | Synthetic `<rootfs>/root/.m2/repository/...` inside tempdirs | Avoids dependency on user's host `~/.m2` |
 | Online tests | Unit tests involving deps.dev are unit-tested only for name-formatting / URL construction; no HTTP roundtrips in CI | Integration tests that would need network are gated behind env-present checks |
 
-Full-suite regression: `cargo test --workspace` — 790 passing, 0 failed as of conformance-fix pass (2026-04-20). Baseline was 585 at milestone 003.
+Full-suite regression: `cargo test --workspace` — 804 passing, 0 failed as of ELF-note + cargo-root fix pass (2026-04-20). Baseline was 585 at milestone 003.
 
 ---
 

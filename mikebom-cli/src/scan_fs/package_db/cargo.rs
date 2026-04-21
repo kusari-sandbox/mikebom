@@ -204,6 +204,25 @@ fn parse_lockfile(path: &Path) -> Result<Vec<PackageDbEntry>, CargoError> {
     let source_path = path.to_string_lossy().into_owned();
     let mut out: Vec<PackageDbEntry> = Vec::new();
     for pkg in &doc.package {
+        // Conformance bug 2 fix: skip workspace-root / path-only
+        // entries. A Cargo.lock `[[package]]` with no `source` field
+        // IS the scanned project (or a workspace member), not a
+        // dependency. Emitting it produces a self-referential FP like
+        // `pkg:cargo/my-app@0.1.0` in the SBOM. Mirrors npm.rs's
+        // path_key == "" skip at parse_package_lock.
+        //
+        // Trade-off: path dependencies (`path = "../foo"` in Cargo.toml)
+        // also have `source = None` and will be dropped. Same behavior
+        // as npm (which skips `link: true` workspace entries).
+        // Revisit via `--include-path-deps` if a real use case appears.
+        if pkg.source.is_none() {
+            tracing::debug!(
+                name = %pkg.name,
+                version = %pkg.version,
+                "skipping cargo workspace-root/path entry (source absent)",
+            );
+            continue;
+        }
         if let Some(mut entry) = package_to_entry(pkg, &source_path) {
             // Attach SHA-256 ContentHash to registry crates only.
             if classify_source(pkg.source.as_deref()) == SourceKind::Registry {
@@ -219,8 +238,6 @@ fn parse_lockfile(path: &Path) -> Result<Vec<PackageDbEntry>, CargoError> {
                     }
                 }
             }
-            // Empty main/workspace-root entries with no version still
-            // emit — downstream dedup handles them.
             entry.source_path = source_path.clone();
             out.push(entry);
         }
@@ -440,6 +457,11 @@ checksum = "0000000000000000000000000000000000000000000000000000000000000000"
 
     #[test]
     fn read_walks_nested_workspace() {
+        // Verifies the walker descends into subdirectories to find
+        // Cargo.lock. Uses a registry dep alongside the workspace root
+        // so the registry dep's presence confirms the walk succeeded
+        // (the workspace root is filtered by design — see
+        // parse_lockfile_skips_workspace_root).
         let dir = tempfile::tempdir().unwrap();
         let sub = dir.path().join("services").join("api");
         std::fs::create_dir_all(&sub).unwrap();
@@ -449,10 +471,77 @@ version = 3
 [[package]]
 name = "api-crate"
 version = "0.1.0"
+
+[[package]]
+name = "serde"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e8eabd0c76a9f2678a5e1a5c0c7b8b8c99999999999999999999999999999999"
 "#;
         std::fs::write(sub.join("Cargo.lock"), body).unwrap();
         let entries = read(dir.path(), false).unwrap();
-        assert!(entries.iter().any(|e| e.name == "api-crate"));
+        // Walk found the nested Cargo.lock and emitted the registry dep.
+        assert!(entries.iter().any(|e| e.name == "serde"));
+        // Workspace root is filtered.
+        assert!(!entries.iter().any(|e| e.name == "api-crate"));
+    }
+
+    #[test]
+    fn parse_lockfile_skips_workspace_root() {
+        // A Cargo.lock with a workspace root (no source) and one registry
+        // dep should yield only the registry dep. The root is the
+        // scanned project itself — emitting it as a component produces
+        // a self-referential FP. Matches npm.rs's path_key == "" skip.
+        let dir = tempfile::tempdir().unwrap();
+        let body = r#"
+version = 3
+
+[[package]]
+name = "my-app"
+version = "0.1.0"
+
+[[package]]
+name = "serde"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+"#;
+        std::fs::write(dir.path().join("Cargo.lock"), body).unwrap();
+        let entries = read(dir.path(), false).unwrap();
+        assert_eq!(entries.len(), 1, "expected 1 entry, got {entries:?}");
+        assert_eq!(entries[0].name, "serde");
+    }
+
+    #[test]
+    fn parse_lockfile_skips_all_workspace_members() {
+        // Multi-crate workspace: all members have source = None and
+        // should all be filtered, leaving only registry deps.
+        let dir = tempfile::tempdir().unwrap();
+        let body = r#"
+version = 3
+
+[[package]]
+name = "my-app"
+version = "0.1.0"
+
+[[package]]
+name = "my-lib"
+version = "0.1.0"
+
+[[package]]
+name = "my-cli"
+version = "0.1.0"
+
+[[package]]
+name = "anyhow"
+version = "1.0.80"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393"
+"#;
+        std::fs::write(dir.path().join("Cargo.lock"), body).unwrap();
+        let entries = read(dir.path(), false).unwrap();
+        assert_eq!(entries.len(), 1, "only the registry dep should remain");
+        assert_eq!(entries[0].name, "anyhow");
     }
 
     #[test]
