@@ -1,0 +1,40 @@
+# mikebom documentation
+
+Two tracks. Pick the one that matches what you're trying to do.
+
+## Track 1 — Use mikebom
+
+Start here if you want to run the tool on a real codebase, container, or build.
+
+- [Installation](user-guide/installation.md) — prereqs, `cargo build`, Dockerfile.dev, Lima VM
+- [Quickstart](user-guide/quickstart.md) — three recipes that work today (trace, image scan, filesystem scan)
+- [CLI reference](user-guide/cli-reference.md) — every `mikebom <noun> <verb>` with flags and examples
+- [Configuration](user-guide/configuration.md) — global flags, environment variables, offline mode
+
+## Track 2 — Understand how mikebom works
+
+Start here if you want to know *why* a particular PURL, license, or CPE came out
+the way it did, or contribute to the pipeline.
+
+- [Architecture overview](architecture/overview.md) — the four-stage pipeline
+- [Scanning](architecture/scanning.md) — filesystem walk, image extraction, per-ecosystem package DBs
+- [Resolution](architecture/resolution.md) — how observations become resolved components
+- [Enrichment](architecture/enrichment.md) — deps.dev, ClearlyDefined, lockfile sources
+- [Generation](architecture/generation.md) — CycloneDX 1.6 mapping
+- [PURLs and CPEs](architecture/purls-and-cpes.md) — canonicalization and multi-candidate CPE emission
+- [Licenses](architecture/licenses.md) — declared vs. concluded, SPDX normalization
+- [Attestations](architecture/attestations.md) — in-toto Statement v1 + `BuildTracePredicate`
+
+## Reference material
+
+- [Ecosystems](ecosystems.md) — per-ecosystem coverage matrix for all nine supported ecosystems
+- [Design notes](design-notes.md) — the living architectural changelog. Dated entries, ecosystem-specific sharp edges, sbomqs scoring history. Architecture pages link here for deeper context rather than duplicating content.
+- [Research](research/) — one-off investigations (e.g. Go binary scope analysis)
+
+## Ground-truth examples
+
+Before reading anything else, consider running one of these — they exercise the
+full pipeline end-to-end:
+
+- [`demos/README.md`](../demos/README.md) — Debian and Rust build-trace demos (inside `mikebom-dev`)
+- [`EVALUATION.md`](../EVALUATION.md) — accuracy benchmarks with real output and head-to-head comparison vs. syft / trivy / scalibr
