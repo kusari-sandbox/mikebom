@@ -100,25 +100,31 @@ jobs:
         run: |
           set -euo pipefail
           stage="mikebom-${{ github.ref_name }}-${TARGET}"
-          mkdir -p "$stage"
+          # Lay out the tarball so the loader finds the eBPF object
+          # relative to CWD at the path it already expects:
+          # mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf.
+          # This avoids any runtime mkdir/symlink shuffle in the wrapper
+          # and eliminates the filename collision the previous design
+          # had (mikebom-ebpf as a sibling file vs. as a directory).
+          mkdir -p "$stage/mikebom-ebpf/target/bpfel-unknown-none/release"
           cp "target/${TARGET}/release/mikebom" "$stage/mikebom"
-          cp ebpf-download/mikebom-ebpf "$stage/mikebom-ebpf"
+          cp ebpf-download/mikebom-ebpf "$stage/mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf"
           cp README.md "$stage/README.md"
           if [[ -f LICENSE ]]; then cp LICENSE "$stage/LICENSE"; fi
           cat > "$stage/mikebom.sh" <<'WRAPPER'
           #!/usr/bin/env bash
-          # mikebom wrapper — ensures the eBPF object is visible to the loader.
-          # The loader's default path is mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf
-          # relative to CWD. This script builds that layout via symlink
-          # (with copy fallback) and execs the userspace binary.
+          # mikebom wrapper for trace mode. The loader resolves the eBPF
+          # object relative to CWD at
+          # mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf,
+          # which this tarball ships in that exact layout. The wrapper
+          # just cd's into the install dir so the relative path works
+          # regardless of where the user invokes it from.
+          #
+          # For `sbom scan`, `sbom generate`, and other non-trace
+          # subcommands the loader is never invoked — `./mikebom` can
+          # be run directly without this wrapper.
           set -euo pipefail
           here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-          ebpf_expected_dir="$here/mikebom-ebpf/target/bpfel-unknown-none/release"
-          mkdir -p "$ebpf_expected_dir"
-          if [[ ! -e "$ebpf_expected_dir/mikebom-ebpf" ]]; then
-            ln -s "$here/mikebom-ebpf" "$ebpf_expected_dir/mikebom-ebpf" 2>/dev/null \
-              || cp "$here/mikebom-ebpf" "$ebpf_expected_dir/mikebom-ebpf"
-          fi
           cd "$here"
           exec "$here/mikebom" "$@"
           WRAPPER
@@ -173,21 +179,18 @@ jobs:
         run: |
           set -euo pipefail
           stage="mikebom-${{ github.ref_name }}-${TARGET}"
-          mkdir -p "$stage"
+          mkdir -p "$stage/mikebom-ebpf/target/bpfel-unknown-none/release"
           cp "target/${TARGET}/release/mikebom" "$stage/mikebom"
-          cp ebpf-download/mikebom-ebpf "$stage/mikebom-ebpf"
+          cp ebpf-download/mikebom-ebpf "$stage/mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf"
           cp README.md "$stage/README.md"
           if [[ -f LICENSE ]]; then cp LICENSE "$stage/LICENSE"; fi
           cat > "$stage/mikebom.sh" <<'WRAPPER'
           #!/usr/bin/env bash
+          # Trace-mode wrapper: cd into the install dir so the loader's
+          # CWD-relative eBPF path (mikebom-ebpf/target/bpfel-unknown-none/release/mikebom-ebpf)
+          # resolves. Non-trace subcommands can call ./mikebom directly.
           set -euo pipefail
           here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-          ebpf_expected_dir="$here/mikebom-ebpf/target/bpfel-unknown-none/release"
-          mkdir -p "$ebpf_expected_dir"
-          if [[ ! -e "$ebpf_expected_dir/mikebom-ebpf" ]]; then
-            ln -s "$here/mikebom-ebpf" "$ebpf_expected_dir/mikebom-ebpf" 2>/dev/null \
-              || cp "$here/mikebom-ebpf" "$ebpf_expected_dir/mikebom-ebpf"
-          fi
           cd "$here"
           exec "$here/mikebom" "$@"
           WRAPPER
