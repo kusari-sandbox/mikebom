@@ -281,14 +281,51 @@ fn resolve_npm_path(path: &str) -> Option<Purl> {
 // Go: $GOPATH/pkg/mod/{module}@{version}/
 // ---------------------------------------------------------------------------
 fn resolve_go_path(path: &str) -> Option<Purl> {
+    // First try the `cache/download/<module>/@v/<version>.zip` layout
+    // that `go mod download` produces. This is the fetch-only artifact
+    // the operator sees when they want an SBOM without a full build.
+    // We recognize the three canonical archive + metadata files that
+    // together identify a downloaded module: .zip, .mod, .info. The
+    // .ziphash files are intentionally skipped — they always accompany
+    // a .zip and produce a duplicate PURL that dedup catches anyway,
+    // but extra work is wasted work. The `golang.org/toolchain/@v/…`
+    // entries (self-hosted go version fetches) ARE resolved as PURLs —
+    // downstream analyzers care about the toolchain binding just as
+    // much as the dep tree.
+    if let Some(cd_idx) = path.find("/cache/download/") {
+        let after = &path[cd_idx + "/cache/download/".len()..];
+        if let Some((module, file)) = after.split_once("/@v/") {
+            let purl_opt = file
+                .strip_suffix(".zip")
+                .or_else(|| file.strip_suffix(".mod"))
+                .or_else(|| file.strip_suffix(".info"))
+                .filter(|v| !v.is_empty() && !module.is_empty())
+                .map(|version| {
+                    format!(
+                        "pkg:golang/{}@{}",
+                        encode_purl_segment(module),
+                        encode_purl_segment(version),
+                    )
+                });
+            if let Some(purl_str) = purl_opt {
+                let purl = Purl::new(&purl_str).ok()?;
+                tracing::debug!("go cache/download match: {purl_str}");
+                return Some(purl);
+            }
+            // Known non-PURL siblings (.ziphash, .info.lock, .lock).
+            return None;
+        }
+    }
+
+    // Then the `pkg/mod/<module>@<version>/...` layout, which is the
+    // extracted module source tree produced by `go build` / `go mod
+    // verify`.
     let mod_idx = path.find("/pkg/mod/")?;
     let after = &path[mod_idx + "/pkg/mod/".len()..];
 
-    // Reject $GOMODCACHE/cache/{download,lock,vcs}/... — these are
-    // toolchain-internal cache files, not extracted modules. A path
-    // resolver match here produces nonsense PURLs because the first
-    // `@` in the path belongs to the `@v` version-index directory,
-    // not a `module@version` separator.
+    // Reject `cache/` under `/pkg/mod/` — those are the internal
+    // sumdb / lock files, distinct from the `cache/download/` archive
+    // layout handled above (which may or may not live under pkg/mod).
     if after.starts_with("cache/") {
         return None;
     }
@@ -559,19 +596,49 @@ mod tests {
     }
 
     #[test]
-    fn go_cache_download_path_not_resolved() {
-        // $GOMODCACHE/cache/download/<module>/@v/<version>.{mod,zip,info}
-        // are toolchain-internal artefacts, not extracted modules. Their
-        // first `@` belongs to the `/@v/` version-index directory, so a
-        // naive resolver would emit e.g.
-        // `pkg:golang/cache/download/github.com/davecgh/go-spew/@v` — nonsense.
+    fn go_cache_download_zip_resolves_to_pkg_golang() {
+        let p = resolve_path(
+            "/root/go/pkg/mod/cache/download/github.com/davecgh/go-spew/@v/v1.1.1.zip",
+        )
+        .expect("should resolve");
+        assert_eq!(p.as_str(), "pkg:golang/github.com/davecgh/go-spew@v1.1.1");
+    }
+
+    #[test]
+    fn go_cache_download_mod_and_info_also_resolve() {
+        let mod_p = resolve_path(
+            "/root/go/pkg/mod/cache/download/github.com/davecgh/go-spew/@v/v1.1.1.mod",
+        )
+        .expect("mod");
+        let info_p = resolve_path(
+            "/root/go/pkg/mod/cache/download/github.com/davecgh/go-spew/@v/v1.1.1.info",
+        )
+        .expect("info");
+        assert_eq!(mod_p, info_p);
+        assert_eq!(mod_p.as_str(), "pkg:golang/github.com/davecgh/go-spew@v1.1.1");
+    }
+
+    #[test]
+    fn go_cache_download_incompatible_version_encodes_plus() {
+        let p = resolve_path(
+            "/tmp/.gomodcache/cache/download/gotest.tools/@v/v2.2.0+incompatible.zip",
+        )
+        .expect("should resolve");
+        // purl-spec: `+` must be percent-encoded in the version segment.
+        assert_eq!(p.as_str(), "pkg:golang/gotest.tools@v2.2.0%2Bincompatible");
+    }
+
+    #[test]
+    fn go_cache_download_ziphash_and_lock_are_rejected() {
+        // .ziphash + .lock + sumdb lookup files sit alongside the real
+        // archives but don't identify packages on their own.
         assert!(resolve_path(
-            "/root/go/pkg/mod/cache/download/github.com/davecgh/go-spew/@v/v1.1.1.zip"
+            "/home/user/go/pkg/mod/cache/download/sumdb/sum.golang.org/lookup/rsc.io/quote/@v/v1.5.2.ziphash"
         )
         .is_none());
         assert!(resolve_path("/root/go/pkg/mod/cache/lock").is_none());
         assert!(resolve_path(
-            "/home/user/go/pkg/mod/cache/download/sumdb/sum.golang.org/lookup/rsc.io/quote/@v/v1.5.2.ziphash"
+            "/root/go/pkg/mod/cache/download/github.com/davecgh/go-spew/@v/v1.1.1.ziphash"
         )
         .is_none());
     }
