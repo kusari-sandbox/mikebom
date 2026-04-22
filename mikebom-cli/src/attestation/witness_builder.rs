@@ -64,6 +64,12 @@ pub fn build_witness_statement(
         endtime: end_dt,
     });
 
+    // Capture all write ops with content hashes BEFORE moving
+    // `trace.file_access` into the native builder — these are the real
+    // build outputs (cargo cached .crate files, compiler artifacts,
+    // etc.) that sbomit's resolvers key off.
+    let write_products = build_product_attestation_from_writes(&trace.file_access.operations);
+
     let command_run = build_command_run_attestation(cfg);
     entries.push(CollectionEntry {
         attestor_type: witness::COMMAND_RUN_TYPE.to_string(),
@@ -72,7 +78,18 @@ pub fn build_witness_statement(
         endtime: end_dt,
     });
 
-    let products = build_product_attestation(&subjects);
+    // Build the product attestation from two sources:
+    //   1. Subject-resolver output (operator-specified or magic-byte
+    //      detected artifacts — what `sbom verify` will bind to)
+    //   2. Every observed file write with a content hash (the real
+    //      files the traced command created; sbomit's resolvers map
+    //      paths like ~/.cargo/registry/cache/*.crate → cargo pkgs)
+    // When both sources name the same path the subject entry wins
+    // because it may carry a more precise MIME type.
+    let mut products = write_products;
+    for (path, p) in build_product_attestation(&subjects) {
+        products.insert(path, p);
+    }
     entries.push(CollectionEntry {
         attestor_type: witness::PRODUCT_TYPE.to_string(),
         attestation: serde_json::to_value(&products)?,
@@ -216,6 +233,34 @@ fn build_command_run_attestation(cfg: &WitnessBuildConfig) -> CommandRunAttestat
 /// operator passed after `--`.
 fn shell_split(cmd: &str) -> Vec<String> {
     cmd.split_whitespace().map(|s| s.to_string()).collect()
+}
+
+/// Build product entries from every observed write op that has a
+/// content hash. These are the real files the traced command created —
+/// cargo cache `.crate` files, wheels, compiled libraries, etc.
+fn build_product_attestation_from_writes(ops: &[FileOperation]) -> ProductAttestation {
+    let mut out = ProductAttestation::new();
+    for op in ops {
+        if !matches!(op.operation, FileOpType::Write | FileOpType::Create) {
+            continue;
+        }
+        let Some(hash) = op.content_hash.as_ref() else {
+            continue;
+        };
+        let mut ds = DigestSet::new();
+        ds.insert(
+            algorithm_key(&hash.algorithm).to_string(),
+            hash.value.as_str().to_string(),
+        );
+        out.insert(
+            op.path.clone(),
+            Product {
+                mime_type: guess_mime_type(&op.path),
+                digest: ds,
+            },
+        );
+    }
+    out
 }
 
 fn build_product_attestation(subjects: &[Subject]) -> ProductAttestation {

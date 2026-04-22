@@ -452,7 +452,7 @@ async fn execute_scan(args: ScanArgs) -> anyhow::Result<()> {
             collection_name: default_collection_name(&cmd_str),
         };
         let witness_stmt =
-            build_witness_statement(trace.clone(), &witness_cfg, trace_start.clone(), trace_end.clone())?;
+            build_witness_statement(trace, &witness_cfg, trace_start, trace_end)?;
         serializer::write_witness_attestation_signed(&witness_stmt, &args.output, &identity)?;
 
         let nc = witness_stmt
