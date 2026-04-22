@@ -24,6 +24,7 @@ the way it did, or contribute to the pipeline.
 - [PURLs and CPEs](architecture/purls-and-cpes.md) — canonicalization and multi-candidate CPE emission
 - [Licenses](architecture/licenses.md) — declared vs. concluded, SPDX normalization
 - [Attestations](architecture/attestations.md) — in-toto Statement v1 + `BuildTracePredicate`
+- [Signing](architecture/signing.md) — DSSE envelope signing + verification (feature 006)
 
 ## Reference material
 

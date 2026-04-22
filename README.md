@@ -59,6 +59,29 @@ mikebom sbom scan --image alpine.tar --output alpine.cdx.json
 mikebom sbom scan --path ~/.cargo/registry/cache --output cargo.cdx.json
 ```
 
+**4. Sign a build and verify the result.** Feature 006 added DSSE
+envelope signing via sigstore. Either local key or keyless (OIDC →
+Fulcio → Rekor, auto-detected in GitHub Actions):
+
+```bash
+# 1. Generate a signing key (one-off)
+openssl ecparam -genkey -name prime256v1 -out signing.key
+openssl ec -in signing.key -pubout -out signing.pub
+
+# 2. Trace a build, signing the attestation in one pass
+mikebom trace run --signing-key ./signing.key \
+  --sbom-output ripgrep.cdx.json \
+  -- cargo install ripgrep
+
+# 3. Verify from the other side
+mikebom sbom verify mikebom.attestation.json --public-key ./signing.pub
+# → PASS — verified with public_key sha256:…
+```
+
+See [`docs/architecture/signing.md`](docs/architecture/signing.md) and
+[`specs/006-sbomit-suite/quickstart.md`](specs/006-sbomit-suite/quickstart.md)
+for keyless flows, policy layouts, and SBOM enrichment.
+
 ## Documentation
 
 - **[User guide](docs/user-guide/)** — installation, quickstart, CLI reference, configuration

@@ -240,6 +240,87 @@ Planned purpose: validate an in-toto attestation file for schema conformance.
 
 ---
 
+## `mikebom sbom verify` — feature 006 US1
+
+Verify a signed DSSE envelope produced by `mikebom` or any other
+SBOMit-compliant tool.
+
+```
+mikebom sbom verify <ATTESTATION> [flags]
+```
+
+Flags:
+- `--public-key <PATH>` — PEM-encoded public key for local-key
+  verification (mutually exclusive with `--identity`)
+- `--identity <PATTERN>` — keyless identity matcher (email, URL, or
+  glob) against the Fulcio cert's SAN
+- `--expected-subject <PATH>` — verify on-disk SHA-256 of `PATH`
+  matches a subject in the envelope. Repeatable.
+- `--layout <PATH>` — enforce an in-toto layout
+- `--no-transparency-log` — tolerate keyless envelopes without a
+  Rekor inclusion proof
+- `--fulcio-url` / `--rekor-url` — custom sigstore endpoints
+- `--json` — structured `VerificationReport` on stdout
+
+Exit codes per `specs/006-sbomit-suite/contracts/cli.md`: `0` pass,
+`1` crypto failure, `2` envelope failure, `3` layout failure.
+
+## `mikebom policy init` — feature 006 US4
+
+Generate a starter in-toto layout bound to a functionary key.
+
+```
+mikebom policy init --functionary-key signing.pub [flags]
+```
+
+Flags:
+- `--functionary-key <PATH>` *(required)* — PEM public key
+- `--step-name <NAME>` — default `build-trace-capture`
+- `--expires <DURATION>` — `6m` / `1y` / `18mo` / `2y`; default `1y`
+- `--readme <TEXT>` — embedded description
+- `--output <PATH>` — default `layout.json`
+
+Use the emitted layout with `mikebom sbom verify --layout …` to enforce
+functionary + step-name policy on signed attestations. Layouts are
+standard in-toto — any in-toto-aware verifier accepts them.
+
+## Signing flags — `trace capture` / `trace run`
+
+Add one category of new flag to an otherwise-unchanged invocation to
+start producing signed DSSE envelopes:
+
+- `--signing-key <PATH>` — local PEM private key (mutually exclusive
+  with `--keyless`)
+- `--signing-key-passphrase-env <NAME>` — env var name holding the
+  passphrase for an encrypted key (no interactive prompt)
+- `--keyless` — OIDC → Fulcio → Rekor (CI-friendly; auto-detects
+  GitHub Actions)
+- `--no-transparency-log` — keyless mode only; skip Rekor upload
+- `--fulcio-url` / `--rekor-url` — custom sigstore endpoints
+- `--require-signing` — hard-fail if no signing identity configured
+- `--subject <PATH>` — explicit subject; repeatable; suppresses
+  artifact auto-detection
+
+## `mikebom sbom enrich` — feature 006 US5
+
+Apply one or more RFC 6902 JSON Patch files to a generated CycloneDX
+SBOM, recording per-patch provenance (`mikebom:enrichment-patch[N]`)
+in the SBOM's top-level `properties[]` array.
+
+```
+mikebom sbom enrich <SBOM> --patch <PATCH> [--patch <PATCH>…] [flags]
+```
+
+Flags:
+- `--patch <PATH>` *(at least one required)* — patch file; repeatable
+- `--author <STRING>` — recorded author (defaults to `"unknown"` with
+  a warning)
+- `--base-attestation <PATH>` — attestation file whose SHA-256 gets
+  embedded so verifiers can walk back to the attested source
+- `--output <PATH>` — default overwrites the input SBOM
+
+---
+
 ## Output formats
 
 The `--format` flag on `sbom scan`, `sbom generate`, and `trace run` accepts:

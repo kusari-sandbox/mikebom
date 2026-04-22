@@ -272,3 +272,44 @@ Major work milestones (for context in future sessions):
   - Maven JAR-embedded pom.xml walker (non-shaded).
   - Maven parent-POM chain resolution (`EffectivePom` with `<properties>` + `<dependencyManagement>` inheritance + BOM imports).
   - Maven deps.dev `:dependencies` fallback (edge-authoritative, version-deferential).
+
+---
+
+## 2026-04-22 — Feature 006: SBOMit compliance suite
+
+**Status:** Phases 1–7 landed as commits `77fb5c7` → `5864e25`.
+Phase 8+9 (polish + coverage gaps) tracked in `specs/006-sbomit-suite/
+tasks.md`.
+
+**What landed:**
+- DSSE envelope signing + verification via `sigstore-rs` 0.10. Pinned
+  to 0.10 (not 0.13+) because the newer `cert` feature force-depends
+  on `aws-lc-rs`, which violates Constitution Principle I (pure Rust,
+  zero C). With rustls-tls features we stay C-clean.
+- New `mikebom sbom verify` subcommand (replaces the never-shipped
+  `sbom validate` stub). Exit-code contract: 0 pass / 1 crypto /
+  2 envelope / 3 layout. `FailureMode` is a closed set of 9 variants;
+  adding a new one is a spec change, not an implementation detail.
+- New `mikebom policy init` subcommand + `--layout` support on
+  `sbom verify`. Single-step in-toto layouts; multi-step deferred.
+- New `mikebom sbom enrich` (replaces a stubbed bail). RFC 6902 JSON
+  Patch applier with per-patch provenance recorded as
+  `mikebom:enrichment-patch[N]` properties.
+- Real artifact subjects via 5-stage resolver: operator override →
+  artifact-dir walk → suffix match → magic-byte detect (ELF / Mach-O
+  BE+LE + fat / PE MZ) → synthetic fallback (FR-010).
+- Keyless signing scaffolded — OIDC detection, `sign_keyless` skeleton
+  returning a typed `OidcTokenError`. Full Fulcio/Rekor integration
+  deferred until a test environment with live OIDC tokens exists.
+
+**Asymmetry worth remembering:** `attestation::serializer::write_
+attestation_signed` preserves the legacy raw-Statement shape when no
+signing identity is configured (FR-004), logging a warning. This keeps
+pre-feature clients working — they'll see a `NotSigned` failure mode
+on verify rather than a parse error, which is the intended graceful
+path.
+
+**Out of scope:** Merkle-tree crypto verification of Rekor inclusion
+proofs (policy check only for now). Multi-step in-toto layouts.
+Encrypted-PEM positive test case (needs an openssl-dependent
+fixture generator the sigstore 0.10 API doesn't expose).

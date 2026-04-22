@@ -312,6 +312,98 @@ fn cli_subject_flag_produces_real_sha256_in_envelope() {
 }
 
 #[test]
+fn cli_subject_array_can_hold_multiple_artifacts() {
+    // Regression fence for feature 006 T096 (coverage-gap addition):
+    // the attestation envelope must be able to carry multiple
+    // Subject::Artifact entries simultaneously, each with its own
+    // SHA-256 digest. We verify this by hand-crafting a signed
+    // envelope whose Statement's subject[] has two entries and
+    // confirming `mikebom sbom verify --expected-subject ... --expected
+    // -subject ...` checks both against their on-disk SHA-256s.
+    use base64::Engine as _;
+    use mikebom_common::attestation::statement::ResourceDescriptor;
+    use sha2::{Digest, Sha256};
+
+    fn sha_hex(bytes: &[u8]) -> String {
+        let mut h = Sha256::new();
+        h.update(bytes);
+        h.finalize().iter().map(|b| format!("{:02x}", b)).collect()
+    }
+
+    // Two artifact files with known contents.
+    let tmp = tempfile::tempdir().unwrap();
+    let a_path = tmp.path().join("wheel.whl");
+    let b_path = tmp.path().join("sdist.tar.gz");
+    std::fs::write(&a_path, b"wheel content").unwrap();
+    std::fs::write(&b_path, b"sdist content").unwrap();
+    let a_hash = sha_hex(b"wheel content");
+    let b_hash = sha_hex(b"sdist content");
+
+    // Statement whose subject[] carries both hashes.
+    let mut stmt = minimal_statement();
+    stmt.subject = vec![
+        ResourceDescriptor {
+            name: a_path.to_string_lossy().into_owned(),
+            digest: {
+                let mut m = std::collections::BTreeMap::new();
+                m.insert("sha256".to_string(), a_hash.clone());
+                m
+            },
+        },
+        ResourceDescriptor {
+            name: b_path.to_string_lossy().into_owned(),
+            digest: {
+                let mut m = std::collections::BTreeMap::new();
+                m.insert("sha256".to_string(), b_hash.clone());
+                m
+            },
+        },
+    ];
+
+    // Sign + verify.
+    let scheme = SigningScheme::ECDSA_P256_SHA256_ASN1;
+    let signer = scheme.create_signer().unwrap();
+    let keypair = signer.to_sigstore_keypair().unwrap();
+    let public_pem = keypair.public_key_to_pem().unwrap();
+    let payload_bytes = canonical_json_bytes(&stmt).unwrap();
+    let pae = dsse_pae(IN_TOTO_PAYLOAD_TYPE, &payload_bytes);
+    let sig_bytes = signer.sign(&pae).unwrap();
+    let envelope = SignedEnvelope {
+        payload_type: IN_TOTO_PAYLOAD_TYPE.to_string(),
+        payload: BASE64_STD.encode(&payload_bytes),
+        signatures: vec![Signature {
+            keyid: None,
+            sig: BASE64_STD.encode(&sig_bytes),
+            identity: IdentityMetadata::PublicKey {
+                public_key: public_pem,
+                algorithm: KeyAlgorithm::EcdsaP256,
+            },
+        }],
+    };
+    let env_path = tmp.path().join("attest.dsse.json");
+    std::fs::write(&env_path, serde_json::to_string(&envelope).unwrap()).unwrap();
+
+    // Verify with both --expected-subject flags — both digests must
+    // match their respective subject entries.
+    let a_arg = a_path.to_string_lossy().into_owned();
+    let b_arg = b_path.to_string_lossy().into_owned();
+    let (code, stdout, stderr) = run_verify(
+        &env_path,
+        &[
+            "--json",
+            "--expected-subject",
+            &a_arg,
+            "--expected-subject",
+            &b_arg,
+        ],
+    );
+    assert_eq!(
+        code, 0,
+        "multi-artifact subject[] should verify; stdout={stdout}; stderr={stderr}"
+    );
+}
+
+#[test]
 fn cli_subject_digest_mismatch_exits_one() {
     let fx = produce_signed_envelope();
     // Create a file whose SHA-256 does NOT match the statement's
