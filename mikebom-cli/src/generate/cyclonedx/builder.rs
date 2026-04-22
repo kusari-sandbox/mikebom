@@ -113,19 +113,68 @@ impl CycloneDxBuilder {
     }
 
     /// Build the CycloneDX components array from resolved components.
+    ///
+    /// Components carrying `parent_purl = Some(parent)` are emitted
+    /// nested under their parent's `component.components[]` array per
+    /// CDX 1.6's nested-components shape — used today for Maven
+    /// shade-plugin fat-jar vendored coords. Nested entries get a
+    /// composite bom-ref (`<child-purl>#<parent-purl>`) so the CDX
+    /// document's bom-ref uniqueness invariant holds even when the
+    /// same coord appears nested under multiple parents AND
+    /// standalone. Top-level entries (parent_purl = None) keep their
+    /// plain-PURL bom-ref.
+    ///
+    /// If a component's declared parent_purl doesn't match any
+    /// top-level component's PURL (orphan), we gracefully fall back to
+    /// emitting it top-level with its plain-PURL bom-ref — better than
+    /// losing the component entirely. This can happen when the Maven
+    /// scanner couldn't identify a fat-jar's primary coord but still
+    /// extracted vendored children.
     fn build_components(
         &self,
         components: &[ResolvedComponent],
     ) -> anyhow::Result<serde_json::Value> {
-        let mut cdx_components = Vec::new();
+        // First pass: identify top-level PURLs so we can route children
+        // that reference valid parents. Orphans fall back to top-level.
+        let top_level_purls: std::collections::HashSet<String> = components
+            .iter()
+            .filter(|c| c.parent_purl.is_none())
+            .map(|c| c.purl.as_str().to_string())
+            .collect();
+
+        // Build one JSON entry per component up front, keyed by the
+        // component's canonical PURL (plus its parent_purl, so two
+        // nested siblings with the same PURL under different parents
+        // don't collide). We'll fold children into their parents
+        // in a second pass.
+        let mut cdx_components: Vec<serde_json::Value> = Vec::new();
+        // Map from parent PURL to list of child entry indices into
+        // cdx_components. Children get stripped from cdx_components
+        // after folding.
+        let mut children_indices_by_parent: std::collections::BTreeMap<
+            String,
+            Vec<usize>,
+        > = std::collections::BTreeMap::new();
 
         for component in components {
+            // Decide this entry's bom-ref: plain PURL when top-level,
+            // `<child>#<parent>` composite when the parent exists in
+            // the top-level set. Orphans (declared parent not in the
+            // top-level set) get demoted to top-level with plain ref.
+            let effective_parent: Option<&String> = component
+                .parent_purl
+                .as_ref()
+                .filter(|p| top_level_purls.contains(p.as_str()));
+            let bom_ref = match effective_parent {
+                Some(parent) => format!("{}#{}", component.purl.as_str(), parent),
+                None => component.purl.as_str().to_string(),
+            };
             let mut entry = json!({
                 "type": "library",
                 "name": component.name,
                 "version": component.version,
                 "purl": component.purl.as_str(),
-                "bom-ref": component.purl.as_str(),
+                "bom-ref": bom_ref,
                 "evidence": build_evidence(&component.evidence, &component.occurrences)
             });
 
@@ -425,7 +474,53 @@ impl CycloneDxBuilder {
                 entry["properties"] = json!(properties);
             }
 
+            // Record index for parent-child folding. Orphans whose
+            // declared parent isn't in the top-level set get routed
+            // to top-level (effective_parent is None).
+            let pushed_index = cdx_components.len();
             cdx_components.push(entry);
+            if let Some(parent) = effective_parent {
+                children_indices_by_parent
+                    .entry(parent.clone())
+                    .or_default()
+                    .push(pushed_index);
+            }
+        }
+
+        // Fold children into their parents. Walk in reverse-index
+        // order so later removals don't shift earlier indices.
+        let mut child_indices_to_remove: std::collections::BTreeSet<usize> =
+            std::collections::BTreeSet::new();
+        // Map parent PURL -> index in cdx_components. Built once.
+        let mut parent_index_by_purl: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
+        for (i, entry) in cdx_components.iter().enumerate() {
+            if let Some(purl) = entry.get("purl").and_then(|v| v.as_str()) {
+                // Top-level entries (those whose bom-ref equals the
+                // plain PURL) are the only valid parents.
+                let bom_ref = entry.get("bom-ref").and_then(|v| v.as_str()).unwrap_or("");
+                if bom_ref == purl {
+                    parent_index_by_purl.insert(purl.to_string(), i);
+                }
+            }
+        }
+        for (parent_purl, child_idxs) in &children_indices_by_parent {
+            let Some(&parent_idx) = parent_index_by_purl.get(parent_purl) else {
+                continue;
+            };
+            let mut child_entries: Vec<serde_json::Value> =
+                Vec::with_capacity(child_idxs.len());
+            for &ci in child_idxs {
+                child_entries.push(cdx_components[ci].clone());
+                child_indices_to_remove.insert(ci);
+            }
+            if !child_entries.is_empty() {
+                cdx_components[parent_idx]["components"] = json!(child_entries);
+            }
+        }
+        // Remove folded children from top-level (reverse order).
+        for &idx in child_indices_to_remove.iter().rev() {
+            cdx_components.remove(idx);
         }
 
         Ok(json!(cdx_components))
@@ -592,6 +687,112 @@ mod tests {
         assert!(bom["compositions"].is_array());
         assert!(bom["dependencies"].is_array());
         assert!(bom["vulnerabilities"].is_array());
+    }
+
+    /// Shade-jar nested emission (CDX 1.6 component.components[]).
+    /// When a child carries parent_purl == some top-level component's
+    /// PURL, it's folded under that parent's `components` array and
+    /// gets a composite `<child>#<parent>` bom-ref.
+    #[test]
+    fn nested_components_fold_under_parent_with_composite_bom_ref() {
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let parent_purl_str = "pkg:cargo/fatjar@1.0.0";
+        let parent = make_component("fatjar", "1.0.0");
+        let mut child_a = make_component("guava", "31.1");
+        child_a.parent_purl = Some(parent_purl_str.to_string());
+        let mut child_b = make_component("commons-lang3", "3.14");
+        child_b.parent_purl = Some(parent_purl_str.to_string());
+        let components = vec![parent, child_a, child_b];
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&components, &[], &integrity, "myapp", &[])
+            .expect("build bom");
+        let top = bom["components"].as_array().expect("top-level array");
+        // 1 top-level component (the fat-jar), 2 nested under it.
+        assert_eq!(top.len(), 1, "children should not appear at top level");
+        assert_eq!(top[0]["name"], "fatjar");
+        let nested = top[0]["components"].as_array().expect("nested array");
+        assert_eq!(nested.len(), 2);
+        let names: Vec<&str> = nested
+            .iter()
+            .map(|c| c["name"].as_str().unwrap())
+            .collect();
+        assert!(names.contains(&"guava"));
+        assert!(names.contains(&"commons-lang3"));
+        // Composite bom-refs on children.
+        for c in nested {
+            let bom_ref = c["bom-ref"].as_str().unwrap();
+            assert!(
+                bom_ref.contains('#'),
+                "child bom-ref should be composite <child>#<parent>, got {bom_ref}"
+            );
+            assert!(bom_ref.ends_with(parent_purl_str));
+        }
+        // Parent's bom-ref stays as the plain PURL (no composite).
+        assert_eq!(top[0]["bom-ref"], parent_purl_str);
+    }
+
+    /// Orphan children (parent_purl pointing at a PURL absent from the
+    /// component set) get demoted to top-level with a plain bom-ref
+    /// rather than disappearing from the SBOM.
+    #[test]
+    fn orphan_children_degrade_to_top_level() {
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let mut orphan = make_component("orphan", "1.0.0");
+        orphan.parent_purl = Some("pkg:cargo/non-existent-parent@9.9.9".to_string());
+        let components = vec![orphan];
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&components, &[], &integrity, "myapp", &[])
+            .expect("build bom");
+        let top = bom["components"].as_array().expect("array");
+        assert_eq!(top.len(), 1);
+        assert_eq!(top[0]["name"], "orphan");
+        // Plain bom-ref, not composite — the orphan was demoted.
+        let bom_ref = top[0]["bom-ref"].as_str().unwrap();
+        assert!(!bom_ref.contains('#'));
+    }
+
+    /// Same child coord under two different parents surfaces as two
+    /// distinct nested entries (CDX intended shape for fat-jars that
+    /// each vendor the same library).
+    #[test]
+    fn same_coord_nested_under_two_parents_emits_twice() {
+        let builder = CycloneDxBuilder::new(CycloneDxConfig::default());
+        let parent_a = make_component("parent-a", "1.0.0");
+        let parent_b = make_component("parent-b", "2.0.0");
+        let mut child_under_a = make_component("shared-lib", "1.0.0");
+        child_under_a.parent_purl = Some(parent_a.purl.as_str().to_string());
+        let mut child_under_b = make_component("shared-lib", "1.0.0");
+        child_under_b.parent_purl = Some(parent_b.purl.as_str().to_string());
+        let components = vec![parent_a, parent_b, child_under_a, child_under_b];
+        let integrity = clean_integrity();
+
+        let bom = builder
+            .build(&components, &[], &integrity, "myapp", &[])
+            .expect("build bom");
+        let top = bom["components"].as_array().expect("array");
+        assert_eq!(top.len(), 2, "both parents at top level");
+        // Each parent carries one shared-lib child.
+        for parent in top {
+            let nested = parent["components"].as_array().expect("nested");
+            assert_eq!(nested.len(), 1);
+            assert_eq!(nested[0]["name"], "shared-lib");
+        }
+        // All bom-refs document-wide must be unique (CDX invariant).
+        let mut all_refs: Vec<&str> = Vec::new();
+        for parent in top {
+            all_refs.push(parent["bom-ref"].as_str().unwrap());
+            if let Some(nested) = parent["components"].as_array() {
+                for c in nested {
+                    all_refs.push(c["bom-ref"].as_str().unwrap());
+                }
+            }
+        }
+        let unique: std::collections::HashSet<&str> = all_refs.iter().copied().collect();
+        assert_eq!(unique.len(), all_refs.len(), "bom-refs not unique: {all_refs:?}");
     }
 
     #[test]

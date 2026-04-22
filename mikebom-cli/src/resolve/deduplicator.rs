@@ -9,25 +9,39 @@ use std::collections::HashMap;
 
 use mikebom_common::resolution::ResolvedComponent;
 
-/// Deduplicate resolved components by (ecosystem, name, version).
+/// Deduplicate resolved components by
+/// `(ecosystem, name, version, parent_purl)`.
 ///
 /// For each group of duplicates:
 /// - Keep the entry with the highest confidence score.
 /// - Merge `source_connection_ids` and `source_file_paths` from all entries.
 /// - Merge hashes, retaining unique values.
+///
+/// **`parent_purl` in the dedup key**: a coord vendored inside two
+/// different shade-jars should surface as two distinct nested children
+/// in the final CDX (one under each parent), not collapse to one
+/// component. The `parent_purl` field — set by the Maven scanner when a
+/// coord comes from a fat-jar's `META-INF/maven/<g>/<a>/` and is NOT
+/// the JAR's primary coord — goes into the group key to preserve that
+/// distinction. Top-level components (parent_purl = None) continue to
+/// merge across their resolution sources as before.
 pub fn deduplicate(components: Vec<ResolvedComponent>) -> Vec<ResolvedComponent> {
     if components.is_empty() {
         return Vec::new();
     }
 
-    // Group by (ecosystem, name, version).
-    let mut groups: HashMap<(String, String, String), Vec<ResolvedComponent>> = HashMap::new();
+    // Group by (ecosystem, name, version, parent_purl).
+    let mut groups: HashMap<
+        (String, String, String, Option<String>),
+        Vec<ResolvedComponent>,
+    > = HashMap::new();
 
     for component in components {
         let key = (
             component.purl.ecosystem().to_string(),
             component.name.clone(),
             component.version.clone(),
+            component.parent_purl.clone(),
         );
         groups.entry(key).or_default().push(component);
     }
