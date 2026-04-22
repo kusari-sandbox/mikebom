@@ -5,7 +5,6 @@
 //! step name matches the layout's declared step.
 
 use mikebom_common::attestation::envelope::{IdentityMetadata, SignedEnvelope};
-use mikebom_common::attestation::statement::InTotoStatement;
 
 use crate::attestation::verifier::FailureMode;
 use crate::policy::layout::{keyid_from_pem, Layout};
@@ -13,7 +12,7 @@ use crate::policy::layout::{keyid_from_pem, Layout};
 /// Outcome of applying a layout. Returns `Ok(())` on success; any
 /// constraint mismatch produces `Err(FailureMode::LayoutViolation)`.
 pub fn verify_against_layout(
-    _statement: &InTotoStatement,
+    _statement: &serde_json::Value,
     envelope: &SignedEnvelope,
     layout: &Layout,
 ) -> Result<(), FailureMode> {
@@ -165,7 +164,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEvsP5gU5pY6n7JT7jz3L3J9wQ8vRm\n\
         )
         .unwrap();
         let env = envelope_signed_by(SAMPLE_PUB_PEM);
-        assert!(verify_against_layout(&minimal_stmt(), &env, &layout).is_ok());
+        assert!(verify_against_layout(&serde_json::to_value(&minimal_stmt()).unwrap(), &env, &layout).is_ok());
     }
 
     #[test]
@@ -179,7 +178,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEvsP5gU5pY6n7JT7jz3L3J9wQ8vRm\n\
         )
         .unwrap();
         let env = envelope_signed_by(OTHER_PUB_PEM);
-        match verify_against_layout(&minimal_stmt(), &env, &layout) {
+        match verify_against_layout(&serde_json::to_value(&minimal_stmt()).unwrap(), &env, &layout) {
             Err(FailureMode::LayoutViolation) => {}
             other => panic!("expected LayoutViolation, got {other:?}"),
         }
@@ -197,7 +196,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEvsP5gU5pY6n7JT7jz3L3J9wQ8vRm\n\
         };
         let env = envelope_signed_by(SAMPLE_PUB_PEM);
         assert!(matches!(
-            verify_against_layout(&minimal_stmt(), &env, &layout),
+            verify_against_layout(&serde_json::to_value(&minimal_stmt()).unwrap(), &env, &layout),
             Err(FailureMode::LayoutViolation)
         ));
     }

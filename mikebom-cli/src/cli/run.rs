@@ -107,6 +107,11 @@ pub struct RunArgs {
     #[arg(long = "subject", value_name = "PATH")]
     pub subject: Vec<PathBuf>,
 
+    /// Attestation output format (feature 006). Default `witness-v0.1`
+    /// — compatible with `sbomit generate` and go-witness verifiers.
+    #[arg(long = "attestation-format", value_name = "FORMAT", default_value = "witness-v0.1")]
+    pub attestation_format: String,
+
     /// Build command to trace
     #[arg(last = true, required = true)]
     pub command: Vec<String>,
@@ -134,6 +139,7 @@ pub async fn execute(args: RunArgs) -> anyhow::Result<()> {
         no_transparency_log: args.no_transparency_log,
         require_signing: args.require_signing,
         subject: args.subject.clone(),
+        attestation_format: args.attestation_format.clone(),
         command: args.command.clone(),
     };
     super::scan::execute(scan_args).await?;

@@ -82,6 +82,16 @@ pub struct ScanArgs {
     #[arg(long = "subject", value_name = "PATH")]
     pub subject: Vec<PathBuf>,
 
+    /// Attestation output format. `witness-v0.1` emits an in-toto
+    /// Statement v0.1 wrapped around a witness attestation-collection
+    /// (`material` + `command-run` + `product` + `network-trace`
+    /// inner attestors), directly consumable by `sbomit generate` and
+    /// any go-witness-aware verifier. `mikebom-v1` emits mikebom's
+    /// native `BuildTracePredicate` Statement v1 — richer network-
+    /// trace semantics but only mikebom understands it.
+    #[arg(long = "attestation-format", value_name = "FORMAT", default_value = "witness-v0.1")]
+    pub attestation_format: String,
+
     #[arg(last = true)]
     pub command: Vec<String>,
 }
@@ -130,7 +140,26 @@ pub async fn execute(args: ScanArgs) -> anyhow::Result<()> {
     if args.target_pid.is_some() && !args.command.is_empty() {
         anyhow::bail!("--target-pid and command are mutually exclusive");
     }
+    match args.attestation_format.as_str() {
+        "witness-v0.1" | "mikebom-v1" => {}
+        other => anyhow::bail!(
+            "unknown --attestation-format {other:?}; accepted: witness-v0.1, mikebom-v1"
+        ),
+    }
     execute_scan(args).await
+}
+
+/// Derive a human-readable `Collection.name` from the traced command.
+/// Uses `argv[0]` basename — matches the convention `go-witness` uses
+/// when you pass `--step <name>`, but auto-derived.
+fn default_collection_name(cmd: &str) -> String {
+    cmd.split_whitespace()
+        .next()
+        .unwrap_or("build")
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or("build")
+        .to_string()
 }
 
 #[cfg(target_os = "linux")]
@@ -408,6 +437,64 @@ async fn execute_scan(args: ScanArgs) -> anyhow::Result<()> {
         command: cmd_str.clone(),
         trace_start_rfc3339: trace_start.to_iso8601(),
     });
+
+    // Feature 006 — dispatch on attestation format. Witness-v0.1 is
+    // the default; mikebom-v1 preserves the richer native predicate
+    // for operators who want it.
+    if args.attestation_format == "witness-v0.1" {
+        use crate::attestation::witness_builder::{build_witness_statement, WitnessBuildConfig};
+        let identity = args.build_signing_identity()?;
+        let witness_cfg = WitnessBuildConfig {
+            target_pid: child_pid,
+            target_command: cmd_str.clone(),
+            cgroup_id: 0,
+            subject_resolver: subject_resolver.clone(),
+            collection_name: default_collection_name(&cmd_str),
+        };
+        let witness_stmt =
+            build_witness_statement(trace.clone(), &witness_cfg, trace_start.clone(), trace_end.clone())?;
+        serializer::write_witness_attestation_signed(&witness_stmt, &args.output, &identity)?;
+
+        let nc = witness_stmt
+            .predicate
+            .attestations
+            .iter()
+            .find(|e| e.attestor_type.ends_with("/network-trace/v0.1"))
+            .and_then(|e| {
+                e.attestation
+                    .get("network_trace")
+                    .and_then(|nt| nt.get("connections"))
+                    .and_then(|c| c.as_array())
+                    .map(|a| a.len())
+            })
+            .unwrap_or(0);
+        let fo = witness_stmt
+            .predicate
+            .attestations
+            .iter()
+            .find(|e| e.attestor_type.ends_with("/material/v0.1"))
+            .and_then(|e| e.attestation.as_object().map(|o| o.len()))
+            .unwrap_or(0);
+
+        if args.json {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "attestation_file": args.output.to_string_lossy(),
+                    "attestation_format": "witness-v0.1",
+                    "raw_net": net_count, "raw_file": file_count,
+                    "emitted_net": nc, "emitted_file": fo,
+                }))?
+            );
+        }
+
+        tracing::info!(
+            file = %args.output.display(),
+            format = "witness-v0.1",
+            "attestation written"
+        );
+        return Ok(());
+    }
 
     let stmt = builder::build_attestation(
         trace,

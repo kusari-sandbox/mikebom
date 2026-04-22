@@ -3,6 +3,8 @@
 use std::path::Path;
 
 use mikebom_common::attestation::statement::InTotoStatement;
+use mikebom_common::attestation::witness::WitnessStatement;
+use serde::Serialize;
 
 use crate::attestation::signer::{self, SigningIdentity};
 
@@ -46,6 +48,102 @@ pub fn write_attestation_signed(
         }
     }
     Ok(())
+}
+
+/// Serialize a witness-compatible attestation Statement v0.1, signing
+/// through the same DSSE envelope flow as the mikebom-native path.
+///
+/// The envelope's `payloadType` stays `application/vnd.in-toto+json`
+/// regardless of Statement version — `go-witness`, `sbomit`, and any
+/// DSSE-aware verifier parse either version transparently.
+pub fn write_witness_attestation_signed(
+    stmt: &WitnessStatement,
+    path: &Path,
+    identity: &SigningIdentity,
+) -> anyhow::Result<()> {
+    write_signable(stmt, path, identity, "witness-v0.1")
+}
+
+/// Shared sign-or-raw flow parametric on the Statement type.
+fn write_signable<T: Serialize>(
+    stmt: &T,
+    path: &Path,
+    identity: &SigningIdentity,
+    label: &str,
+) -> anyhow::Result<()> {
+    match identity {
+        SigningIdentity::None => {
+            tracing::warn!(
+                format = label,
+                "Attestation emitted without a signing identity — downstream \
+                verification will report NotSigned. Pass --signing-key <PATH> \
+                or --keyless to produce a DSSE envelope."
+            );
+            let json = serde_json::to_string_pretty(stmt)?;
+            std::fs::write(path, json)?;
+            tracing::info!("Attestation ({label}) written to {}", path.display());
+            Ok(())
+        }
+        SigningIdentity::LocalKey { .. } | SigningIdentity::Keyless { .. } => {
+            // Canonicalize + sign the bytes directly. We can't route
+            // through `signer::sign` which takes `&InTotoStatement`, so
+            // run the equivalent pipeline inline.
+            use base64::{engine::general_purpose::STANDARD as B64, Engine};
+            use mikebom_common::attestation::envelope::{
+                canonical_json_bytes, dsse_pae, IdentityMetadata, KeyAlgorithm, Signature,
+                SignedEnvelope, IN_TOTO_PAYLOAD_TYPE,
+            };
+            use signer::SigningError;
+
+            let payload_bytes = canonical_json_bytes(stmt)
+                .map_err(|e| anyhow::anyhow!("canonical JSON failed: {e}"))?;
+            let pae = dsse_pae(IN_TOTO_PAYLOAD_TYPE, &payload_bytes);
+
+            // Local-key path only for now; keyless reuses the same
+            // typed error as the mikebom-v1 path.
+            let SigningIdentity::LocalKey {
+                path: key_path,
+                passphrase_env,
+            } = identity
+            else {
+                return Err(anyhow::anyhow!(SigningError::OidcTokenError {
+                    detail:
+                        "keyless witness-format signing not yet implemented — use --signing-key"
+                            .to_string(),
+                }));
+            };
+            let keypair = signer::load_local_signer(key_path, passphrase_env.as_deref())?;
+            let scheme = sigstore::crypto::SigningScheme::ECDSA_P256_SHA256_ASN1;
+            let sstore_signer = keypair
+                .to_sigstore_signer(&scheme)
+                .map_err(|e| anyhow::anyhow!("build signer: {e}"))?;
+            let sig_bytes = sstore_signer
+                .sign(&pae)
+                .map_err(|e| anyhow::anyhow!("local sign: {e}"))?;
+            let public_key_pem = keypair
+                .public_key_to_pem()
+                .map_err(|e| anyhow::anyhow!("export pub key: {e}"))?;
+
+            let envelope = SignedEnvelope {
+                payload_type: IN_TOTO_PAYLOAD_TYPE.to_string(),
+                payload: B64.encode(&payload_bytes),
+                signatures: vec![Signature {
+                    keyid: None,
+                    sig: B64.encode(&sig_bytes),
+                    identity: IdentityMetadata::PublicKey {
+                        public_key: public_key_pem,
+                        algorithm: KeyAlgorithm::EcdsaP256,
+                    },
+                }],
+            };
+            std::fs::write(path, serde_json::to_string_pretty(&envelope)?)?;
+            tracing::info!(
+                "Signed attestation ({label}) written to {}",
+                path.display()
+            );
+            Ok(())
+        }
+    }
 }
 
 /// Read an attestation from a JSON file.

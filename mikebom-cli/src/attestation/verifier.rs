@@ -22,7 +22,6 @@ use sigstore::crypto::{
 use mikebom_common::attestation::envelope::{
     dsse_pae, IdentityMetadata, KeyAlgorithm, Signature, SignedEnvelope, IN_TOTO_PAYLOAD_TYPE,
 };
-use mikebom_common::attestation::statement::InTotoStatement;
 
 /// Result of verifying a DSSE envelope.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -145,10 +144,15 @@ pub struct VerifyOptions {
 }
 
 /// Parsed envelope + decoded payload. Shared across the verify pipeline.
+///
+/// The `statement` field is a format-agnostic JSON `Value` — accepts
+/// any in-toto Statement shape (v0.1 witness-collection, v1 mikebom-
+/// native, or anything else that has the minimum `_type` + `subject`
+/// + `predicateType` + `predicate` keys).
 #[derive(Debug)]
 pub struct ParsedAttestation {
     pub envelope: SignedEnvelope,
-    pub statement: InTotoStatement,
+    pub statement: serde_json::Value,
     /// Raw payload bytes — the DSSE signature covers these exact bytes
     /// via the PAE wrapper.
     pub payload_bytes: Vec<u8>,
@@ -199,12 +203,24 @@ pub fn parse_envelope(raw: &str) -> Result<ParsedAttestation, VerificationError>
         )
     })?;
 
-    let statement: InTotoStatement = serde_json::from_slice(&payload_bytes).map_err(|e| {
-        VerificationError::failed(
-            FailureMode::MalformedEnvelope,
-            format!("decoded payload is not a valid in-toto Statement: {e}"),
-        )
-    })?;
+    let statement: serde_json::Value =
+        serde_json::from_slice(&payload_bytes).map_err(|e| {
+            VerificationError::failed(
+                FailureMode::MalformedEnvelope,
+                format!("decoded payload is not valid JSON: {e}"),
+            )
+        })?;
+
+    // Minimal in-toto shape check: require the four well-known keys
+    // regardless of Statement version / predicate type.
+    for required in ["_type", "subject", "predicateType", "predicate"] {
+        if statement.get(required).is_none() {
+            return Err(VerificationError::failed(
+                FailureMode::MalformedEnvelope,
+                format!("payload missing required in-toto field {required:?}"),
+            ));
+        }
+    }
 
     Ok(ParsedAttestation {
         envelope,
@@ -294,21 +310,33 @@ fn extract_spki_pem(cert_pem: &str) -> Result<String, String> {
 }
 
 /// Check that each `expected_subject` path has an on-disk SHA-256 that
-/// matches some entry in the statement's `subject` array.
+/// matches some entry in the statement's `subject` array. Works on
+/// either in-toto Statement version because `subject[]` has the same
+/// shape across v0.1 and v1.
 pub fn verify_subjects(
-    statement: &InTotoStatement,
+    statement: &serde_json::Value,
     expected: &[std::path::PathBuf],
 ) -> Result<Option<String>, VerificationError> {
     if expected.is_empty() {
         return Ok(None);
     }
+    let subjects = statement
+        .get("subject")
+        .and_then(|s| s.as_array())
+        .ok_or_else(|| {
+            VerificationError::failed(
+                FailureMode::MalformedEnvelope,
+                "statement.subject is missing or not an array",
+            )
+        })?;
     let mut matched: Option<String> = None;
     for path in expected {
         let hex = sha256_hex_of_file(path)?;
-        let hit = statement.subject.iter().any(|subj| {
-            subj.digest
-                .get("sha256")
-                .map(|d| d.eq_ignore_ascii_case(&hex))
+        let hit = subjects.iter().any(|subj| {
+            subj.get("digest")
+                .and_then(|d| d.get("sha256"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.eq_ignore_ascii_case(&hex))
                 .unwrap_or(false)
         });
         if !hit {
