@@ -392,3 +392,80 @@ position clearer than we'd stated it:
   kprobes system-wide and filters in userspace), the 2-3× overhead
   should drop significantly, which might justify reclassifying it as
   stable. Not committed; noting the path.
+
+---
+
+## 2026-04-22 — Scope: artifact vs manifest SBOM
+
+mikebom draws the SBOM scope line at **physical presence on the
+scanned filesystem**. An image scan of `container.tar` shouldn't list
+deps that Maven's pom.xml declares but that no JAR / POM / binary on
+disk backs. That's the **artifact SBOM** — "what's in this thing
+right now".
+
+The alternate frame — **manifest SBOM** — is "what would this project
+pull in if I installed / built it". For source-tree scans (`pom.xml`,
+`Cargo.toml`, `package.json` pre-`npm install`, etc.) that IS the
+useful output, because the on-disk artifact doesn't exist yet.
+
+**How this is expressed today:**
+
+- `sbom scan --image <tar>` → `ScanMode::Image` → artifact scope
+  (`include_declared_deps = false` by default).
+- `sbom scan --path <dir>` → `ScanMode::Path` → manifest scope
+  (`include_declared_deps = true` by default). Source-tree scans keep
+  their declared-dep view.
+- `--include-declared-deps` is the explicit override. In image mode it
+  forces manifest scope. In path mode it's a no-op (already on).
+
+The `effective_include_declared_deps` gate is enforced in three
+Maven emission paths that could otherwise fabricate
+declared-but-not-on-disk components:
+
+1. **`deps_dev_graph.rs`** — `source_type = "declared-not-cached"`
+   transitives from the deps.dev `:dependencies` endpoint. Already
+   gated in commit `7688ddb`.
+2. **`maven.rs` pom.xml direct-dep loop** (`pom_dep_to_entry`
+   callsite, `source_type = "workspace"`). A dep emits only when its
+   coord is in `on_disk_coords` (JAR walk ∪ in-rootfs `.m2` cache) or
+   `include_declared_deps` is true.
+3. **`maven.rs` BFS cache-miss branch** (`bfs_transitive_poms`,
+   `source_type = "transitive"`). Cache-HIT transitives still emit
+   because the `.pom` on disk IS bytes in the rootfs.
+
+**Why this matters:**
+
+The polyglot image-scan FP investigation that drove this change
+identified 312 Maven FPs (vs. trivy's 54) in the baseline. Phase-1
+measurement attributed ~523 of those to deps.dev; Phase-2 traced the
+rest to the two Maven emission paths above. Gating all three under a
+uniform `include_declared_deps` flag puts every
+declared-but-not-on-disk coord behind a single explicit opt-in.
+
+**TODO(sbom-kind):** a cleaner UX is a first-class
+`--sbom-kind {artifact, manifest}` selector where the default
+auto-detects from target shape (`--image` → artifact, `--path
+<source-tree>` → manifest, `--path <package-cache>` → artifact since
+cached bytes ARE on disk). Current `--include-declared-deps` flag
+preserves the feature; the kind-based UX is a follow-on. Code
+locations that need to change when this lands:
+
+- `mikebom-cli/src/cli/scan_cmd.rs` — replace the `include_declared_deps`
+  threading with an `sbom_kind` parameter.
+- `mikebom-cli/src/scan_fs/package_db/maven.rs:read_with_claims` — the
+  dual-SBOM doc comment + the three gate sites carry
+  `TODO(sbom-kind)` markers.
+- `mikebom-cli/src/enrich/deps_dev_graph.rs` — same story.
+
+**Out of scope for the current change:**
+
+- Splitting a single scan into two outputs (one artifact, one
+  manifest). Interesting future UX but scope creep.
+- Applying the on-disk gate to other ecosystems. npm's
+  `package-lock.json`, pip's `requirements.txt`, etc. have equivalent
+  "declared but potentially not installed" emission paths. Deferred
+  until demand surfaces; today's measured FP bug is Maven-specific.
+- Collapsing `source_type` taxonomy. The `"workspace"`,
+  `"transitive"`, `"declared-not-cached"` tags carry useful
+  provenance; the gate applies uniformly but the property values stay
+  distinct.

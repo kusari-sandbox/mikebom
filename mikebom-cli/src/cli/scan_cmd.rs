@@ -180,6 +180,17 @@ pub async fn execute(
     } else {
         scan_fs::ScanMode::Path
     };
+    // Dual-SBOM scope auto-detection (see docs/design-notes.md:
+    // "Scope: artifact vs manifest SBOM"). Image scans default to
+    // strict "artifact" scope (only list components actually on disk);
+    // path scans default to permissive "manifest" scope (declared deps
+    // in the lockfile / pom.xml / etc. are in scope even without
+    // bytes on disk, because they WOULD be pulled in on install or
+    // build). `--include-declared-deps` is an explicit override that
+    // forces permissive in image mode; in path mode it's already on
+    // by default so the flag is effectively a no-op.
+    let effective_include_declared_deps =
+        include_declared_deps || matches!(scan_mode, scan_fs::ScanMode::Path);
     tracing::info!(root = %root_path.display(), "scan starting");
     let scan_fs::ScanResult {
         mut components,
@@ -195,6 +206,7 @@ pub async fn execute(
         include_dev,
         include_legacy_rpmdb,
         scan_mode,
+        effective_include_declared_deps,
     )
     .map_err(|e| anyhow::anyhow!("{e}"))?;
     tracing::info!(
@@ -243,7 +255,7 @@ pub async fn execute(
             &deps_dev_client,
             &mut components,
             offline,
-            include_declared_deps,
+            effective_include_declared_deps,
         )
         .await;
     if !new_dep_graph_edges.is_empty() {

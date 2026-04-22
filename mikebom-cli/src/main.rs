@@ -57,12 +57,20 @@ struct Cli {
     #[arg(long, global = true)]
     include_dev: bool,
 
-    /// Include declared-but-not-on-disk dependencies. By default,
-    /// mikebom emits only components physically present in the
-    /// scanned tree or image ("if it's in the image, it's in the
-    /// SBOM"). When set, also includes transitive dependencies
-    /// reported by deps.dev but not observed on disk (marked with
-    /// `mikebom:source-type = declared-not-cached`). Common causes of
+    /// Include declared-but-not-on-disk dependencies (manifest SBOM).
+    /// By default, mikebom emits only components physically present in
+    /// the scanned tree or image ("artifact SBOM" — if it's in the
+    /// image, it's in the SBOM). When set, also emits: (1) deps.dev-
+    /// reported transitives with no on-disk trace
+    /// (`source_type = declared-not-cached`); (2) Maven pom.xml-
+    /// declared direct deps with no matching JAR or `.m2` cache entry
+    /// (`source_type = workspace`); (3) Maven BFS cache-miss
+    /// transitives (`source_type = transitive`, no `.pom` on disk).
+    /// Auto-enabled for `sbom scan --path` so source-tree scans keep
+    /// the "what would be pulled in on build" view; explicit for
+    /// `--image` when you want the same permissive output from a
+    /// container scan. See docs/design-notes.md "Scope: artifact vs
+    /// manifest SBOM" for the full rationale. Common causes of
     /// declared-but-not-shipped: Maven `<scope>provided</scope>` deps
     /// (servlet-api, etc.), JDK-bundled classes, optional deps,
     /// aggressive shade-plugin metadata stripping, and closure-union

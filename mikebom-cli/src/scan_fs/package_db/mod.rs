@@ -297,6 +297,7 @@ pub fn read_all(
     include_dev: bool,
     include_legacy_rpmdb: bool,
     scan_mode: crate::scan_fs::ScanMode,
+    include_declared_deps: bool,
 ) -> Result<DbScanResult, PackageDbError> {
     let mut out = Vec::new();
     let mut claimed: std::collections::HashSet<std::path::PathBuf> =
@@ -423,6 +424,7 @@ pub fn read_all(
     out.extend(maven::read_with_claims(
         rootfs,
         include_dev,
+        include_declared_deps,
         &claimed,
         #[cfg(unix)]
         &claimed_inodes,
@@ -552,6 +554,7 @@ Architecture: arm64
             false,
             false,
             crate::scan_fs::ScanMode::Path,
+            true,
         )
         .unwrap();
 
