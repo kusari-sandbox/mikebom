@@ -189,20 +189,20 @@ No new crates per Constitution Principle VI.
 
 ### Tests for User Story 5
 
-- [ ] T072 [P] [US5] Unit test in `mikebom-cli/src/sbom/mutator.rs::tests::apply_add_operation_appends_to_array`: apply `{"op":"add","path":"/components/0/licenses/-","value":{...}}` to a fixture SBOM, assert the license appears in the output.
-- [ ] T073 [P] [US5] Unit test `mikebom-cli/src/sbom/mutator.rs::tests::test_op_failure_aborts`: RFC 6902 `test` operation with wrong value aborts the whole patch application (atomic semantics).
+- [X] T072 [P] [US5] `apply_add_operation_appends_to_array` at `sbom::mutator::tests`: add-to-array + add-to-field patches apply correctly.
+- [X] T073 [P] [US5] `test_op_failure_aborts_patch` at `sbom::mutator::tests`: RFC 6902 `test` op with wrong value aborts the chain with `EnrichmentError::PatchApply`.
 
 ### Implementation for User Story 5
 
-- [ ] T074 [US5] Create `mikebom-cli/src/sbom/mod.rs` (if not present) with `pub mod mutator;`.
-- [ ] T075 [US5] Implement `mikebom-cli/src/sbom/mutator.rs::apply_patch`: wraps the `json-patch` crate. Input: mutable `serde_json::Value` (the SBOM) + an `EnrichmentPatch`. Apply operations in order; returns either the mutated SBOM or an `EnrichmentError` on any failed op.
-- [ ] T076 [US5] Provenance emission helper in `mikebom-cli/src/sbom/mutator.rs::append_provenance_property`: adds a `mikebom:enrichment-patch[N]` entry to the SBOM's top-level `properties[]` array with JSON-encoded `{author, timestamp, base_attestation, op_count}` per `research.md` R3.
-- [ ] T077 [US5] Base-attestation reference helper in `mikebom-cli/src/sbom/mutator.rs::attestation_sha256`: when `--base-attestation <PATH>` is provided, stream-hash the file with SHA-256 and embed the hex digest in the provenance property. Returns `None` when the flag is absent (provenance property omits `base_attestation`).
-- [ ] T078 [US5] Replace the stubbed `mikebom-cli/src/cli/enrich.rs::execute` (currently `bail!("enrich command not yet implemented")`) with the real implementation: accept `--patch` (repeatable), `--author`, `--base-attestation`, `--output` flags; load SBOM, apply patches in order via T075, append provenance via T076–T077, write output.
-- [ ] T079 [US5] Author default: when `--author` is absent, use `"unknown"` and emit `tracing::warn!("enrichment author not specified — downstream traceability degraded")`.
-- [ ] T080 [US5] Integration test `mikebom-cli/tests/sbom_enrich.rs::adds_supplier_to_component`: generate a trivial SBOM fixture with one component, write a JSON patch that adds `/components/0/supplier`, run `mikebom sbom enrich`, assert the supplier appears AND the `mikebom:enrichment-patch[0]` property exists in the output.
-- [ ] T081 [US5] Integration test `mikebom-cli/tests/sbom_enrich.rs::multiple_patches_apply_in_order`: two patches, the second operating on a field the first added; assert order dependence honored.
-- [ ] T082 [US5] Integration test `mikebom-cli/tests/sbom_enrich.rs::base_attestation_ref_embedded`: pass `--base-attestation attest.dsse.json`, assert the provenance property contains the attestation's SHA-256.
+- [X] T074 [US5] `mikebom-cli/src/sbom/mod.rs` with `pub mod mutator;`; registered under `mod sbom;` in `main.rs`.
+- [X] T075 [US5] `apply_patch` wraps `json-patch` 3, returns op count on success, `EnrichmentError::{InvalidPatch,PatchApply}` on failure.
+- [X] T076 [US5] `append_provenance_property` emits `mikebom:enrichment-patch[N]` property carrying JSON-stringified `{author, timestamp, op_count, base_attestation?}`.
+- [X] T077 [US5] `attestation_sha256(path)` streams file bytes through SHA-256, returns hex string. Plumbed through CLI via `--base-attestation`; omitted when absent.
+- [X] T078 [US5] `cli::enrich::execute` replaced the stubbed bail with the full applier. Reads SBOM + all `--patch` files, applies in order, writes output (defaults to overwriting input).
+- [X] T079 [US5] Author defaults to `"unknown"` with `tracing::warn!` when `--author` absent.
+- [X] T080 [US5] `adds_supplier_to_component` in `tests/sbom_enrich.rs` covers the core contract.
+- [X] T081 [US5] `multiple_patches_apply_in_order` verifies ordering: second patch operating on a field the first added succeeds.
+- [X] T082 [US5] `base_attestation_sha256_embedded_in_provenance` asserts the hex digest of the attestation shows up in the provenance property.
 
 **Checkpoint**: `mikebom sbom enrich` works end-to-end. Enriched SBOMs carry provenance metadata distinguishable from original attested data.
 

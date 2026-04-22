@@ -17,6 +17,7 @@ mod error;
 mod generate;
 mod policy;
 mod resolve;
+mod sbom;
 mod scan_fs;
 mod trace;
 
