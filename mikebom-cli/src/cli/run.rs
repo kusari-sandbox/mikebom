@@ -70,6 +70,38 @@ pub struct RunArgs {
     #[arg(long)]
     pub auto_dirs: bool,
 
+    // ─────────────────────────────────────────────────────────────
+    // Feature 006 — DSSE signing flags forwarded to the scan phase.
+    // ─────────────────────────────────────────────────────────────
+    /// Path to a PEM-encoded private key for local-key DSSE signing.
+    #[arg(long, conflicts_with = "keyless")]
+    pub signing_key: Option<PathBuf>,
+
+    /// Env var name holding the passphrase for an encrypted
+    /// `--signing-key`.
+    #[arg(long, value_name = "NAME")]
+    pub signing_key_passphrase_env: Option<String>,
+
+    /// Keyless signing via OIDC → Fulcio → Rekor.
+    #[arg(long)]
+    pub keyless: bool,
+
+    /// Override Fulcio URL.
+    #[arg(long, default_value = "https://fulcio.sigstore.dev")]
+    pub fulcio_url: String,
+
+    /// Override Rekor URL.
+    #[arg(long, default_value = "https://rekor.sigstore.dev")]
+    pub rekor_url: String,
+
+    /// Skip Rekor upload + inclusion-proof embedding (keyless mode).
+    #[arg(long)]
+    pub no_transparency_log: bool,
+
+    /// Fail if no signing identity was configured.
+    #[arg(long)]
+    pub require_signing: bool,
+
     /// Build command to trace
     #[arg(last = true, required = true)]
     pub command: Vec<String>,
@@ -88,6 +120,14 @@ pub async fn execute(args: RunArgs) -> anyhow::Result<()> {
         json: false,
         artifact_dir: args.artifact_dir.clone(),
         auto_dirs: args.auto_dirs,
+        // Feature 006 — forward signing flags verbatim.
+        signing_key: args.signing_key.clone(),
+        signing_key_passphrase_env: args.signing_key_passphrase_env.clone(),
+        keyless: args.keyless,
+        fulcio_url: args.fulcio_url.clone(),
+        rekor_url: args.rekor_url.clone(),
+        no_transparency_log: args.no_transparency_log,
+        require_signing: args.require_signing,
         command: args.command.clone(),
     };
     super::scan::execute(scan_args).await?;

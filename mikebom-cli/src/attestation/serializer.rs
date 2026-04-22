@@ -4,11 +4,47 @@ use std::path::Path;
 
 use mikebom_common::attestation::statement::InTotoStatement;
 
-/// Serialize an attestation to a JSON file.
+use crate::attestation::signer::{self, SigningIdentity};
+
+/// Serialize an attestation to a JSON file (unsigned, legacy shape).
+///
+/// Preserved for callers that don't yet thread a `SigningIdentity`
+/// through. New code should prefer [`write_attestation_signed`] which
+/// wraps the statement in a DSSE envelope when a signing identity is
+/// configured.
 pub fn write_attestation(stmt: &InTotoStatement, path: &Path) -> anyhow::Result<()> {
     let json = serde_json::to_string_pretty(stmt)?;
     std::fs::write(path, json)?;
     tracing::info!("Attestation written to {}", path.display());
+    Ok(())
+}
+
+/// Serialize an attestation, wrapping in a DSSE envelope when an active
+/// signing identity is configured. Hard-fails on signing errors per
+/// FR-006a: no file is written if signing fails.
+pub fn write_attestation_signed(
+    stmt: &InTotoStatement,
+    path: &Path,
+    identity: &SigningIdentity,
+) -> anyhow::Result<()> {
+    match signer::sign(stmt, identity)? {
+        Some(envelope) => {
+            let json = serde_json::to_string_pretty(&envelope)?;
+            std::fs::write(path, json)?;
+            tracing::info!("Signed attestation written to {}", path.display());
+        }
+        None => {
+            // No signing requested — emit legacy raw shape + warning
+            // per FR-004. Downstream verifiers that can't match the
+            // raw shape should branch on the `NotSigned` FailureMode.
+            tracing::warn!(
+                "Attestation emitted without a signing identity — downstream \
+                verification will report NotSigned. Pass --signing-key <PATH> \
+                or --keyless to produce a DSSE envelope."
+            );
+            write_attestation(stmt, path)?;
+        }
+    }
     Ok(())
 }
 

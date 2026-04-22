@@ -37,8 +37,84 @@ pub struct ScanArgs {
     /// commands (`bash -c "…"`) — those are too dynamic to introspect.
     #[arg(long)]
     pub auto_dirs: bool,
+
+    // ─────────────────────────────────────────────────────────────
+    // Feature 006 — DSSE signing flags. See specs/006-sbomit-suite/
+    // contracts/cli.md for the full contract.
+    // ─────────────────────────────────────────────────────────────
+    /// Path to a PEM-encoded private key for local-key DSSE signing.
+    /// Mutually exclusive with `--keyless`.
+    #[arg(long, conflicts_with = "keyless")]
+    pub signing_key: Option<PathBuf>,
+
+    /// Name of the env var holding the passphrase for an encrypted
+    /// `--signing-key`. No effect on unencrypted keys. No interactive
+    /// prompt — CI-friendly by design.
+    #[arg(long, value_name = "NAME")]
+    pub signing_key_passphrase_env: Option<String>,
+
+    /// Use keyless signing via OIDC → Fulcio → Rekor. Mutually
+    /// exclusive with `--signing-key`.
+    #[arg(long)]
+    pub keyless: bool,
+
+    /// Override the Fulcio certificate-issuance URL.
+    #[arg(long, default_value = "https://fulcio.sigstore.dev")]
+    pub fulcio_url: String,
+
+    /// Override the Rekor transparency-log URL.
+    #[arg(long, default_value = "https://rekor.sigstore.dev")]
+    pub rekor_url: String,
+
+    /// Skip Rekor upload + inclusion-proof embedding. Keyless mode
+    /// only; with this flag the envelope carries the Fulcio cert alone.
+    #[arg(long)]
+    pub no_transparency_log: bool,
+
+    /// Fail the command if no signing identity was configured. Flips
+    /// the default "emit unsigned + warn" behavior to a hard error.
+    #[arg(long)]
+    pub require_signing: bool,
+
     #[arg(last = true)]
     pub command: Vec<String>,
+}
+
+impl ScanArgs {
+    /// Build a [`SigningIdentity`] from the current flag combination.
+    /// Returns an error when `--require-signing` is set but no identity
+    /// was configured.
+    pub fn build_signing_identity(
+        &self,
+    ) -> anyhow::Result<crate::attestation::signer::SigningIdentity> {
+        use crate::attestation::signer::{OidcProvider, SigningIdentity};
+        match (self.signing_key.as_ref(), self.keyless) {
+            (Some(path), false) => Ok(SigningIdentity::LocalKey {
+                path: path.clone(),
+                passphrase_env: self.signing_key_passphrase_env.clone(),
+            }),
+            (None, true) => Ok(SigningIdentity::Keyless {
+                fulcio_url: self.fulcio_url.clone(),
+                rekor_url: self.rekor_url.clone(),
+                oidc_provider: OidcProvider::detect(),
+                transparency_log: !self.no_transparency_log,
+            }),
+            (None, false) => {
+                if self.require_signing {
+                    anyhow::bail!(
+                        "--require-signing set but no signing identity configured; \
+                        pass --signing-key <PATH> or --keyless"
+                    );
+                }
+                Ok(SigningIdentity::None)
+            }
+            (Some(_), true) => {
+                // `conflicts_with` on clap prevents this path, but keep
+                // the defensive check in case the struct is built by hand.
+                anyhow::bail!("--signing-key and --keyless are mutually exclusive")
+            }
+        }
+    }
 }
 
 pub async fn execute(args: ScanArgs) -> anyhow::Result<()> {
@@ -328,7 +404,10 @@ async fn execute_scan(args: ScanArgs) -> anyhow::Result<()> {
         trace_end,
     )?;
 
-    serializer::write_attestation(&stmt, &args.output)?;
+    // Feature 006 — write signed DSSE envelope when a signing identity
+    // is configured; fall through to legacy raw shape otherwise.
+    let identity = args.build_signing_identity()?;
+    serializer::write_attestation_signed(&stmt, &args.output, &identity)?;
 
     let nc = stmt.predicate.network_trace.summary.total_connections;
     let fo = stmt.predicate.file_access.summary.total_operations;
