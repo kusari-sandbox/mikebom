@@ -102,6 +102,11 @@ pub struct RunArgs {
     #[arg(long)]
     pub require_signing: bool,
 
+    /// Explicit subject artifact path (feature 006 US3). Repeatable.
+    /// When set, auto-detection is suppressed.
+    #[arg(long = "subject", value_name = "PATH")]
+    pub subject: Vec<PathBuf>,
+
     /// Build command to trace
     #[arg(last = true, required = true)]
     pub command: Vec<String>,
@@ -128,6 +133,7 @@ pub async fn execute(args: RunArgs) -> anyhow::Result<()> {
         rekor_url: args.rekor_url.clone(),
         no_transparency_log: args.no_transparency_log,
         require_signing: args.require_signing,
+        subject: args.subject.clone(),
         command: args.command.clone(),
     };
     super::scan::execute(scan_args).await?;

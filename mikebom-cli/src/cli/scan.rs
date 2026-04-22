@@ -76,6 +76,12 @@ pub struct ScanArgs {
     #[arg(long)]
     pub require_signing: bool,
 
+    /// Explicit subject artifact path. Repeatable. When set,
+    /// auto-detection is suppressed — mikebom signs exactly what you
+    /// told it to (FR-009).
+    #[arg(long = "subject", value_name = "PATH")]
+    pub subject: Vec<PathBuf>,
+
     #[arg(last = true)]
     pub command: Vec<String>,
 }
@@ -391,6 +397,18 @@ async fn execute_scan(args: ScanArgs) -> anyhow::Result<()> {
         args.command.join(" ")
     };
 
+    // Feature 006 US3 — build the subject resolver from operator
+    // override + artifact-dir walk. Legacy `subject_name` /
+    // `subject_digest` remain for backward-compat callers but are
+    // overridden once `subject_resolver` is set.
+    let subject_resolver = Some(crate::attestation::subject::SubjectResolver {
+        operator_subjects: args.subject.clone(),
+        artifact_dirs: args.artifact_dir.clone(),
+        mtime_floor: Some(trace_start_wall),
+        command: cmd_str.clone(),
+        trace_start_rfc3339: trace_start.to_iso8601(),
+    });
+
     let stmt = builder::build_attestation(
         trace,
         &AttestationConfig {
@@ -399,6 +417,7 @@ async fn execute_scan(args: ScanArgs) -> anyhow::Result<()> {
             cgroup_id: 0,
             subject_name: "build-output".to_string(),
             subject_digest: None,
+            subject_resolver,
         },
         trace_start,
         trace_end,

@@ -129,24 +129,24 @@ No new crates per Constitution Principle VI.
 
 ### Tests for User Story 3
 
-- [ ] T044 [P] [US3] Unit tests in `mikebom-cli/src/attestation/subject.rs::tests` for `detect_magic_bytes`: pass raw ELF (`\x7FELF`), Mach-O (`\xCF\xFA\xED\xFE` 64-bit LE), PE (`MZ` + offset to `PE\0\0`) byte streams and non-binary data; assert true/false classifications.
-- [ ] T045 [P] [US3] Unit test `mikebom-cli/src/attestation/subject.rs::tests::synthetic_digest_is_deterministic`: given a fixed command + trace-start timestamp, the synthetic digest hex output is identical across runs (FR-006).
-- [ ] T046 [P] [US3] Unit test `mikebom-cli/src/attestation/subject.rs::tests::operator_override_suppresses_detection`: `SubjectResolver::resolve(…, operator_override=[path])` returns only the operator's paths; auto-detection does not run.
+- [X] T044 [P] [US3] Unit tests for `detect_magic_bytes` at `attestation::subject::tests`: ELF, Mach-O 64-LE, Mach-O fat BE, PE MZ all detected; text files rejected.
+- [X] T045 [P] [US3] `synthetic_digest_is_deterministic` at `attestation::subject::tests`: same command + trace start → same hex digest; different inputs → different digests.
+- [X] T046 [P] [US3] `operator_override_suppresses_auto_detection` at `attestation::subject::tests`: operator path in, no artifact-dir scan.
 
 ### Implementation for User Story 3
 
-- [ ] T047 [US3] Magic-byte detection helper in `mikebom-cli/src/attestation/subject.rs::detect_magic_bytes`: reads first 8 bytes of a file, returns `true` if ELF / Mach-O (32/64, BE/LE variants) / PE signature. Reuse `object` crate if already pulled in, otherwise inline byte constants.
-- [ ] T048 [US3] Resolver core in `mikebom-cli/src/attestation/subject.rs::SubjectResolver::resolve`: implements the precedence ladder from `data-model.md` (operator override → artifact-dir walk → suffix-list match → magic-byte detection → synthetic fallback). Uses existing `walker::walk_and_hash` for suffix-matched files; extends it with magic-byte fallback for suffix-less executables.
-- [ ] T049 [US3] Canonical synthetic digest in `mikebom-cli/src/attestation/subject.rs::synthetic_digest`: SHA-256 hex of `canonical_bytes(command_argv || trace_start_rfc3339)`. Returns `(command_summary, synthetic_digest)` tuple where `command_summary = "synthetic:<truncated_argv0>-<short-hash>"`.
-- [ ] T050 [US3] Wire `SubjectResolver::resolve` into `mikebom-cli/src/attestation/builder.rs::build_attestation`: replace the current hardcoded `ResourceDescriptor { name: "build-output", digest: BTreeMap::new() }` with a call to the resolver. Pass the captured `AggregatedTrace`, `trace_command`, `trace_start`, and operator-supplied `--subject` paths. Map each returned `Subject` to a `ResourceDescriptor`.
-- [ ] T051 [US3] Serialize `Subject::Artifact` as `{ "name": "<path>", "digest": { "sha256": "<hex>" } }` and `Subject::Synthetic` as `{ "name": "synthetic:...", "digest": { "synthetic": "<hex>" } }` in the in-toto Statement per `contracts/attestation-envelope.md`.
-- [ ] T052 [US3] Add `--subject <PATH>` (repeatable) flag to `mikebom-cli/src/cli/scan.rs::ScanArgs` and `mikebom-cli/src/cli/run.rs::RunArgs`. Also add to `mikebom-cli/src/cli/generate.rs::GenerateArgs` so post-hoc SBOM derivation can accept a subject override.
-- [ ] T053 [US3] Thread operator-supplied `--subject` paths through to `attestation::builder::build_attestation`. When any `--subject` is passed, auto-detection is suppressed entirely per FR-009.
-- [ ] T054 [US3] Warning log on synthetic-subject fallback in `mikebom-cli/src/attestation/subject.rs::SubjectResolver::resolve`: `tracing::warn!(command = %command, "no recognized build artifact detected — emitting synthetic subject; downstream verifier binding is degraded")` when the resolver falls through all branches.
-- [ ] T055 [US3] Integration test `mikebom-cli/tests/subject_detection.rs::suffix_list_matches_wheel`: run a synthetic trace that produces a `.whl` file in `--artifact-dir`, assert the resulting attestation's subject contains that file with a SHA-256 digest matching the on-disk bytes.
-- [ ] T056 [US3] Integration test `mikebom-cli/tests/subject_detection.rs::elf_magic_detects_bare_binary`: place an ELF binary (or craft minimal ELF header) in `--artifact-dir`, assert detection + SHA-256 in subject.
-- [ ] T057 [US3] Integration test `mikebom-cli/tests/subject_detection.rs::operator_override_wins`: pass `--subject foo.txt`, assert the attestation contains exactly `foo.txt` even when the artifact-dir holds other recognized files.
-- [ ] T058 [US3] Integration test `mikebom-cli/tests/subject_detection.rs::synthetic_fallback`: run a trace with no artifacts produced, assert the subject is `synthetic:...` with a `synthetic` digest algorithm key (not `sha256`).
+- [X] T047 [US3] `detect_magic_bytes` reads 8-byte header, classifies ELF / Mach-O (32/64 BE+LE + fat) / PE. Inline byte constants; no new crate deps.
+- [X] T048 [US3] `SubjectResolver::resolve` implements the 5-stage precedence ladder. Artifact-dir walk honors `mtime_floor` so pre-trace files are skipped.
+- [X] T049 [US3] `synthetic_descriptor(command, trace_start_rfc3339)` — SHA-256 of `command + "|" + trace_start_rfc3339`. Returns `("synthetic:<basename(argv0)>-<8hex>", <64hex>)`.
+- [X] T050 [US3] `AttestationConfig` gained `subject_resolver: Option<SubjectResolver>`; `build_attestation` uses the resolver's output when present, legacy path preserved for back-compat.
+- [X] T051 [US3] `Subject::Artifact` → `{name, digest:{sha256}}` and `Subject::Synthetic` → `{name:"synthetic:...", digest:{synthetic}}` per contract. Verified via inline tests.
+- [X] T052 [US3] `--subject <PATH>` (repeatable) landed on `ScanArgs` and `RunArgs`. `GenerateArgs` intentionally unchanged — subject comes from the feeding attestation, not the derived SBOM.
+- [X] T053 [US3] scan.rs constructs a `SubjectResolver` populated with `args.subject` + `args.artifact_dir` + `trace_start_wall` mtime floor, passes into `AttestationConfig::subject_resolver`.
+- [X] T054 [US3] `tracing::warn!` inside `synthetic_fallback` on every synthetic emission.
+- [X] T055 [US3] `artifact_dir_walk_picks_up_matching_suffix` at `attestation::subject::tests` covers the `.whl` path end-to-end at the resolver layer.
+- [X] T056 [US3] `artifact_dir_walk_picks_up_elf_binary_without_suffix` covers the magic-byte path.
+- [X] T057 [US3] `operator_override_suppresses_auto_detection` covers the override path; `cli_subject_flag_produces_real_sha256_in_envelope` in `tests/verify_dsse.rs` covers the full CLI → envelope flow.
+- [X] T058 [US3] `empty_artifact_dirs_produce_synthetic_subject` covers synthetic fallback shape.
 
 **Checkpoint**: Real builds produce attestations whose `subject[]` list real artifact files with real SHA-256s. Combined with Phase 4, signed attestations bind to concrete artifacts end-to-end.
 

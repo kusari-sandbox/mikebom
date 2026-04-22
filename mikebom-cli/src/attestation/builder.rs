@@ -10,6 +10,7 @@ use mikebom_common::attestation::statement::{
 };
 use mikebom_common::types::timestamp::Timestamp;
 
+use crate::attestation::subject::SubjectResolver;
 use crate::config;
 use crate::trace::aggregator::AggregatedTrace;
 
@@ -18,8 +19,15 @@ pub struct AttestationConfig {
     pub target_pid: u32,
     pub target_command: String,
     pub cgroup_id: u64,
+    /// Legacy hardcoded name, preserved for callers that still pass
+    /// synthetic strings. Ignored when `subject_resolver` is `Some`.
     pub subject_name: String,
+    /// Legacy hardcoded digest, preserved as above.
     pub subject_digest: Option<String>,
+    /// Feature 006 — when present, drives real subject resolution via
+    /// operator override → artifact-dir walk → magic-byte → synthetic
+    /// fallback. Supersedes `subject_name` + `subject_digest`.
+    pub subject_resolver: Option<SubjectResolver>,
 }
 
 /// Build an InTotoStatement from aggregated trace results.
@@ -54,16 +62,26 @@ pub fn build_attestation(
         trace_integrity: trace.trace_integrity,
     };
 
-    // Build subject descriptor
-    let mut digest = BTreeMap::new();
-    if let Some(ref hash) = cfg.subject_digest {
-        digest.insert("sha256".to_string(), hash.clone());
-    }
-
-    let subject = vec![ResourceDescriptor {
-        name: cfg.subject_name.clone(),
-        digest,
-    }];
+    // Subject array per FR-007 / FR-010. When a resolver is attached,
+    // use the precedence ladder (operator override → artifact-dir → magic
+    // → synthetic). Fall through to the legacy hardcoded pair otherwise
+    // (kept for AttestationConfig callers that predate feature 006).
+    let subject = if let Some(ref resolver) = cfg.subject_resolver {
+        resolver
+            .resolve()
+            .iter()
+            .map(|s| s.to_resource_descriptor())
+            .collect()
+    } else {
+        let mut digest = BTreeMap::new();
+        if let Some(ref hash) = cfg.subject_digest {
+            digest.insert("sha256".to_string(), hash.clone());
+        }
+        vec![ResourceDescriptor {
+            name: cfg.subject_name.clone(),
+            digest,
+        }]
+    };
 
     Ok(InTotoStatement {
         statement_type: InTotoStatement::STATEMENT_TYPE.to_string(),
@@ -152,6 +170,7 @@ mod tests {
             cgroup_id: 999,
             subject_name: "test-output".to_string(),
             subject_digest: None,
+            subject_resolver: None,
         };
 
         let stmt = build_attestation(
