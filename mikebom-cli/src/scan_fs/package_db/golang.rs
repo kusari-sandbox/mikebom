@@ -549,6 +549,7 @@ pub(crate) fn build_entries_from_go_module(
             confidence: None,
             binary_packed: None,
             raw_version: None,
+            parent_purl: None,
             npm_role: None,
             hashes,
             sbom_tier: Some("source".to_string()),

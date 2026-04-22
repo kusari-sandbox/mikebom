@@ -308,6 +308,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            parent_purl: None,
             external_references: Vec::new(),
         }
     }

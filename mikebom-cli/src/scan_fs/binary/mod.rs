@@ -561,6 +561,7 @@ fn version_match_to_entry(
         confidence: Some("heuristic".to_string()),
         binary_packed: None,
         raw_version: None,
+        parent_purl: None,
         npm_role: None,
         hashes: Vec::new(),
     })
@@ -946,6 +947,7 @@ fn make_file_level_component(
         confidence: None,
         binary_packed: scan.packer.map(|p| p.as_str().to_string()),
         raw_version: None,
+        parent_purl: None,
         npm_role: None,
         hashes: Vec::new(),
     }
@@ -1079,6 +1081,7 @@ fn note_package_to_entry(
         confidence: None,
         binary_packed: None,
         raw_version: None,
+        parent_purl: None,
         npm_role: None,
         hashes: Vec::new(),
     })

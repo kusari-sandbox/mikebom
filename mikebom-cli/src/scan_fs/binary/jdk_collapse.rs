@@ -109,6 +109,7 @@ impl JdkCollapser {
                     confidence: Some("heuristic".to_string()),
                     binary_packed: None,
                     raw_version: None,
+                    parent_purl: None,
                     npm_role: None,
                     hashes: Vec::new(),
                 })

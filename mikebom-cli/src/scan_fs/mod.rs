@@ -158,6 +158,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            parent_purl: None,
             external_references: Vec::new(),
         });
     }
@@ -428,6 +429,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
                 binary_packed: entry.binary_packed.clone(),
                 npm_role: entry.npm_role.clone(),
                 raw_version: entry.raw_version.clone(),
+                parent_purl: None,
                 external_references: external_refs_from_purl(&entry.purl),
             });
 

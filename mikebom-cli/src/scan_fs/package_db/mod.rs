@@ -137,6 +137,14 @@ pub struct PackageDbEntry {
     /// PURL encoding. Drives the `mikebom:raw-version` property at
     /// serialization. `None` on non-rpm readers.
     pub raw_version: Option<String>,
+    /// Parent/container component's PURL, when this entry was extracted
+    /// from inside another physical artifact. Set by the Maven scanner
+    /// on coords discovered inside a shade-plugin fat-jar's
+    /// `META-INF/maven/<g>/<a>/` directories — the enclosing fat-jar's
+    /// own PURL is recorded here so the downstream CDX emitter can nest
+    /// this component under `component.components[]` on its parent.
+    /// `None` on top-level (on-disk-as-their-own-file) components.
+    pub parent_purl: Option<String>,
     /// Feature 005 US1 — role marker for packages that are part of a
     /// package-manager's own toolchain rather than an application
     /// dependency. Currently set to `Some("internal")` by the npm

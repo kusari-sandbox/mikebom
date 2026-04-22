@@ -148,6 +148,19 @@ pub struct ResolvedComponent {
     /// the `mikebom:raw-version` property.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raw_version: Option<String>,
+    /// PURL of a parent/container component that physically bundles
+    /// this one. Set when the component was discovered inside another
+    /// component — e.g. a vendored coord extracted from a Maven
+    /// shade-plugin fat-jar's `META-INF/maven/<g>/<a>/` directory. The
+    /// enclosing fat-jar's own PURL is recorded here so the CDX
+    /// emitter can nest this component under its parent's
+    /// `component.components[]` array (CDX 1.6 nested-components
+    /// shape). Deduplication groups by `(ecosystem, name, version,
+    /// parent_purl)` so the same coord vendored in two different
+    /// parents surfaces as two distinct nested children rather than
+    /// collapsing to one. `None` on top-level components.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_purl: Option<String>,
     /// External references for this component — repository URLs,
     /// homepages, issue trackers. Maps to CycloneDX
     /// `components[].externalReferences[]`. Populated from PURL
@@ -329,6 +342,7 @@ mod tests {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            parent_purl: None,
             external_references: Vec::new(),
         };
 
@@ -380,6 +394,7 @@ mod tests {
             binary_packed: None,
             npm_role: None,
             raw_version: None,
+            parent_purl: None,
             external_references: Vec::new(),
         };
 

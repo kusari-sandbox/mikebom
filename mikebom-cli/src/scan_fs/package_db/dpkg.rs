@@ -216,6 +216,7 @@ fn parse_stanza(
         confidence: None,
         binary_packed: None,
         raw_version: None,
+        parent_purl: None,
         npm_role: None,
         hashes: Vec::new(),
         sbom_tier: Some("deployed".to_string()),

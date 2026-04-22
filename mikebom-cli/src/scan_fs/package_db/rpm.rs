@@ -525,6 +525,7 @@ fn assemble_entry(
         // drive the `mikebom:raw-version` property deterministically
         // without having to infer which ecosystem the entry came from.
         raw_version: Some(full_version),
+        parent_purl: None,
         npm_role: None,
         hashes: Vec::new(),
     }

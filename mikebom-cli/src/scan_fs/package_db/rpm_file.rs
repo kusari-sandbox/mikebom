@@ -373,6 +373,7 @@ fn parse_rpm_file(
         // as `rpm::assemble_entry`. Drives the `mikebom:raw-version`
         // property at CycloneDX serialisation time.
         raw_version: Some(version_tok),
+        parent_purl: None,
         npm_role: None,
         hashes: Vec::new(),
     })
