@@ -66,6 +66,7 @@ pub async fn enrich_dep_graph(
     client: &DepsDevClient,
     components: &mut Vec<ResolvedComponent>,
     offline: bool,
+    include_declared_deps: bool,
 ) -> Vec<Relationship> {
     if offline {
         debug!("deps.dev dep-graph enrichment skipped — offline mode");
@@ -199,46 +200,70 @@ pub async fn enrich_dep_graph(
             };
             if components_by_purl.insert(purl_str.clone()) {
                 if let Ok(purl) = Purl::new(&purl_str) {
-                    let component_name = short_name_for_purl(&eco, &node_name);
-                    components.push(ResolvedComponent {
-                        name: component_name,
-                        version: resolved_version,
-                        purl,
-                        evidence: ResolutionEvidence {
-                            technique: ResolutionTechnique::UrlPattern,
-                            // Lower confidence than locally-observed
-                            // components. deps.dev is reliable but
-                            // secondary — on-disk observation beats
-                            // declared.
-                            confidence: 0.75,
-                            source_connection_ids: Vec::new(),
-                            source_file_paths: vec!["deps.dev".to_string()],
-                            deps_dev_match: None,
-                        },
-                        licenses: Vec::new(),
-                        concluded_licenses: Vec::new(),
-                        hashes: Vec::new(),
-                        supplier: None,
-                        cpes: Vec::new(),
-                        advisories: Vec::new(),
-                        occurrences: Vec::new(),
-                        is_dev: None,
-                        requirement_range: None,
-                        source_type: Some("declared-not-cached".to_string()),
-                        sbom_tier: Some("source".to_string()),
-                        buildinfo_status: None,
-                        evidence_kind: None,
-                        binary_class: None,
-                        binary_stripped: None,
-                        linkage_kind: None,
-                        detected_go: None,
-                        confidence: None,
-                        binary_packed: None,
-                        npm_role: None,
-                        raw_version: None,
-                        external_references: Vec::new(),
-                    });
-                    added_components += 1;
+                    // Honor the "if it's in the image, it's in the
+                    // SBOM" principle by default. `declared-not-cached`
+                    // coords from deps.dev — provided-scope deps,
+                    // JDK-bundled classes, optional deps, closure-union
+                    // inflation across many roots — represent packages
+                    // that don't physically ship in the scanned tree /
+                    // image. The edge to this coord still gets pushed
+                    // into `new_relationships` below; the relaxed
+                    // pipeline guard rail (`from_ok || to_ok`) keeps
+                    // edges walkable from on-disk components even when
+                    // their targets aren't emitted as components.
+                    //
+                    // TODO(declared-scope): CDX 1.6 `component.scope:
+                    // "excluded"` is the CDX-canonical way to represent
+                    // "acknowledged dep, not shipped". When we can
+                    // distinguish Maven compile / test / provided /
+                    // runtime scopes from deps.dev's graph (requires a
+                    // richer client query — the current `:dependencies`
+                    // endpoint doesn't return scope), emit
+                    // declared-not-cached with `scope: "excluded"`
+                    // instead of dropping. Preserves topology without
+                    // violating the "on-disk = in-SBOM" rule.
+                    if include_declared_deps {
+                        let component_name = short_name_for_purl(&eco, &node_name);
+                        components.push(ResolvedComponent {
+                            name: component_name,
+                            version: resolved_version,
+                            purl,
+                            evidence: ResolutionEvidence {
+                                technique: ResolutionTechnique::UrlPattern,
+                                // Lower confidence than locally-observed
+                                // components. deps.dev is reliable but
+                                // secondary — on-disk observation beats
+                                // declared.
+                                confidence: 0.75,
+                                source_connection_ids: Vec::new(),
+                                source_file_paths: vec!["deps.dev".to_string()],
+                                deps_dev_match: None,
+                            },
+                            licenses: Vec::new(),
+                            concluded_licenses: Vec::new(),
+                            hashes: Vec::new(),
+                            supplier: None,
+                            cpes: Vec::new(),
+                            advisories: Vec::new(),
+                            occurrences: Vec::new(),
+                            is_dev: None,
+                            requirement_range: None,
+                            source_type: Some("declared-not-cached".to_string()),
+                            sbom_tier: Some("source".to_string()),
+                            buildinfo_status: None,
+                            evidence_kind: None,
+                            binary_class: None,
+                            binary_stripped: None,
+                            linkage_kind: None,
+                            detected_go: None,
+                            confidence: None,
+                            binary_packed: None,
+                            npm_role: None,
+                            raw_version: None,
+                            external_references: Vec::new(),
+                        });
+                        added_components += 1;
+                    }
                 }
             }
         }

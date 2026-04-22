@@ -36,6 +36,7 @@ pub async fn execute(
     offline: bool,
     include_dev: bool,
     include_legacy_rpmdb: bool,
+    include_declared_deps: bool,
 ) -> anyhow::Result<ExitCode> {
     match cmd.command {
         SbomSubcommand::Generate(args) => {
@@ -52,7 +53,14 @@ pub async fn execute(
             Ok(ExitCode::from(0))
         }
         SbomSubcommand::Scan(args) => {
-            super::scan_cmd::execute(args, offline, include_dev, include_legacy_rpmdb).await?;
+            super::scan_cmd::execute(
+                args,
+                offline,
+                include_dev,
+                include_legacy_rpmdb,
+                include_declared_deps,
+            )
+            .await?;
             Ok(ExitCode::from(0))
         }
     }

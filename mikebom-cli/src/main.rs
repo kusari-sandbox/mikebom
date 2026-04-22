@@ -57,6 +57,19 @@ struct Cli {
     #[arg(long, global = true)]
     include_dev: bool,
 
+    /// Include declared-but-not-on-disk dependencies. By default,
+    /// mikebom emits only components physically present in the
+    /// scanned tree or image ("if it's in the image, it's in the
+    /// SBOM"). When set, also includes transitive dependencies
+    /// reported by deps.dev but not observed on disk (marked with
+    /// `mikebom:source-type = declared-not-cached`). Common causes of
+    /// declared-but-not-shipped: Maven `<scope>provided</scope>` deps
+    /// (servlet-api, etc.), JDK-bundled classes, optional deps,
+    /// aggressive shade-plugin metadata stripping, and closure-union
+    /// inflation across many observed roots.
+    #[arg(long, global = true)]
+    include_declared_deps: bool,
+
     /// Enable reading of legacy Berkeley-DB rpmdb (`/var/lib/rpm/Packages`)
     /// on pre-RHEL-8 / CentOS-7 / Amazon-Linux-2 images. Off by default;
     /// preserves milestone-003 behaviour (diagnostic log, zero components)
@@ -101,8 +114,14 @@ async fn main() -> anyhow::Result<std::process::ExitCode> {
             Ok(std::process::ExitCode::from(0))
         }
         Commands::Sbom(cmd) => {
-            cli::sbom_cmd::execute(cmd, cli.offline, cli.include_dev, cli.include_legacy_rpmdb)
-                .await
+            cli::sbom_cmd::execute(
+                cmd,
+                cli.offline,
+                cli.include_dev,
+                cli.include_legacy_rpmdb,
+                cli.include_declared_deps,
+            )
+            .await
         }
         Commands::Attestation(cmd) => {
             cli::attestation_cmd::execute(cmd).await?;

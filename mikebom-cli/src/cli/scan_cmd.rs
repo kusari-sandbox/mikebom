@@ -85,6 +85,7 @@ pub async fn execute(
     offline: bool,
     include_dev: bool,
     include_legacy_rpmdb: bool,
+    include_declared_deps: bool,
 ) -> anyhow::Result<()> {
     // Milestone 004 US4: the flag is threaded all the way to
     // `scan_path` so the (future) BDB rpmdb reader can consume it.
@@ -242,6 +243,7 @@ pub async fn execute(
             &deps_dev_client,
             &mut components,
             offline,
+            include_declared_deps,
         )
         .await;
     if !new_dep_graph_edges.is_empty() {

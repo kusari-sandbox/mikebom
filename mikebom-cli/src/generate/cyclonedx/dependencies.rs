@@ -12,6 +12,24 @@ use mikebom_common::resolution::{Relationship, ResolvedComponent};
 /// Components without explicit dependencies still appear with an
 /// empty `dependsOn` array.
 ///
+/// **Dangling bom-refs are intentional when `--include-declared-deps`
+/// is off (default).** The relaxed pipeline guard rail at
+/// `enrich/pipeline.rs:~85` retains edges where at least one endpoint
+/// is a known component, so `dependsOn` arrays may reference PURLs
+/// that aren't present in `components[]` — specifically, declared deps
+/// from deps.dev that don't ship on disk (Maven provided-scope,
+/// JDK-bundled, optional, aggressive-shade-stripped). Strict CDX
+/// expects every ref to resolve; we trade strict-validity for
+/// topology-preservation so consumers can see what an on-disk
+/// component declares as a dependency even when the declared target
+/// doesn't physically ship. Users who want the old strictly-anchored
+/// shape pass `--include-declared-deps`, which re-emits every
+/// declared-but-not-shipped target as a `source_type =
+/// "declared-not-cached"` component. See
+/// `enrich/deps_dev_graph.rs` for the emission gate + the
+/// TODO(declared-scope) pointing at CDX 1.6 `scope: "excluded"` as
+/// the future CDX-canonical representation.
+///
 /// Primary-dependency fallback (sbomqs `comp_with_dependencies`): the
 /// CDX scoring tooling expects the primary component
 /// (`metadata.component`, here `target_ref`) to have at least one

@@ -74,7 +74,24 @@ impl EnrichmentPipeline {
             }
         }
 
-        // Guard rail: filter relationships to only those between known components.
+        // Guard rail: keep relationships where AT LEAST ONE endpoint is a
+        // known component. Edges with BOTH endpoints unknown are noise
+        // (synthesized chains between declared-not-cached deps with no
+        // on-disk anchor) and get dropped.
+        //
+        // We intentionally don't require BOTH endpoints to be known — when
+        // --include-declared-deps is off (default), declared-not-cached
+        // targets are absent from `components[]` but their edges from
+        // on-disk roots still surface in `dependencies[]` as dangling
+        // bom-refs. Strict CDX expects every `dependsOn` ref to exist in
+        // `components[]`; we knowingly trade strict-validity for
+        // topology-preservation so consumers can see what each on-disk
+        // component declares as a dependency even when the declared target
+        // doesn't physically ship.
+        //
+        // `--include-declared-deps` restores the old both-known semantics
+        // by ensuring declared-not-cached comps land in components[],
+        // making every edge fully-anchored.
         let known_purls: HashSet<String> = components
             .iter()
             .map(|c| c.purl.as_str().to_string())
@@ -84,16 +101,14 @@ impl EnrichmentPipeline {
         all_relationships.retain(|rel| {
             let from_ok = known_purls.contains(&rel.from);
             let to_ok = known_purls.contains(&rel.to);
-            if !from_ok || !to_ok {
+            if !from_ok && !to_ok {
                 debug!(
                     from = %rel.from,
                     to = %rel.to,
-                    from_known = from_ok,
-                    to_known = to_ok,
-                    "filtered relationship: references unknown component"
+                    "filtered relationship: neither endpoint is a known component"
                 );
             }
-            from_ok && to_ok
+            from_ok || to_ok
         });
 
         let filtered_count = before_count - all_relationships.len();
@@ -101,7 +116,7 @@ impl EnrichmentPipeline {
             info!(
                 filtered = filtered_count,
                 retained = all_relationships.len(),
-                "applied guard rail: removed relationships with unknown components"
+                "applied guard rail: removed relationships where neither endpoint is on disk"
             );
         }
 
@@ -192,11 +207,17 @@ mod tests {
         }
     }
 
+    /// Under the relaxed guard rail (from_ok || to_ok), an edge with a
+    /// known source but unknown target is KEPT — this preserves dep-tree
+    /// topology when `--include-declared-deps` is off and the target is
+    /// a declared-not-cached coord absent from `components[]`. Strict
+    /// CDX disallows dangling bom-refs; we trade strict-validity for
+    /// topology-preservation.
     #[test]
-    fn pipeline_filters_unknown_relationships() {
+    fn pipeline_keeps_edges_with_at_least_one_known_endpoint() {
         let mut pipeline = EnrichmentPipeline::new();
 
-        let valid_rel = Relationship {
+        let both_known = Relationship {
             from: "pkg:cargo/myapp@0.1.0".to_string(),
             to: "pkg:cargo/serde@1.0.197".to_string(),
             relationship_type: RelationshipType::DependsOn,
@@ -206,9 +227,19 @@ mod tests {
             },
         };
 
-        let invalid_rel = Relationship {
+        let only_source_known = Relationship {
             from: "pkg:cargo/myapp@0.1.0".to_string(),
-            to: "pkg:cargo/unknown@0.0.0".to_string(),
+            to: "pkg:cargo/declared-not-cached@0.0.0".to_string(),
+            relationship_type: RelationshipType::DependsOn,
+            provenance: EnrichmentProvenance {
+                source: "test".to_string(),
+                data_type: "test".to_string(),
+            },
+        };
+
+        let neither_known = Relationship {
+            from: "pkg:cargo/ghost-a@0.0.0".to_string(),
+            to: "pkg:cargo/ghost-b@0.0.0".to_string(),
             relationship_type: RelationshipType::DependsOn,
             provenance: EnrichmentProvenance {
                 source: "test".to_string(),
@@ -217,7 +248,11 @@ mod tests {
         };
 
         pipeline.add_source(Box::new(TestSource {
-            relationships: vec![valid_rel.clone(), invalid_rel],
+            relationships: vec![
+                both_known.clone(),
+                only_source_known.clone(),
+                neither_known,
+            ],
         }));
 
         let mut components = vec![
@@ -226,9 +261,33 @@ mod tests {
         ];
 
         let rels = pipeline.enrich(&mut components).expect("enrich");
-        assert_eq!(rels.len(), 1);
-        assert_eq!(rels[0].from, "pkg:cargo/myapp@0.1.0");
-        assert_eq!(rels[0].to, "pkg:cargo/serde@1.0.197");
+        // Both-known + only-source-known survive; neither-known drops.
+        assert_eq!(rels.len(), 2);
+        assert!(rels.iter().any(|r| r == &both_known));
+        assert!(rels.iter().any(|r| r == &only_source_known));
+    }
+
+    #[test]
+    fn pipeline_drops_edges_with_both_endpoints_unknown() {
+        let mut pipeline = EnrichmentPipeline::new();
+
+        let neither_known = Relationship {
+            from: "pkg:cargo/unknown-src@0.0.0".to_string(),
+            to: "pkg:cargo/unknown-dst@0.0.0".to_string(),
+            relationship_type: RelationshipType::DependsOn,
+            provenance: EnrichmentProvenance {
+                source: "test".to_string(),
+                data_type: "test".to_string(),
+            },
+        };
+
+        pipeline.add_source(Box::new(TestSource {
+            relationships: vec![neither_known],
+        }));
+
+        let mut components = vec![make_component("myapp", "0.1.0")];
+        let rels = pipeline.enrich(&mut components).expect("enrich");
+        assert!(rels.is_empty(), "edges with no on-disk anchor should drop");
     }
 
     #[test]
