@@ -183,6 +183,8 @@ align.
   The demos drive curl (which does link libssl) around this for apt;
   cargo's rustls downloads are covered via the artifact-dir scan since the
   URL is already knowable from the `.crate` filename.
-- **Attestation signing** (`sbom_signature`) isn't wired yet. Depends on a
-  key-management story (CLI flag? KMS?). See
-  [design-notes deferred item 16](../design-notes.md#deferred-sbomqs-score-lift).
+- **Attestation signing** is landing now under feature 006 (v006 in
+  progress). DSSE envelope signing via local PEM key or keyless (OIDC →
+  Fulcio → Rekor) using `sigstore-rs`. Verification exposed through
+  `mikebom sbom verify`. See
+  `specs/006-sbomit-suite/plan.md` for the detailed design.

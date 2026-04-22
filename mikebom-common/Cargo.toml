@@ -6,7 +6,7 @@ license.workspace = true
 
 [features]
 default = ["std"]
-std = ["dep:chrono", "dep:serde", "dep:serde_json", "dep:packageurl", "dep:thiserror", "dep:spdx"]
+std = ["dep:chrono", "dep:serde", "dep:serde_json", "dep:packageurl", "dep:thiserror", "dep:spdx", "dep:base64"]
 aya-user = ["dep:aya"]
 
 [dependencies]
@@ -16,6 +16,9 @@ serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 spdx = { version = "0.10", optional = true }
 thiserror = { workspace = true, optional = true }
+# Feature 006 — base64 used by DSSE envelope serialization. Mirrors
+# mikebom-cli/Cargo.toml:21; std gates the std-feature flag.
+base64 = { version = "0.22", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 aya = { version = "0.13", optional = true }

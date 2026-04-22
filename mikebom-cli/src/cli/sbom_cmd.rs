@@ -1,10 +1,12 @@
 use clap::{Args, Subcommand};
 
+use std::process::ExitCode;
+
 use super::compare::CompareArgs;
 use super::enrich::EnrichArgs;
 use super::generate::GenerateArgs;
 use super::scan_cmd::ScanArgs;
-use super::validate::ValidateArgs;
+use super::verify::VerifyArgs;
 
 #[derive(Args)]
 pub struct SbomCommand {
@@ -18,8 +20,9 @@ pub enum SbomSubcommand {
     Generate(GenerateArgs),
     /// Add license, VEX, and supplier data to an existing SBOM
     Enrich(EnrichArgs),
-    /// Validate an SBOM file for conformance
-    Validate(ValidateArgs),
+    /// Verify a signed attestation (DSSE envelope) against a key /
+    /// identity / layout
+    Verify(VerifyArgs),
     /// Compare mikebom's SBOM against syft/trivy + ground truth
     Compare(CompareArgs),
     /// Walk a directory (or an extracted container image) and produce
@@ -33,14 +36,24 @@ pub async fn execute(
     offline: bool,
     include_dev: bool,
     include_legacy_rpmdb: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<ExitCode> {
     match cmd.command {
-        SbomSubcommand::Generate(args) => super::generate::execute(args, offline).await,
-        SbomSubcommand::Enrich(args) => super::enrich::execute(args, offline).await,
-        SbomSubcommand::Validate(args) => super::validate::execute(args).await,
-        SbomSubcommand::Compare(args) => super::compare::execute(args).await,
+        SbomSubcommand::Generate(args) => {
+            super::generate::execute(args, offline).await?;
+            Ok(ExitCode::from(0))
+        }
+        SbomSubcommand::Enrich(args) => {
+            super::enrich::execute(args, offline).await?;
+            Ok(ExitCode::from(0))
+        }
+        SbomSubcommand::Verify(args) => super::verify::execute(args).await,
+        SbomSubcommand::Compare(args) => {
+            super::compare::execute(args).await?;
+            Ok(ExitCode::from(0))
+        }
         SbomSubcommand::Scan(args) => {
-            super::scan_cmd::execute(args, offline, include_dev, include_legacy_rpmdb).await
+            super::scan_cmd::execute(args, offline, include_dev, include_legacy_rpmdb).await?;
+            Ok(ExitCode::from(0))
         }
     }
 }

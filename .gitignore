@@ -30,3 +30,6 @@ flamegraph.svg
 
 # Generated SBOM output from dev/test runs
 mikebom.cdx.json
+
+# Local release-test staging (downloaded tarballs, per-alpha extracts)
+.release-test/

@@ -33,6 +33,21 @@ zip = { version = "0.6", default-features = false, features = ["deflate-miniz"] 
 # Verified with `cargo tree -p rpm` — no libz-sys / bzip2-sys / etc.
 rpm = { version = "0.22", default-features = false, features = [] }
 
+# Feature 006 — SBOMit compliance: DSSE envelope signing + Fulcio keyless +
+# Rekor transparency log. Pin to 0.10.x because 0.13+ forces aws-lc-rs via
+# the `cert` feature, violating Constitution Principle I (pure Rust, zero C).
+# rustls-tls variants chosen to match existing reqwest rustls posture. See
+# specs/006-sbomit-suite/research.md R1 for the audit.
+sigstore = { version = "0.10", default-features = false, features = ["sigstore-trust-root-rustls-tls", "cosign-rustls-tls", "fulcio-rustls-tls", "rekor-rustls-tls", "bundle"] }
+# Feature 006 — PEM + X.509 parsing for cert SAN + SPKI extraction in
+# `mikebom sbom verify`. Transitive deps of sigstore, promoted to direct
+# for re-use.
+pem = "3"
+x509-parser = "0.16"
+
+# Feature 006 US5 — RFC 6902 JSON Patch for SBOM enrichment.
+json-patch = "3"
+
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true

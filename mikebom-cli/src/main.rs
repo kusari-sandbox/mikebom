@@ -65,7 +65,7 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> anyhow::Result<std::process::ExitCode> {
     // Default: INFO + WARN visible at stderr; users override via RUST_LOG.
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
@@ -75,11 +75,17 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Trace(cmd) => cli::trace_cmd::execute(cmd).await,
+        Commands::Trace(cmd) => {
+            cli::trace_cmd::execute(cmd).await?;
+            Ok(std::process::ExitCode::from(0))
+        }
         Commands::Sbom(cmd) => {
             cli::sbom_cmd::execute(cmd, cli.offline, cli.include_dev, cli.include_legacy_rpmdb)
                 .await
         }
-        Commands::Attestation(cmd) => cli::attestation_cmd::execute(cmd).await,
+        Commands::Attestation(cmd) => {
+            cli::attestation_cmd::execute(cmd).await?;
+            Ok(std::process::ExitCode::from(0))
+        }
     }
 }

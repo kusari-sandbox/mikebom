@@ -10,4 +10,4 @@ pub mod generate;
 pub mod run;
 pub mod scan;
 pub mod scan_cmd;
-pub mod validate;
+pub mod verify;
