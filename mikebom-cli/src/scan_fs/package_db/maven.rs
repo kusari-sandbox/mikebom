@@ -1210,6 +1210,7 @@ fn bfs_transitive_poms(
     store: &PomStore,
     seeds: &[(String, String, String)],
     include_dev: bool,
+    include_declared_deps: bool,
     source_path: &str,
 ) -> Vec<PackageDbEntry> {
     use std::collections::VecDeque;
@@ -1232,18 +1233,27 @@ fn bfs_transitive_poms(
         }
 
         let Some(bytes) = fetch_pom_bytes(store, cache, &group, &artifact, &version) else {
-            // Cache miss — emit the component with no outbound edges
-            // and don't enqueue further. This keeps partial-cache
-            // scans as useful as possible without fabricating data.
-            if let Some(entry) = build_transitive_entry(
-                &group,
-                &artifact,
-                &version,
-                Vec::new(),
-                source_path,
-                Some(cache),
-            ) {
-                out.push(entry);
+            // Cache miss — no .pom and no .jar on disk for this coord.
+            // In artifact scope (default for image scans) this is a
+            // declared-but-not-on-disk transitive and is dropped. In
+            // manifest scope (path scans, or `--include-declared-deps`)
+            // we still emit it with no outbound edges — matches the
+            // pre-dual-SBOM behavior and gives source-tree users a
+            // "what would be pulled in" view.
+            //
+            // See docs/design-notes.md, "Scope: artifact vs manifest
+            // SBOM". TODO(sbom-kind): drive this from the kind flag.
+            if include_declared_deps {
+                if let Some(entry) = build_transitive_entry(
+                    &group,
+                    &artifact,
+                    &version,
+                    Vec::new(),
+                    source_path,
+                    Some(cache),
+                ) {
+                    out.push(entry);
+                }
             }
             continue;
         };
@@ -1398,27 +1408,51 @@ fn jar_pom_to_entry(
 // Reader
 // ---------------------------------------------------------------------------
 
-/// Backward-compat shim for tests and callers that don't have a
-/// populated claim set. Delegates to [`read_with_claims`] with empty
-/// claim sets. Production code should go through `read_with_claims`
-/// with the package-db walker's claim set so RPM-owned Maven JARs are
-/// skipped (conformance bug 2b).
+/// Backward-compat shim for tests. Delegates to [`read_with_claims`]
+/// with empty claim sets. Production code goes through
+/// `read_with_claims` directly via the package-db walker's claim set
+/// so RPM-owned Maven JARs are skipped (conformance bug 2b).
+#[cfg(test)]
 pub fn read(rootfs: &Path, include_dev: bool) -> Vec<PackageDbEntry> {
     let claimed = std::collections::HashSet::new();
     #[cfg(unix)]
     let claimed_inodes = std::collections::HashSet::new();
+    // Backward-compat shim. Defaults to include_declared_deps=true so
+    // tests and other non-orchestrator callers get the pre-dual-SBOM
+    // behavior (permissive — emit everything the POMs declare).
+    // Production callers go through read_with_claims directly.
     read_with_claims(
         rootfs,
         include_dev,
+        true,
         &claimed,
         #[cfg(unix)]
         &claimed_inodes,
     )
 }
 
+/// Read Maven coords from the rootfs.
+///
+/// `include_declared_deps` gates emission of declared-but-not-on-disk
+/// coords (see docs/design-notes.md, "Scope: artifact vs manifest
+/// SBOM"). When **false** (strict artifact scope, default for image
+/// scans): the pom.xml-declared direct-dep loop skips coords whose
+/// JAR isn't in the JAR-walk coord_index AND whose .pom isn't in the
+/// `.m2/repository/` cache; the BFS cache-miss branch in
+/// `bfs_transitive_poms` also skips. When **true** (manifest scope,
+/// default for path / source-tree scans): every declared coord is
+/// emitted regardless of on-disk presence, matching the pre-flag
+/// behavior — source-tree users get an SBOM of what WOULD be pulled
+/// in on install/build.
+///
+/// TODO(sbom-kind): when `--sbom-kind {artifact, manifest}` lands as
+/// a first-class CLI flag, this parameter becomes the kind selector
+/// rather than a raw bool. Default auto-detection stays the same
+/// (image → artifact, path → manifest).
 pub fn read_with_claims(
     rootfs: &Path,
     include_dev: bool,
+    include_declared_deps: bool,
     claimed: &std::collections::HashSet<std::path::PathBuf>,
     #[cfg(unix)] claimed_inodes: &std::collections::HashSet<(u64, u64)>,
 ) -> Vec<PackageDbEntry> {
@@ -1482,6 +1516,32 @@ pub fn read_with_claims(
         jar_meta.push((jar_path.to_string_lossy().into_owned(), meta));
     }
 
+    // On-disk coord index: `(group, artifact)` is "on disk" when either a
+    // JAR with that coord was found or an `<artifact>-<version>.pom` sits
+    // in the `.m2/repository/` cache. This index drives the
+    // `include_declared_deps = false` gate below — a pom.xml-declared dep
+    // is emitted only when its coord has actual bytes backing it.
+    //
+    // Cache-HIT .pom counts as "on disk" even without a .jar: the POM
+    // itself is a real artifact and the dep's transitive edges can still
+    // be resolved through it.
+    //
+    // See docs/design-notes.md, "Scope: artifact vs manifest SBOM" for
+    // the principle; this is the enforcement point for Maven.
+    let mut on_disk_coords: HashSet<(String, String)> = HashSet::new();
+    for (_src, meta_list) in &jar_meta {
+        for m in meta_list {
+            on_disk_coords.insert((m.coord.group_id.clone(), m.coord.artifact_id.clone()));
+        }
+    }
+    // Same cap as the unconditional `.m2` walk below; populating the
+    // coord set is cheap enough that we don't need a separate budget.
+    const MAVEN_CACHE_POM_LIMIT: usize = 10_000;
+    let cached_pom_coords = repo_cache.walk_rootfs_poms(MAVEN_CACHE_POM_LIMIT);
+    for (group, artifact, _version) in &cached_pom_coords {
+        on_disk_coords.insert((group.clone(), artifact.clone()));
+    }
+
     for pom_path in pom_files {
         let Ok(bytes) = std::fs::read(&pom_path) else {
             continue;
@@ -1528,22 +1588,39 @@ pub fn read_with_claims(
             else {
                 continue;
             };
+            // Resolve the dep's concrete (group, artifact, version)
+            // through the effective POM. `group` drives both the BFS
+            // seed and the on-disk gate below.
+            let resolved_group = resolve_dep_group(dep, &project_eff);
+            let resolved_version = resolve_dep_version(dep, &project_eff);
+
+            // Dual-SBOM gate: in artifact scope (image scan, default),
+            // skip pom.xml-declared deps whose coord has no bytes on
+            // disk. Manifest scope (path scan, or `--include-declared-deps`)
+            // emits everything. See docs/design-notes.md, "Scope:
+            // artifact vs manifest SBOM".
+            //
+            // TODO(sbom-kind): when `--sbom-kind {artifact,manifest}`
+            // lands, drive this gate from the kind rather than a raw
+            // bool flag.
+            let on_disk = resolved_group
+                .as_ref()
+                .map(|g| on_disk_coords.contains(&(g.clone(), dep.artifact_id.clone())))
+                .unwrap_or(false);
+            let emit = include_declared_deps || on_disk;
+
             // Seed BFS with the concrete (group, artifact, version) —
             // effective POM fills in values from parent depMgmt or
             // inherited properties. Drop the seed when either can't
             // be resolved (no concrete coord, no cache lookup possible).
-            let Some(group) = resolve_dep_group(dep, &project_eff) else {
-                direct_entries.push((dep.clone(), entry));
-                continue;
-            };
-            let Some(version) = resolve_dep_version(dep, &project_eff) else {
-                direct_entries.push((dep.clone(), entry));
-                continue;
-            };
-            if !version.is_empty() {
-                bfs_seeds.push((group, dep.artifact_id.clone(), version));
+            if let (Some(group), Some(version)) = (resolved_group, resolved_version) {
+                if !version.is_empty() {
+                    bfs_seeds.push((group, dep.artifact_id.clone(), version));
+                }
             }
-            direct_entries.push((dep.clone(), entry));
+            if emit {
+                direct_entries.push((dep.clone(), entry));
+            }
         }
 
         // BFS the M2 cache from every direct-dep seed. Uses the unified
@@ -1554,6 +1631,7 @@ pub fn read_with_claims(
             &pom_store,
             &bfs_seeds,
             include_dev,
+            include_declared_deps,
             &source_path,
         );
 
@@ -1603,8 +1681,10 @@ pub fn read_with_claims(
     // `read_pom` for BFS lookups but never walked wholesale — a dev
     // running mikebom against a project fixture shouldn't drag every
     // artifact on their laptop into the output.
-    const MAVEN_CACHE_POM_LIMIT: usize = 10_000;
-    let cache_seeds = repo_cache.walk_rootfs_poms(MAVEN_CACHE_POM_LIMIT);
+    // `cached_pom_coords` was populated earlier (before the pom.xml
+    // loop) to build the on-disk coord index — reuse it as the BFS seed
+    // list to avoid walking `.m2/repository/` twice per scan.
+    let cache_seeds = cached_pom_coords;
     if !cache_seeds.is_empty() {
         tracing::info!(
             cache_seeds = cache_seeds.len(),
@@ -1616,6 +1696,7 @@ pub fn read_with_claims(
             &pom_store,
             &cache_seeds,
             include_dev,
+            include_declared_deps,
             &cache_source_path,
         );
         for entry in cache_entries {
@@ -2389,6 +2470,7 @@ mod tests {
             &HashMap::new(),
             &[("ex".into(), "a".into(), "1".into())],
             false,
+            true,
             "/p/pom.xml",
         );
         let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
@@ -2436,6 +2518,7 @@ mod tests {
             &HashMap::new(),
             &[("ex".into(), "a".into(), "1".into())],
             false,
+            true,
             "/p/pom.xml",
         );
         // Each coord emitted exactly once — cycle short-circuited by
@@ -2467,6 +2550,7 @@ mod tests {
             &HashMap::new(),
             &[("ex".into(), "a".into(), "1".into())],
             false,
+            true,
             "/p/pom.xml",
         );
         assert_eq!(entries.len(), 2);
@@ -2514,6 +2598,7 @@ mod tests {
             &HashMap::new(),
             &[("ex".into(), "a".into(), "1".into())],
             false,
+            true,
             "/p/pom.xml",
         );
         let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
@@ -2529,6 +2614,7 @@ mod tests {
             &cache,
             &HashMap::new(),
             &[("ex".into(), "a".into(), "1".into())],
+            true,
             true,
             "/p/pom.xml",
         );
@@ -2560,6 +2646,7 @@ mod tests {
             &HashMap::new(),
             &[("ex".into(), "a".into(), "1".into())],
             false,
+            true,
             "/p/pom.xml",
         );
         assert_eq!(entries.len(), 1);
@@ -2578,6 +2665,7 @@ mod tests {
             &HashMap::new(),
             &[("ex".into(), "a".into(), "1".into())],
             false,
+            true,
             "/p/pom.xml",
         );
         // Cache miss on the seed — we still emit the coord with
@@ -2945,6 +3033,7 @@ mod tests {
             &HashMap::new(),
             &[("com.google.guava".into(), "guava".into(), "32.1.3-jre".into())],
             false,
+            true,
             "/p/pom.xml",
         );
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
@@ -3019,6 +3108,7 @@ mod tests {
         let no_claim = read_with_claims(
             dir.path(),
             false,
+            true,
             &empty_claims,
             #[cfg(unix)]
             &empty_inodes,
@@ -3036,6 +3126,7 @@ mod tests {
         let with_claim = read_with_claims(
             dir.path(),
             false,
+            true,
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
@@ -3044,6 +3135,130 @@ mod tests {
             with_claim.len(),
             0,
             "claimed JAR must be skipped; got {with_claim:?}"
+        );
+    }
+
+    // --- Dual-SBOM gate (artifact vs manifest scope) --------------------
+
+    fn write_project_pom(dir: &Path, body: &str) {
+        std::fs::write(dir.join("pom.xml"), body).unwrap();
+    }
+
+    #[test]
+    fn pom_xml_with_no_jars_drops_declared_deps_in_artifact_scope() {
+        // Project pom.xml declaring two deps. No JARs on disk, no .m2
+        // cache. Artifact scope (include_declared_deps=false) must emit
+        // zero Maven components — these deps don't have bytes on disk.
+        //
+        // Synthetic group IDs (`ex.only`) so the host's real `.m2/`
+        // can't accidentally satisfy the BFS lookup and leak coords.
+        let dir = tempfile::tempdir().unwrap();
+        write_project_pom(
+            dir.path(),
+            r#"<project>
+              <groupId>ex.app</groupId><artifactId>app</artifactId><version>1.0.0</version>
+              <dependencies>
+                <dependency><groupId>ex.only</groupId><artifactId>alpha</artifactId><version>1.0</version></dependency>
+                <dependency><groupId>ex.only</groupId><artifactId>beta</artifactId><version>2.0</version></dependency>
+              </dependencies>
+            </project>"#,
+        );
+        let claimed = std::collections::HashSet::new();
+        #[cfg(unix)]
+        let claimed_inodes = std::collections::HashSet::new();
+        let out = read_with_claims(
+            dir.path(),
+            false,
+            false,
+            &claimed,
+            #[cfg(unix)]
+            &claimed_inodes,
+        );
+        assert_eq!(
+            out.len(),
+            0,
+            "artifact scope with no JARs and no cache must drop all declared deps; got {out:?}",
+        );
+    }
+
+    #[test]
+    fn pom_xml_with_no_jars_emits_declared_deps_in_manifest_scope() {
+        // Same fixture; manifest scope (include_declared_deps=true)
+        // emits both declared deps. Matches the pre-dual-SBOM
+        // behavior and source-tree expectations.
+        let dir = tempfile::tempdir().unwrap();
+        write_project_pom(
+            dir.path(),
+            r#"<project>
+              <groupId>ex.app</groupId><artifactId>app</artifactId><version>1.0.0</version>
+              <dependencies>
+                <dependency><groupId>ex.only</groupId><artifactId>alpha</artifactId><version>1.0</version></dependency>
+                <dependency><groupId>ex.only</groupId><artifactId>beta</artifactId><version>2.0</version></dependency>
+              </dependencies>
+            </project>"#,
+        );
+        let claimed = std::collections::HashSet::new();
+        #[cfg(unix)]
+        let claimed_inodes = std::collections::HashSet::new();
+        let out = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &claimed,
+            #[cfg(unix)]
+            &claimed_inodes,
+        );
+        let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"alpha"), "alpha missing: {names:?}");
+        assert!(names.contains(&"beta"), "beta missing: {names:?}");
+    }
+
+    #[test]
+    fn pom_xml_with_one_cached_pom_emits_only_on_disk_coord_in_artifact_scope() {
+        // Project pom.xml declaring two deps. Only alpha's .pom is
+        // present in the in-rootfs .m2 cache. Artifact scope emits
+        // only alpha (beta is declared-but-not-on-disk → gated out).
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().join("project");
+        std::fs::create_dir_all(&project).unwrap();
+        write_project_pom(
+            &project,
+            r#"<project>
+              <groupId>ex.app</groupId><artifactId>app</artifactId><version>1.0.0</version>
+              <dependencies>
+                <dependency><groupId>ex.only</groupId><artifactId>alpha</artifactId><version>1.0</version></dependency>
+                <dependency><groupId>ex.only</groupId><artifactId>beta</artifactId><version>2.0</version></dependency>
+              </dependencies>
+            </project>"#,
+        );
+        // Seed the in-rootfs .m2 cache with just alpha's POM.
+        let repo_root = dir.path().join("root/.m2/repository");
+        write_cached_pom(
+            &repo_root,
+            "ex.only",
+            "alpha",
+            "1.0",
+            r#"<project><groupId>ex.only</groupId><artifactId>alpha</artifactId><version>1.0</version></project>"#,
+        );
+        let claimed = std::collections::HashSet::new();
+        #[cfg(unix)]
+        let claimed_inodes = std::collections::HashSet::new();
+        let out = read_with_claims(
+            dir.path(),
+            false,
+            false,
+            &claimed,
+            #[cfg(unix)]
+            &claimed_inodes,
+        );
+        let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.contains(&"alpha"),
+            "cached alpha must emit in artifact scope: {names:?}",
+        );
+        assert!(
+            !names.contains(&"beta"),
+            "uncached beta must be dropped in artifact scope: {names:?}",
         );
     }
 
