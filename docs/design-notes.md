@@ -313,3 +313,82 @@ path.
 proofs (policy check only for now). Multi-step in-toto layouts.
 Encrypted-PEM positive test case (needs an openssl-dependent
 fixture generator the sigstore 0.10 API doesn't expose).
+
+---
+
+## 2026-04-22 — Trace mode reclassified as experimental; scan is default
+
+**Status:** README + docs/index.md + docs/user-guide/quickstart.md +
+docs/user-guide/cli-reference.md + CLI `--help` text updated. Code
+unchanged; this is a stability/packaging call, not a rewrite.
+
+**Why:** head-to-head bake-offs against trivy and sbomit made the
+position clearer than we'd stated it:
+
+- **`mikebom sbom scan` is measurably better than trivy on source-tree
+  scans.** Kyverno source tree: 512 / 842 go.sum recall vs. trivy's
+  382 / 842 (15 pp better), SHA-256 on every component vs. trivy's
+  zero, 6,395 real dep edges vs. trivy's 489 flat. Same wall-clock
+  time. Scan-mode is doing the core SBOM job well on inputs where
+  users actually run SBOM tools today.
+- **`mikebom trace` adds a story (attested provenance, bound to a
+  specific build event) that neither trivy nor syft attempts, but the
+  runtime cost is non-trivial.** Kyverno `go mod download` trace:
+  baseline 31.6 s → traced 76.9 s (+144% wall clock; +48% on the build
+  itself, +29 s post-trace hashing + serialization). Also: eBPF
+  coverage gaps on `openat2` and `io_uring` variants mean trace-mode
+  misses some syscalls on modern glibc builds.
+- **sbomit's Go resolver is buggy** (regex ordering produces garbage
+  PURLs from `cache/download/…` paths even after structural fixes).
+  The witness/sbomit ecosystem can't currently consume mikebom's Go
+  output usefully, so the downstream-interop case for trace-mode is
+  weaker than we'd hoped.
+
+**What changed in this commit:**
+
+1. `mikebom-cli/src/main.rs` — top-level `Cli` `about` + `long_about`
+   now lead with scan-mode's stable surface; `Commands::Trace` doc
+   comment carries `[EXPERIMENTAL, Linux-only]` + the CAP_BPF
+   requirements + the 2-3× overhead figure.
+2. `mikebom-cli/src/cli/trace_cmd.rs` — module-level doc comment +
+   per-variant `[EXPERIMENTAL, Linux-only]` prefixes on the
+   `Capture` and `Run` clap help strings.
+3. `README.md` — restructured; "Stable recipes" section leads with
+   source-tree scan; trace-mode moved under an "Experimental:
+   build-time trace (Linux only)" heading with an explicit status
+   blockquote. "Why" rewritten around scan-mode's per-component
+   richness (SHA-256 + evidence + real edges + PURL-strict encoding)
+   rather than around the trace pipeline.
+4. `docs/index.md` — Track 1 link to quickstart now calls out the
+   stability split explicitly.
+5. `docs/user-guide/quickstart.md` — recipe ordering flipped: source
+   tree → image → cache → verify → policy init → (experimental) trace.
+   Recipe 1 now covers lockfile-driven dep-graph behavior (previously
+   buried in the trace recipe).
+6. `docs/user-guide/cli-reference.md` — top-level noun list reordered
+   (sbom / policy / attestation stable, trace experimental); `trace
+   capture` and `trace run` sections open with the experimental
+   warning.
+
+**What stayed unchanged (deliberate):**
+
+- The code. No deprecation, no flag gating, no env-var requirement to
+  enable trace. Users who currently depend on it continue to work.
+  `trace run --help` still lists every flag.
+- The witness-v0.1 output format is stable even though `trace` is
+  experimental. The wire format + DSSE envelope shape are decoupled
+  from how the attestation gets *produced*.
+- `sbom verify` / `policy init` / `sbom enrich` stay stable. They
+  consume attestations that may have been produced by trace-mode OR
+  by any other witness/sbomit-compatible tool.
+
+**What this sets up for later:**
+
+- If scan-mode gets the fetch-fallback (online `.mod` fetch from
+  proxy.golang.org when a module isn't in the local cache) or the
+  `go.work` workspace walker, its recall will rise further and the
+  gap vs. trace-mode's headline claim narrows.
+- If trace-mode gets a cgroup-side eBPF filter (current design fires
+  kprobes system-wide and filters in userspace), the 2-3× overhead
+  should drop significantly, which might justify reclassifying it as
+  stable. Not committed; noting the path.

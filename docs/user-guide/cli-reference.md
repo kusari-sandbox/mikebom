@@ -2,9 +2,17 @@
 
 mikebom follows a strict `mikebom <noun> <verb>` pattern. Top-level nouns:
 
-- **`trace`** — eBPF build-process tracing
-- **`sbom`** — SBOM generation, enrichment, validation, comparison
-- **`attestation`** — attestation management
+- **`sbom`** — SBOM generation, enrichment, verification, comparison *(stable)*
+- **`policy`** — in-toto layout generation + enforcement *(stable)*
+- **`attestation`** — attestation management *(stable)*
+- **`trace`** — eBPF build-process tracing *(**experimental**, Linux only)*
+
+> **Experimental** means: the output formats are stable, but the trace-mode
+> pipeline adds ~2-3× wall-clock overhead on syscall-heavy builds, requires
+> CAP_BPF + CAP_PERFMON, and has coverage gaps on some syscall variants
+> (`openat2`, `io_uring`). For most SBOM use cases, prefer `mikebom sbom
+> scan` — it produces richer CycloneDX output with no privilege requirements
+> and runs on any OS.
 
 Global flags apply to every subcommand and must appear **before** the noun:
 
@@ -25,8 +33,10 @@ mikebom --include-dev sbom scan --path .
 
 ## `mikebom trace capture`
 
-**Status:** Implemented (Linux only). On non-Linux hosts this subcommand errors
-with a message pointing to Lima / `mikebom-dev`.
+**Status:** **Experimental.** Linux-only. On non-Linux hosts this subcommand
+errors with a message pointing to Lima / `mikebom-dev`. Adds ~2-3× wall-clock
+overhead on syscall-heavy builds; has coverage gaps on `openat2` and
+`io_uring`. Prefer `mikebom sbom scan` for most use cases.
 
 Capture a build via eBPF uprobes on `libssl` (`SSL_read` / `SSL_write`) and
 kprobes on file operations, produce an in-toto attestation.
@@ -60,7 +70,10 @@ The attestation predicate type is
 
 ## `mikebom trace run`
 
-**Status:** Implemented (Linux only).
+**Status:** **Experimental.** Linux-only. Same caveats as `trace capture` —
+2-3× wall-clock overhead, requires `CAP_BPF + CAP_PERFMON`, coverage gaps on
+`openat2` / `io_uring`. Prefer scan-mode unless you specifically need a
+trace-backed attestation.
 
 Capture a trace and derive an SBOM from it in one shot. Equivalent to
 `trace capture` followed by `sbom generate`.

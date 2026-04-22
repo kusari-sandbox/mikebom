@@ -22,7 +22,21 @@ mod scan_fs;
 mod trace;
 
 #[derive(Parser)]
-#[command(name = "mikebom", version, about = "eBPF-based SBOM generator")]
+#[command(
+    name = "mikebom",
+    version,
+    about = "SBOM generator with optional eBPF build-tracing",
+    long_about = "SBOM generator.\n\n\
+                  - `mikebom sbom scan` (stable): filesystem / image scanning with \
+                  lockfile-aware dep-graph extraction. Cross-platform, no privileges.\n\
+                  - `mikebom sbom verify` / `policy init` / `sbom enrich` (stable): \
+                  signed attestation verification + in-toto layouts + RFC 6902 \
+                  SBOM enrichment.\n\
+                  - `mikebom trace` (experimental, Linux only): eBPF-based build-time \
+                  capture. Produces attestations bound to the build event. Requires \
+                  CAP_BPF + CAP_PERFMON; 2-3× slowdown on syscall-heavy builds. See \
+                  docs/user-guide/quickstart.md for stability notes."
+)]
 struct Cli {
     /// Disable all outbound network calls (deps.dev license/CPE lookups,
     /// deps.dev hash queries). When set, enrichment falls back to what
@@ -58,7 +72,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// eBPF build-process tracing
+    /// [EXPERIMENTAL, Linux-only] eBPF build-process tracing.
+    /// Produces attestations bound to the build event. Requires CAP_BPF +
+    /// CAP_PERFMON. Adds ~2-3× wall-clock overhead on syscall-heavy builds.
+    /// For most SBOM use cases, prefer `mikebom sbom scan`.
     Trace(cli::trace_cmd::TraceCommand),
     /// SBOM generation, enrichment, and validation
     Sbom(cli::sbom_cmd::SbomCommand),

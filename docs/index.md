@@ -7,9 +7,14 @@ Two tracks. Pick the one that matches what you're trying to do.
 Start here if you want to run the tool on a real codebase, container, or build.
 
 - [Installation](user-guide/installation.md) — prereqs, `cargo build`, Dockerfile.dev, Lima VM
-- [Quickstart](user-guide/quickstart.md) — three recipes that work today (trace, image scan, filesystem scan)
+- [Quickstart](user-guide/quickstart.md) — stable recipes (source-tree scan, image scan, cache scan, signed-envelope verify) + the experimental trace-mode recipe
 - [CLI reference](user-guide/cli-reference.md) — every `mikebom <noun> <verb>` with flags and examples
 - [Configuration](user-guide/configuration.md) — global flags, environment variables, offline mode
+
+**Stability note:** `sbom scan` / `sbom verify` / `policy init` / `sbom enrich`
+are stable and run on any OS. `trace capture` / `trace run` are **experimental,
+Linux-only** — they add ~2-3× wall-clock overhead and require CAP_BPF +
+CAP_PERFMON. For most SBOM use cases, prefer the scan pipeline.
 
 ## Track 2 — Understand how mikebom works
 
