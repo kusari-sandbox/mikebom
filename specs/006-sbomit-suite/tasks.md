@@ -160,22 +160,22 @@ No new crates per Constitution Principle VI.
 
 ### Tests for User Story 4
 
-- [ ] T059 [P] [US4] Unit tests in `mikebom-cli/src/policy/layout.rs::tests`: `generate_minimal_layout` produces valid in-toto JSON (round-trips through `serde_json`); `parse_layout` rejects malformed schemas.
-- [ ] T060 [P] [US4] Unit tests in `mikebom-cli/src/policy/apply.rs::tests`: `match_functionary_key` matches on keyid, rejects on mismatch; `match_step_name` matches declared step names.
+- [X] T059 [P] [US4] Unit tests at `policy::layout::tests`: `generate_starter_layout_produces_valid_in_toto_shape`, `generate_starter_layout_round_trips_through_json`, `layout_serializes_with_expected_json_shape`, plus `parse_expires_duration_*` coverage.
+- [X] T060 [P] [US4] Unit tests at `policy::apply::tests`: `matching_functionary_key_passes`, `mismatched_functionary_key_fails_with_layout_violation`, `empty_steps_layout_rejects`.
 
 ### Implementation for User Story 4
 
-- [ ] T061 [US4] Create `mikebom-cli/src/policy/mod.rs` with `pub mod layout; pub mod apply;`. Register in `mikebom-cli/src/main.rs`.
-- [ ] T062 [US4] Implement `mikebom-cli/src/policy/layout.rs` with `Layout`, `LayoutKey`, `LayoutStep`, `KeyVal` types (derive Serialize/Deserialize) per `data-model.md`. Add `generate_starter_layout(functionary_pem: &str, step_name: &str, expires: DateTime<Utc>) -> Layout`.
-- [ ] T063 [US4] Keyid derivation helper in `mikebom-cli/src/policy/layout.rs::keyid_from_pem`: compute a SHA-256 of the canonical DER-encoded key bytes; return hex. Consistent with sigstore keyid convention so mikebom-generated keyids match what external tools produce.
-- [ ] T064 [US4] Expires parser in `mikebom-cli/src/policy/layout.rs::parse_expires_duration`: accepts "6m", "1y", "18mo", "2y" → `chrono::Duration`. Default 1 year when flag absent.
-- [ ] T065 [US4] Implement `mikebom-cli/src/policy/apply.rs::verify_against_layout(statement: &InTotoStatement, envelope: &SignedEnvelope, layout: &Layout) -> Result<(), FailureMode>`: for each layout step, check that `envelope.signatures[*].keyid` matches a declared functionary key; match step name against predicate metadata; apply `expected_products` pattern against `statement.subject`. Return `FailureMode::LayoutViolation { step_name }` on any mismatch.
-- [ ] T066 [US4] Create `mikebom-cli/src/cli/policy.rs` with `PolicyCommand` enum carrying a single `Init(PolicyInitArgs)` variant. Args: `--output <PATH>`, `--functionary-key <PATH>`, `--step-name <NAME>` (default "build-trace-capture"), `--expires <DURATION>` (default "1y"), `--readme <TEXT>`.
-- [ ] T067 [US4] Wire `PolicyCommand` into the top-level `Cli::Commands` enum in `mikebom-cli/src/main.rs` so `mikebom policy init` dispatches.
-- [ ] T068 [US4] Wire layout verification into `mikebom sbom verify --layout` handler in `mikebom-cli/src/cli/verify.rs`: when `--layout` is passed, load the file, call `policy::apply::verify_against_layout`, map result into the `VerificationReport`. Exit code 3 on `LayoutViolation` (per contract).
-- [ ] T069 [US4] Integration test `mikebom-cli/tests/policy_layout.rs::init_produces_valid_layout`: invoke `mikebom policy init --functionary-key test.pub`, parse output JSON, assert it validates against a minimal in-toto layout schema check.
-- [ ] T070 [US4] Integration test `mikebom-cli/tests/policy_layout.rs::matching_layout_passes_verify`: produce a layout from a known key, produce a signed attestation from the matching private key (use US2 plumbing), run verify with layout, assert Pass.
-- [ ] T071 [US4] Integration test `mikebom-cli/tests/policy_layout.rs::mismatched_functionary_fails`: swap the key at verify time, assert `LayoutViolation` with the step-name in the failure detail.
+- [X] T061 [US4] `mikebom-cli/src/policy/mod.rs` with `pub mod layout; pub mod apply;`. Registered under `mod policy;` in `main.rs`.
+- [X] T062 [US4] `Layout` / `LayoutKey` / `LayoutStep` / `KeyVal` types in `policy::layout` — serde-backed, shapes match in-toto v1 spec. `generate_starter_layout(pem, step, expires, readme)` emits a valid single-step layout.
+- [X] T063 [US4] `keyid_from_pem` — SHA-256 hex of DER-encoded SubjectPublicKeyInfo. Consistent with sigstore keyid convention.
+- [X] T064 [US4] `parse_expires_duration` handles `6m` / `1y` / `18mo` / `2y` / `30d` / `52w` → `chrono::Duration`. Default `1y` when flag absent (set via clap's `default_value`).
+- [X] T065 [US4] `policy::apply::verify_against_layout` matches signature keyids against layout step pubkeys. Returns `FailureMode::LayoutViolation` on mismatch. Full `expected_products` pattern matching deferred to multi-step work (spec's Out of Scope).
+- [X] T066 [US4] `cli::policy::PolicyCommand` + `PolicyInitArgs` with all contracted flags.
+- [X] T067 [US4] `mikebom policy init` wired into top-level `Commands` enum. CLI help confirms the subcommand is exposed.
+- [X] T068 [US4] `VerifyOptions.layout` + `sbom verify --layout` loads the file and feeds through `verify_attestation`. Layout violation returns exit code 3.
+- [X] T069 [US4] `policy_init_produces_valid_layout_json` in `tests/policy_layout.rs`: shells out to `mikebom policy init`, asserts emitted JSON carries `_type: layout` + declared step name.
+- [X] T070 [US4] `verify_with_matching_layout_passes` shells through policy init → verify-with-layout, asserts exit 0 + `layout_satisfied: true`.
+- [X] T071 [US4] `verify_with_mismatched_layout_fails_exit_three` rotates to a different functionary key, asserts exit 3 + `mode: LayoutViolation`.
 
 **Checkpoint**: `policy init` + `sbom verify --layout` round-trips correctly for single-step policies. Mismatched functionaries report `LayoutViolation` with actionable detail.
 

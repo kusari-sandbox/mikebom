@@ -71,11 +71,24 @@ pub async fn execute(args: VerifyArgs) -> anyhow::Result<ExitCode> {
         None => None,
     };
 
+    let layout = match &args.layout {
+        Some(p) => {
+            let s = std::fs::read_to_string(p).map_err(|e| {
+                anyhow::anyhow!("cannot read layout file {}: {e}", p.display())
+            })?;
+            let parsed: crate::policy::layout::Layout = serde_json::from_str(&s)
+                .map_err(|e| anyhow::anyhow!("layout parse failed: {e}"))?;
+            Some(parsed)
+        }
+        None => None,
+    };
+
     let opts = VerifyOptions {
         public_key_pem,
         identity_pattern: args.identity.clone(),
         expected_subjects: args.expected_subject.clone(),
         skip_transparency_log: args.no_transparency_log,
+        layout,
     };
 
     let report = verify_attestation(&raw, &opts);

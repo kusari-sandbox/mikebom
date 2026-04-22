@@ -7,6 +7,7 @@ pub mod auto_dirs;
 pub mod compare;
 pub mod enrich;
 pub mod generate;
+pub mod policy;
 pub mod run;
 pub mod scan;
 pub mod scan_cmd;

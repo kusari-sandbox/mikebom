@@ -15,6 +15,7 @@ mod config;
 mod enrich;
 mod error;
 mod generate;
+mod policy;
 mod resolve;
 mod scan_fs;
 mod trace;
@@ -62,6 +63,8 @@ enum Commands {
     Sbom(cli::sbom_cmd::SbomCommand),
     /// Attestation management
     Attestation(cli::attestation_cmd::AttestationCommand),
+    /// In-toto policy layout management (feature 006 US4)
+    Policy(cli::policy::PolicyCommand),
 }
 
 #[tokio::main]
@@ -85,6 +88,10 @@ async fn main() -> anyhow::Result<std::process::ExitCode> {
         }
         Commands::Attestation(cmd) => {
             cli::attestation_cmd::execute(cmd).await?;
+            Ok(std::process::ExitCode::from(0))
+        }
+        Commands::Policy(cmd) => {
+            cli::policy::execute(cmd).await?;
             Ok(std::process::ExitCode::from(0))
         }
     }

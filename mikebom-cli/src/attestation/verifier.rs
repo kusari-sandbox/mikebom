@@ -139,6 +139,9 @@ pub struct VerifyOptions {
     /// When `true`, a keyless envelope may lack a Rekor inclusion
     /// proof. When `false` (default), a missing proof → fail.
     pub skip_transparency_log: bool,
+    /// Optional in-toto layout to enforce against the envelope +
+    /// statement. When `None`, only envelope-level checks run.
+    pub layout: Option<crate::policy::layout::Layout>,
 }
 
 /// Parsed envelope + decoded payload. Shared across the verify pipeline.
@@ -520,11 +523,32 @@ pub fn verify_attestation(raw: &str, opts: &VerifyOptions) -> VerificationReport
         }
     };
 
+    // Layout evaluation (US4).
+    let layout_satisfied = match &opts.layout {
+        Some(layout) => {
+            match crate::policy::apply::verify_against_layout(
+                &parsed.statement,
+                &parsed.envelope,
+                layout,
+            ) {
+                Ok(()) => Some(true),
+                Err(mode) => {
+                    return VerificationReport::Fail {
+                        mode,
+                        detail: "in-toto layout constraint violated".to_string(),
+                        partial_identity: Some(describe_identity(&sig.identity)),
+                    };
+                }
+            }
+        }
+        None => None,
+    };
+
     VerificationReport::Pass {
         signer: describe_identity(&sig.identity),
         subject_digest,
         transparency_log_verified: tlog_verified,
-        layout_satisfied: None,
+        layout_satisfied,
     }
 }
 
