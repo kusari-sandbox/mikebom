@@ -966,6 +966,13 @@ pub(crate) struct EmbeddedMavenMeta {
     /// SHA-1 only, so this is the primary source of strong hashes
     /// for Maven components).
     pub archive_sha256: Option<mikebom_common::types::hash::ContentHash>,
+    /// `true` when this coord is the JAR's own identity
+    /// (`<artifactId>-<version>.jar` matches the archive stem). In a
+    /// shade-plugin fat-jar, exactly one coord is primary (the project
+    /// itself) and the rest are vendored children. Drives CDX 1.6
+    /// `component.components[]` nesting at emission time: primary ==
+    /// parent, non-primary == children with `parent_purl` set.
+    pub is_primary: bool,
 }
 
 /// Crack open `archive_path` and return every `META-INF/maven/<g>/<a>/`
@@ -1069,6 +1076,7 @@ pub(crate) fn walk_jar_maven_meta(archive_path: &Path) -> Vec<EmbeddedMavenMeta>
             pom_xml_bytes,
             sidecar_hash,
             archive_sha256: sha256_for_coord,
+            is_primary,
         });
     }
     out
@@ -1352,6 +1360,7 @@ fn jar_pom_to_entry(
     source_path: &str,
     sidecar_hash: Option<mikebom_common::types::hash::ContentHash>,
     archive_sha256: Option<mikebom_common::types::hash::ContentHash>,
+    parent_purl: Option<String>,
 ) -> Option<PackageDbEntry> {
     let purl = build_maven_purl(&p.group_id, &p.artifact_id, &p.version)?;
     let mut hashes: Vec<mikebom_common::types::hash::ContentHash> = Vec::new();
@@ -1378,7 +1387,7 @@ fn jar_pom_to_entry(
         confidence: None,
         binary_packed: None,
         raw_version: None,
-        parent_purl: None,
+        parent_purl,
         npm_role: None,
         hashes,
         sbom_tier: Some("analyzed".to_string()),
@@ -1636,7 +1645,28 @@ pub fn read_with_claims(
         }
     }
     for (source_path, meta_list) in jar_meta {
-        for meta in meta_list {
+        // First, find the primary coord's PURL (if any) so vendored
+        // children in the same JAR can point their `parent_purl` at it.
+        // A shade-plugin fat-jar has exactly one primary (is_primary ==
+        // true, matched against the JAR filename's
+        // `<artifactId>-<version>` stem in walk_jar_maven_meta) and N
+        // vendored non-primary coords. A non-shaded simple JAR has a
+        // single primary with no vendored children. A rare JAR with no
+        // recognizable primary gets all coords emitted flat (no nesting
+        // possible without a parent PURL to attach).
+        let primary_purl: Option<String> = meta_list
+            .iter()
+            .find(|m| m.is_primary)
+            .and_then(|m| {
+                build_maven_purl(
+                    &m.coord.group_id,
+                    &m.coord.artifact_id,
+                    &m.coord.version,
+                )
+            })
+            .map(|p| p.as_str().to_string());
+
+        for meta in &meta_list {
             // Resolve each declared dep against the disk-observed
             // coord index — use whatever version is actually here.
             // Drop test-scope unless include_dev; drop deps with no
@@ -1650,16 +1680,33 @@ pub fn read_with_claims(
                     coord_index.get(&key).map(|_v| d.artifact_id.clone())
                 })
                 .collect();
+            // Primary coord stays top-level (parent_purl = None); every
+            // other coord in the same JAR nests under the primary via
+            // its parent_purl.
+            let parent_purl = if meta.is_primary {
+                None
+            } else {
+                primary_purl.clone()
+            };
             let Some(entry) = jar_pom_to_entry(
                 &meta.coord,
                 depends,
                 &source_path,
                 meta.sidecar_hash.clone(),
                 meta.archive_sha256.clone(),
+                parent_purl,
             ) else {
                 continue;
             };
-            let key = entry.purl.as_str().to_string();
+            // Dedup-key includes parent_purl so the same (name, version)
+            // coord vendored in two different fat-jars surfaces twice
+            // (once nested under each parent) rather than collapsing
+            // to one. CDX nested-components model is the intent.
+            let key = format!(
+                "{}#{}",
+                entry.purl.as_str(),
+                entry.parent_purl.as_deref().unwrap_or(""),
+            );
             if seen_purls.insert(key) {
                 out.push(entry);
             }
