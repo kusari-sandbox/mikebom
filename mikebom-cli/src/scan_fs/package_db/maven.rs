@@ -24,7 +24,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use mikebom_common::types::purl::Purl;
+use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
 use super::PackageDbEntry;
 
@@ -1103,7 +1103,16 @@ fn compute_archive_sha256(
 // ---------------------------------------------------------------------------
 
 fn build_maven_purl(group: &str, artifact: &str, version: &str) -> Option<Purl> {
-    Purl::new(&format!("pkg:maven/{group}/{artifact}@{version}")).ok()
+    // purl-spec § Character encoding: all three segments are
+    // percent-encoded strings. Debian-packaged Maven artifacts carry
+    // versions like `1.0+dfsg` → `1.0%2Bdfsg`.
+    Purl::new(&format!(
+        "pkg:maven/{}/{}@{}",
+        encode_purl_segment(group),
+        encode_purl_segment(artifact),
+        encode_purl_segment(version),
+    ))
+    .ok()
 }
 
 fn pom_dep_to_entry(

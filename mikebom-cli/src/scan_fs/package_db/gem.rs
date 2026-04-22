@@ -45,7 +45,7 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use mikebom_common::types::purl::Purl;
+use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
 use super::PackageDbEntry;
 
@@ -228,7 +228,14 @@ fn parse_spec_line(line: &str) -> Option<(&str, &str)> {
 }
 
 fn build_gem_purl(name: &str, version: &str) -> Option<Purl> {
-    Purl::new(&format!("pkg:gem/{name}@{version}")).ok()
+    // purl-spec § Character encoding: `+` and other non-allowed
+    // chars must be percent-encoded in both name and version.
+    Purl::new(&format!(
+        "pkg:gem/{}@{}",
+        encode_purl_segment(name),
+        encode_purl_segment(version),
+    ))
+    .ok()
 }
 
 fn spec_to_entry(

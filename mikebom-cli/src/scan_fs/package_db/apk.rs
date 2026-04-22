@@ -15,7 +15,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use mikebom_common::types::license::SpdxExpression;
-use mikebom_common::types::purl::Purl;
+use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
 use super::PackageDbEntry;
 
@@ -213,7 +213,14 @@ fn build_apk_purl(
     arch: Option<&str>,
     distro_version: Option<&str>,
 ) -> String {
-    let mut s = format!("pkg:apk/alpine/{name}@{version}");
+    // purl-spec § Character encoding: name and version are
+    // percent-encoded strings. `+` in apk names (e.g. `libxml++`) and
+    // versions (e.g. `3.2.0+alpine1`) MUST encode to `%2B`.
+    let mut s = format!(
+        "pkg:apk/alpine/{}@{}",
+        encode_purl_segment(name),
+        encode_purl_segment(version),
+    );
     let mut qualifier_open = false;
     if let Some(a) = arch {
         if !a.is_empty() {

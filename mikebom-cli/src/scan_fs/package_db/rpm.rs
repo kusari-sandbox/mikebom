@@ -469,14 +469,16 @@ fn assemble_entry(
         }
     }
     // purl-spec § Character encoding: `+` and other non-allowed chars
-    // MUST be percent-encoded in the name segment. Real-world RPMs
-    // carry `+` regularly (libstdc++, perl-Text-Tabs+Wrap, …); route
-    // the name through the canonical encoder the deb builder already
-    // uses so ground-truth comparisons and reference-impl round-trips
-    // match.
+    // MUST be percent-encoded in both the name AND version segments.
+    // Real-world RPMs carry `+` regularly in names (libstdc++,
+    // perl-Text-Tabs+Wrap) and occasionally in versions. Route both
+    // through the canonical encoder the deb builder already uses.
     let encoded_name = mikebom_common::types::purl::encode_purl_segment(&name);
-    let purl_str =
-        format!("pkg:rpm/{vendor}/{encoded_name}@{version}-{release}{qualifiers}");
+    let encoded_version = mikebom_common::types::purl::encode_purl_segment(&version);
+    let encoded_release = mikebom_common::types::purl::encode_purl_segment(&release);
+    let purl_str = format!(
+        "pkg:rpm/{vendor}/{encoded_name}@{encoded_version}-{encoded_release}{qualifiers}",
+    );
     // Fall back to a minimal PURL if assembly fails — shouldn't happen
     // with valid RPM names, but defense-in-depth. A panic in the
     // unwrap path would kill the scan.

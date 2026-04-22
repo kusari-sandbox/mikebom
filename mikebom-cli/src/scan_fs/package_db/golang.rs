@@ -25,7 +25,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use mikebom_common::types::purl::Purl;
+use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
 use super::PackageDbEntry;
 
@@ -453,7 +453,15 @@ fn h1_to_content_hash(
 /// by convention and contain `/` which the packageurl spec treats as
 /// subpath segments for `pkg:golang` specifically.
 fn build_golang_purl(module: &str, version: &str) -> Option<Purl> {
-    let s = format!("pkg:golang/{module}@{version}");
+    // purl-spec § Character encoding: Go versions like
+    // `v1.2.3+incompatible` MUST encode `+` → `%2B`. Module path `/`
+    // separators are spec-allowed and pass through unchanged via
+    // encode_purl_segment.
+    let s = format!(
+        "pkg:golang/{}@{}",
+        encode_purl_segment(module),
+        encode_purl_segment(version),
+    );
     Purl::new(&s).ok()
 }
 

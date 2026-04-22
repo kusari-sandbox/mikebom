@@ -9,7 +9,7 @@ use anyhow::Context;
 use serde::Deserialize;
 
 use mikebom_common::types::hash::ContentHash;
-use mikebom_common::types::purl::Purl;
+use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
 /// Resolves package identity from SHA-256 content hashes via the deps.dev API.
 pub struct HashResolver {
@@ -152,20 +152,29 @@ impl HashResolver {
 
 /// Convert a deps.dev system name to a PURL string.
 fn system_to_purl(system: &str, name: &str, version: &str) -> Option<String> {
+    // purl-spec § Character encoding: name + version are
+    // percent-encoded strings. `+` (and other non-allowed chars)
+    // must encode as `%2B` in both.
+    let n = encode_purl_segment(name);
+    let v = encode_purl_segment(version);
     match system.to_uppercase().as_str() {
-        "CARGO" => Some(format!("pkg:cargo/{name}@{version}")),
-        "NPM" => Some(format!("pkg:npm/{name}@{version}")),
-        "GO" => Some(format!("pkg:golang/{name}@{version}")),
+        "CARGO" => Some(format!("pkg:cargo/{n}@{v}")),
+        "NPM" => Some(format!("pkg:npm/{n}@{v}")),
+        "GO" => Some(format!("pkg:golang/{n}@{v}")),
         "MAVEN" => {
             // deps.dev uses "groupId:artifactId" format.
             if let Some((group, artifact)) = name.split_once(':') {
-                Some(format!("pkg:maven/{group}/{artifact}@{version}"))
+                Some(format!(
+                    "pkg:maven/{}/{}@{v}",
+                    encode_purl_segment(group),
+                    encode_purl_segment(artifact),
+                ))
             } else {
-                Some(format!("pkg:maven/{name}@{version}"))
+                Some(format!("pkg:maven/{n}@{v}"))
             }
         }
-        "PYPI" => Some(format!("pkg:pypi/{name}@{version}")),
-        "NUGET" => Some(format!("pkg:nuget/{name}@{version}")),
+        "PYPI" => Some(format!("pkg:pypi/{n}@{v}")),
+        "NUGET" => Some(format!("pkg:nuget/{n}@{v}")),
         _ => None,
     }
 }

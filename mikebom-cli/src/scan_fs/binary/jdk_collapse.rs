@@ -72,7 +72,15 @@ impl JdkCollapser {
         self.by_version
             .into_iter()
             .filter_map(|(version, paths)| {
-                let purl_str = format!("pkg:generic/openjdk@{version}");
+                // purl-spec § Character encoding: version segment is a
+                // percent-encoded string. Route through the canonical
+                // encoder so OpenJDK versions like `21+35-LTS` (GA
+                // builds use semver-style build metadata) encode
+                // correctly.
+                let purl_str = format!(
+                    "pkg:generic/openjdk@{}",
+                    mikebom_common::types::purl::encode_purl_segment(&version),
+                );
                 let purl = Purl::new(&purl_str).ok()?;
                 let source_path = paths
                     .iter()

@@ -30,7 +30,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use mikebom_common::types::hash::ContentHash;
-use mikebom_common::types::purl::Purl;
+use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
 use super::PackageDbEntry;
 
@@ -99,7 +99,15 @@ fn classify_source(source: Option<&str>) -> SourceKind {
 // ---------------------------------------------------------------------------
 
 fn build_cargo_purl(name: &str, version: &str) -> Option<Purl> {
-    Purl::new(&format!("pkg:cargo/{name}@{version}")).ok()
+    // purl-spec § Character encoding: name + version are
+    // percent-encoded strings. `+` in semver build metadata (e.g.
+    // `1.0.0+build.123`) MUST encode to `%2B`.
+    Purl::new(&format!(
+        "pkg:cargo/{}@{}",
+        encode_purl_segment(name),
+        encode_purl_segment(version),
+    ))
+    .ok()
 }
 
 fn package_to_entry(pkg: &CargoPackage, source_path: &str) -> Option<PackageDbEntry> {

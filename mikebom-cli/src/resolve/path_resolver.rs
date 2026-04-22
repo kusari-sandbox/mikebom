@@ -4,7 +4,7 @@
 //! crate to ~/.cargo/registry/cache/), the file path itself often encodes
 //! enough information to identify the package.
 
-use mikebom_common::types::purl::Purl;
+use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
 /// Attempt to resolve a file path into a PURL by matching against known
 /// package manager cache/install directory patterns.
@@ -57,7 +57,13 @@ fn resolve_cargo_path(path: &str) -> Option<Purl> {
     // Split on the last '-' followed by a digit to get name and version.
     let (name, version) = split_name_version_last_dash(stem)?;
 
-    let purl_str = format!("pkg:cargo/{name}@{version}");
+    // purl-spec § Character encoding: name + version are
+    // percent-encoded strings.
+    let purl_str = format!(
+        "pkg:cargo/{}@{}",
+        encode_purl_segment(name),
+        encode_purl_segment(version),
+    );
     let purl = Purl::new(&purl_str).ok()?;
     tracing::debug!("cargo path match: {purl_str}");
     Some(purl)
@@ -145,7 +151,11 @@ fn resolve_pip_path(path: &str) -> Option<Purl> {
         // `_` → `-`. Dist-info dirs use the opposite convention on disk
         // (`_` in place of the declared `-`), so we flip here.
         let normalized = name.replace('_', "-").to_lowercase();
-        let purl_str = format!("pkg:pypi/{normalized}@{version}");
+        let purl_str = format!(
+            "pkg:pypi/{}@{}",
+            encode_purl_segment(&normalized),
+            encode_purl_segment(version),
+        );
         let purl = Purl::new(&purl_str).ok()?;
         tracing::debug!("pip dist-info path match: {purl_str}");
         return Some(purl);
@@ -158,7 +168,11 @@ fn resolve_pip_path(path: &str) -> Option<Purl> {
         // `_` → `-`. Dist-info dirs use the opposite convention on disk
         // (`_` in place of the declared `-`), so we flip here.
         let normalized = name.replace('_', "-").to_lowercase();
-        let purl_str = format!("pkg:pypi/{normalized}@{version}");
+        let purl_str = format!(
+            "pkg:pypi/{}@{}",
+            encode_purl_segment(&normalized),
+            encode_purl_segment(version),
+        );
         let purl = Purl::new(&purl_str).ok()?;
         tracing::debug!("pip egg-info path match: {purl_str}");
         return Some(purl);
@@ -236,10 +250,22 @@ fn resolve_npm_path(path: &str) -> Option<Purl> {
             }
 
             let purl_str = if name.starts_with('@') {
+                // Scoped packages: emit `pkg:npm/%40<scope>/<name>@<version>`.
+                // `@` → `%40` is a manual replacement (the canonical
+                // encoder would encode `/` too, which we need literal
+                // as the scope/name separator). Version still goes
+                // through the canonical encoder for `+` handling.
                 let encoded = name.replace('@', "%40");
-                format!("pkg:npm/{encoded}@{version}")
+                format!(
+                    "pkg:npm/{encoded}@{}",
+                    encode_purl_segment(&version),
+                )
             } else {
-                format!("pkg:npm/{name}@{version}")
+                format!(
+                    "pkg:npm/{}@{}",
+                    encode_purl_segment(&name),
+                    encode_purl_segment(&version),
+                )
             };
 
             let purl = Purl::new(&purl_str).ok()?;
@@ -279,7 +305,15 @@ fn resolve_go_path(path: &str) -> Option<Purl> {
         return None;
     }
 
-    let purl_str = format!("pkg:golang/{module}@{version}");
+    // purl-spec § Character encoding: `v1.2.3+incompatible` must
+    // encode as `v1.2.3%2Bincompatible`. The Go module path (with
+    // `/`) contains spec-allowed separators that pass through
+    // unchanged.
+    let purl_str = format!(
+        "pkg:golang/{}@{}",
+        encode_purl_segment(module),
+        encode_purl_segment(version),
+    );
     let purl = Purl::new(&purl_str).ok()?;
     tracing::debug!("go module path match: {purl_str}");
     Some(purl)

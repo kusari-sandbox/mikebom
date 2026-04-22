@@ -22,7 +22,7 @@
 
 use std::path::{Path, PathBuf};
 
-use mikebom_common::types::purl::Purl;
+use mikebom_common::types::purl::{encode_purl_segment, Purl};
 use object::{Object, ObjectSection};
 
 use super::PackageDbEntry;
@@ -627,7 +627,9 @@ fn emit_file_level_diagnostic(
         .file_name()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "unknown".to_string());
-    let purl_str = format!("pkg:generic/{file_name}");
+    // purl-spec: name segment is percent-encoded. File names may
+    // carry `+` or other non-allowed chars.
+    let purl_str = format!("pkg:generic/{}", encode_purl_segment(&file_name));
     let Ok(purl) = Purl::new(&purl_str) else {
         return;
     };
@@ -659,7 +661,13 @@ fn emit_file_level_diagnostic(
 }
 
 fn build_golang_purl(module: &str, version: &str) -> Option<Purl> {
-    let s = format!("pkg:golang/{module}@{version}");
+    // purl-spec § Character encoding: Go versions like
+    // `v1.2.3+incompatible` MUST encode `+` → `%2B`.
+    let s = format!(
+        "pkg:golang/{}@{}",
+        encode_purl_segment(module),
+        encode_purl_segment(version),
+    );
     Purl::new(&s).ok()
 }
 

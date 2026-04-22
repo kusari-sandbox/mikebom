@@ -79,7 +79,16 @@ impl LinkageAggregator {
     /// referenced it; `_parent_bom_ref` reserved for future cross-link.
     pub fn add(&mut self, soname: &str, parent_path: &Path, _parent_bom_ref: &str) {
         let entry = self.by_soname.entry(soname.to_string()).or_insert_with(|| {
-            let purl_str = format!("pkg:generic/{}", percent_encode(soname));
+            // Sonames are a special case: they're bare `pkg:generic/`
+            // identifiers where `/` INSIDE the name (e.g. macOS
+            // `@rpath/libssl.48.dylib`) is NOT a structural PURL
+            // separator — it's part of the identifier. The canonical
+            // `encode_purl_segment` leaves `/` literal (correct for
+            // Go module paths, Maven groupIds, etc. where `/` is
+            // structural); linkage keeps a stricter local encoder
+            // that also encodes `/` and `@` to preserve the soname
+            // as a single-segment name.
+            let purl_str = format!("pkg:generic/{}", percent_encode_soname(soname));
             // Malformed soname → skip this entire record. Defensive:
             // real DT_NEEDED strings should always yield a valid PURL.
             let purl = match Purl::new(&purl_str) {
@@ -177,7 +186,12 @@ impl Default for LinkageAggregator {
     }
 }
 
-fn percent_encode(s: &str) -> String {
+/// Soname-specific percent-encoder. Stricter than
+/// `encode_purl_segment` — also encodes `/`, `@`, `:`, `~` — because
+/// sonames flow into `pkg:generic/<soname>` where the name slot is a
+/// single segment and `/` must not be interpreted as a PURL
+/// namespace/name separator.
+fn percent_encode_soname(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
         if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') {

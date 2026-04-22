@@ -95,7 +95,14 @@ impl PythonStdlibCollapser {
         self.by_version
             .into_iter()
             .filter_map(|(version, paths)| {
-                let purl_str = format!("pkg:generic/cpython@{version}");
+                // purl-spec § Character encoding: version segment is a
+                // percent-encoded string. Route through the canonical
+                // encoder (CPython versions are `X.Y` today and don't
+                // carry `+`, but the rule applies uniformly).
+                let purl_str = format!(
+                    "pkg:generic/cpython@{}",
+                    mikebom_common::types::purl::encode_purl_segment(&version),
+                );
                 let purl = Purl::new(&purl_str).ok()?;
                 // Join paths with "| " — the scan_fs conversion uses
                 // source_path as evidence.source_file_paths[0] and we

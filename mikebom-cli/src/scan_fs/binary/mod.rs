@@ -533,7 +533,11 @@ fn version_match_to_entry(
     m: &version_strings::EmbeddedVersionMatch,
     path: &Path,
 ) -> Option<PackageDbEntry> {
-    let purl_str = format!("pkg:generic/{}@{}", m.library.slug(), m.version);
+    let purl_str = format!(
+        "pkg:generic/{}@{}",
+        mikebom_common::types::purl::encode_purl_segment(m.library.slug()),
+        mikebom_common::types::purl::encode_purl_segment(&m.version),
+    );
     let purl = Purl::new(&purl_str).ok()?;
     Some(PackageDbEntry {
         purl,
@@ -900,7 +904,10 @@ fn make_file_level_component(
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
         .to_string();
-    let purl_str = format!("pkg:generic/{filename}?file-sha256={sha256}");
+    // Filename can carry arbitrary chars; percent-encode for PURL
+    // name-segment conformance.
+    let encoded_filename = mikebom_common::types::purl::encode_purl_segment(&filename);
+    let purl_str = format!("pkg:generic/{encoded_filename}?file-sha256={sha256}");
     let purl = Purl::new(&purl_str).unwrap_or_else(|_| {
         // Fallback: use a bare generic purl if filename has chars PURL
         // can't handle. Keyed on sha256 alone.
@@ -1016,12 +1023,14 @@ fn note_package_to_entry(
     };
 
     // purl-spec § Character encoding: `+` and other non-allowed chars
-    // MUST be percent-encoded in the name segment. The note.name came
-    // out of an ELF `.note.package` section and can carry real-world
-    // RPM-style names (`libstdc++`, `perl-Text-Tabs+Wrap`, …). Route
-    // it through the canonical encoder so all five arms below emit
+    // MUST be percent-encoded in BOTH the name and version segments.
+    // The note.{name,version} came out of an ELF `.note.package`
+    // section and can carry real-world package coords with `+` (RPMs
+    // like `libstdc++`, semver versions like `1.0+build.1`). Route
+    // both through the canonical encoder so all five arms below emit
     // spec-conformant PURLs.
     let encoded_name = mikebom_common::types::purl::encode_purl_segment(&note.name);
+    let encoded_version = mikebom_common::types::purl::encode_purl_segment(&note.version);
     let purl_str = match note.note_type.as_str() {
         "rpm" => {
             let raw_vendor = resolve_vendor(note.distro.as_deref(), "rpm");
@@ -1029,31 +1038,22 @@ fn note_package_to_entry(
             // etc. Same mapping used by rpm.rs for the rpmdb reader.
             let vendor = rpm_vendor_from_id(&raw_vendor);
             append_distro_qualifier(&mut qualifiers, &vendor);
-            format!(
-                "pkg:rpm/{vendor}/{encoded_name}@{}{qualifiers}",
-                note.version,
-            )
+            format!("pkg:rpm/{vendor}/{encoded_name}@{encoded_version}{qualifiers}")
         }
         "deb" => {
             let vendor = resolve_vendor(note.distro.as_deref(), "debian");
             append_distro_qualifier(&mut qualifiers, &vendor);
-            format!(
-                "pkg:deb/{vendor}/{encoded_name}@{}{qualifiers}",
-                note.version,
-            )
+            format!("pkg:deb/{vendor}/{encoded_name}@{encoded_version}{qualifiers}")
         }
         "apk" => {
             let vendor = resolve_vendor(note.distro.as_deref(), "alpine");
             append_distro_qualifier(&mut qualifiers, &vendor);
-            format!(
-                "pkg:apk/{vendor}/{encoded_name}@{}{qualifiers}",
-                note.version,
-            )
+            format!("pkg:apk/{vendor}/{encoded_name}@{encoded_version}{qualifiers}")
         }
         "alpm" | "pacman" => {
-            format!("pkg:alpm/arch/{encoded_name}@{}{qualifiers}", note.version)
+            format!("pkg:alpm/arch/{encoded_name}@{encoded_version}{qualifiers}")
         }
-        _ => format!("pkg:generic/{encoded_name}@{}", note.version),
+        _ => format!("pkg:generic/{encoded_name}@{encoded_version}"),
     };
 
     let purl = Purl::new(&purl_str).ok()?;

@@ -3,7 +3,7 @@
 //! Given an HTTP hostname and request path captured during a build trace,
 //! determine the ecosystem and extract name + version to construct a PURL.
 
-use mikebom_common::types::purl::Purl;
+use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
 /// Attempt to resolve a hostname + path pair into a PURL by matching
 /// against known package registry URL patterns.
@@ -47,7 +47,12 @@ fn resolve_cargo(hostname: &str, path: &str) -> Option<Purl> {
         if parts.len() >= 2 {
             let name = parts[0];
             let version = parts[1];
-            let purl_str = format!("pkg:cargo/{name}@{version}");
+            // purl-spec § Character encoding.
+            let purl_str = format!(
+                "pkg:cargo/{}@{}",
+                encode_purl_segment(name),
+                encode_purl_segment(version),
+            );
             let purl = Purl::new(&purl_str).ok()?;
             tracing::debug!("cargo URL match: {purl_str}");
             return Some(purl);
@@ -63,7 +68,11 @@ fn resolve_cargo(hostname: &str, path: &str) -> Option<Purl> {
             if let Some(stem) = filename.strip_suffix(".crate") {
                 // filename is "{name}-{version}"
                 if let Some(version) = stem.strip_prefix(name).and_then(|s| s.strip_prefix('-')) {
-                    let purl_str = format!("pkg:cargo/{name}@{version}");
+                    let purl_str = format!(
+                        "pkg:cargo/{}@{}",
+                        encode_purl_segment(name),
+                        encode_purl_segment(version),
+                    );
                     let purl = Purl::new(&purl_str).ok()?;
                     tracing::debug!("cargo CDN URL match: {purl_str}");
                     return Some(purl);
@@ -105,7 +114,11 @@ fn resolve_pypi(hostname: &str, path: &str) -> Option<Purl> {
     // Normalize: PEP 503 — replace hyphens/dots with underscores, lowercase.
     let normalized_name = name.replace('-', "_").replace('.', "_").to_lowercase();
 
-    let purl_str = format!("pkg:pypi/{normalized_name}@{version}");
+    let purl_str = format!(
+        "pkg:pypi/{}@{}",
+        encode_purl_segment(&normalized_name),
+        encode_purl_segment(version),
+    );
     let purl = Purl::new(&purl_str).ok()?;
     tracing::debug!("pypi URL match: {purl_str}");
     Some(purl)
@@ -171,7 +184,14 @@ fn resolve_npm(hostname: &str, path: &str) -> Option<Purl> {
             let version = extract_npm_version(filename, name)?;
             // PURL spec: scope is percent-encoded '@' → '%40'
             let encoded_scope = scope.replace('@', "%40");
-            let purl_str = format!("pkg:npm/{encoded_scope}/{name}@{version}");
+            // purl-spec § Character encoding: name + version are
+            // percent-encoded strings. Scope keeps its `%40<scope>/`
+            // literal form so consumers see the npm canonical shape.
+            let purl_str = format!(
+                "pkg:npm/{encoded_scope}/{}@{}",
+                encode_purl_segment(name),
+                encode_purl_segment(version),
+            );
             let purl = Purl::new(&purl_str).ok()?;
             tracing::debug!("npm scoped URL match: {purl_str}");
             return Some(purl);
@@ -184,7 +204,11 @@ fn resolve_npm(hostname: &str, path: &str) -> Option<Purl> {
         let name = parts[0];
         let filename = parts[2];
         let version = extract_npm_version(filename, name)?;
-        let purl_str = format!("pkg:npm/{name}@{version}");
+        let purl_str = format!(
+            "pkg:npm/{}@{}",
+            encode_purl_segment(name),
+            encode_purl_segment(&version),
+        );
         let purl = Purl::new(&purl_str).ok()?;
         tracing::debug!("npm URL match: {purl_str}");
         return Some(purl);
@@ -225,7 +249,12 @@ fn resolve_golang(hostname: &str, path: &str) -> Option<Purl> {
         return None;
     }
 
-    let purl_str = format!("pkg:golang/{module}@{version}");
+    // purl-spec: Go versions like `v1.2.3+incompatible` must encode.
+    let purl_str = format!(
+        "pkg:golang/{}@{}",
+        encode_purl_segment(&module),
+        encode_purl_segment(&version),
+    );
     let purl = Purl::new(&purl_str).ok()?;
     tracing::debug!("golang URL match: {purl_str}");
     Some(purl)
@@ -268,7 +297,12 @@ fn resolve_maven(hostname: &str, path: &str) -> Option<Purl> {
 
     let group = group_parts.join(".");
 
-    let purl_str = format!("pkg:maven/{group}/{artifact}@{version}");
+    let purl_str = format!(
+        "pkg:maven/{}/{}@{}",
+        encode_purl_segment(&group),
+        encode_purl_segment(artifact),
+        encode_purl_segment(version),
+    );
     let purl = Purl::new(&purl_str).ok()?;
     tracing::debug!("maven URL match: {purl_str}");
     Some(purl)
@@ -292,7 +326,11 @@ fn resolve_rubygems(hostname: &str, path: &str) -> Option<Purl> {
     // The version starts after the last '-' that is followed by a digit.
     let (name, version) = split_gem_name_version(stem)?;
 
-    let purl_str = format!("pkg:gem/{name}@{version}");
+    let purl_str = format!(
+        "pkg:gem/{}@{}",
+        encode_purl_segment(name),
+        encode_purl_segment(version),
+    );
     let purl = Purl::new(&purl_str).ok()?;
     tracing::debug!("rubygems URL match: {purl_str}");
     Some(purl)
