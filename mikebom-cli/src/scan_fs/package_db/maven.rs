@@ -505,6 +505,13 @@ pub(crate) struct PomXmlDocument {
     /// POMs reference without an inline `<version>`. BOM imports
     /// (`<type>pom</type><scope>import</scope>`) also live here.
     pub dependency_management: Vec<PomDependency>,
+    /// Raw `<project>/<artifactId>` element value, even when the POM
+    /// lacks a `<groupId>` or `<version>` (both of which may be
+    /// inherited from `<parent>`). `self_coord` is only populated
+    /// when groupId AND artifactId are both present; this field is
+    /// populated whenever artifactId is present, so sidecar readers
+    /// can apply parent-inheritance themselves. Feature 007 US1.
+    pub self_artifact_id: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -651,6 +658,10 @@ pub(crate) fn parse_pom_xml(bytes: &[u8]) -> PomXmlDocument {
         let v = self_v.clone().or_else(|| parent_v.clone()).unwrap_or_default();
         doc.self_coord = Some((g, a, v));
     }
+    // Always expose the raw artifactId when present — sidecar readers
+    // need it even when self_coord is None (child POM relying on
+    // parent for groupId). Feature 007 US1.
+    doc.self_artifact_id = self_a.clone();
     if let (Some(g), Some(a), Some(v)) = (parent_g, parent_a, parent_v) {
         doc.parent_coord = Some((g, a, v));
     }
@@ -1722,6 +1733,12 @@ pub fn read_with_claims(
     // from unresolved `${project.version}` placeholders is already
     // handled upstream in `parse_pom_properties` — placeholder
     // versions return `None` and never surface as components.
+    // Feature 007 US1: Fedora `/usr/share/maven-poms/` sidecar POM
+    // reader. Built once per scan; lookups are O(1). On rootfs that
+    // isn't Fedora-shaped the index is empty and the sidecar path is
+    // a full no-op.
+    let sidecar_index = super::maven_sidecar::FedoraSidecarIndex::build(rootfs);
+    let mut sidecar_resolved: usize = 0;
     let mut jar_meta: Vec<(String, Vec<EmbeddedMavenMeta>, Option<String>)> = Vec::new();
     for jar_path in &jar_files {
         let co_owned_by = if crate::scan_fs::binary::is_path_claimed(
@@ -1758,6 +1775,43 @@ pub fn read_with_claims(
         };
         let meta = walk_jar_maven_meta(jar_path);
         if meta.is_empty() {
+            // Feature 007 US1: Fedora sidecar POM fallback. When the
+            // JAR has no embedded `META-INF/maven/` (Fedora's xmvn
+            // strips it during RPM build), try the sidecar index at
+            // `/usr/share/maven-poms/`. On miss, the JAR falls
+            // through to generic-binary emission per FR-005.
+            if let Some(sidecar_pom_path) = sidecar_index.lookup_for_jar(jar_path) {
+                if let Some((g, a, v)) =
+                    super::maven_sidecar::resolve_coords(sidecar_pom_path, &sidecar_index)
+                {
+                    tracing::debug!(
+                        jar = %jar_path.display(),
+                        sidecar_pom = %sidecar_pom_path.display(),
+                        group = %g,
+                        artifact = %a,
+                        version = %v,
+                        "maven sidecar resolved"
+                    );
+                    let synthetic = EmbeddedMavenMeta {
+                        coord: PomProperties {
+                            group_id: g,
+                            artifact_id: a,
+                            version: v,
+                        },
+                        declared_deps: Vec::new(),
+                        pom_xml_bytes: None,
+                        sidecar_hash: None,
+                        archive_sha256: None,
+                        is_primary: true,
+                    };
+                    jar_meta.push((
+                        jar_path.to_string_lossy().into_owned(),
+                        vec![synthetic],
+                        co_owned_by,
+                    ));
+                    sidecar_resolved += 1;
+                }
+            }
             continue;
         }
         for m in &meta {
@@ -1767,6 +1821,14 @@ pub fn read_with_claims(
             }
         }
         jar_meta.push((jar_path.to_string_lossy().into_owned(), meta, co_owned_by));
+    }
+    if sidecar_resolved > 0 {
+        tracing::info!(
+            rootfs = %rootfs.display(),
+            resolved = sidecar_resolved,
+            indexed = sidecar_index.len(),
+            "maven sidecar scan: resolved N JARs via /usr/share/maven-poms/"
+        );
     }
 
     // On-disk coord index: `(group, artifact)` is "on disk" when either a
