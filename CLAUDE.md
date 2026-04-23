@@ -25,7 +25,32 @@ tests/
 
 ## Commands
 
-cargo test [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] cargo clippy
+### Pre-PR verification (MANDATORY)
+
+Before opening any PR, BOTH of these MUST pass locally — not one, not
+a subset, BOTH:
+
+1. `cargo +stable clippy --workspace --all-targets` — zero errors
+2. `cargo +stable test --workspace` — every suite `ok. N passed; 0 failed`
+
+These are the exact commands CI runs (`.github/workflows/ci.yml`).
+`cargo test -p mikebom` alone is insufficient: it does not run clippy,
+and clippy's `--all-targets` enforces `clippy::unwrap_used` inside
+`#[cfg(test)]` modules too (the `mikebom-cli` crate root deny'ies it
+per Constitution Principle IV). Test code that uses `.unwrap()` must
+be guarded with:
+
+```rust
+#[cfg(test)]
+#[cfg_attr(test, allow(clippy::unwrap_used))]
+mod tests {
+```
+
+matching the existing convention throughout `mikebom-cli/src/trace/`.
+
+If you open a PR without running these two commands clean, CI will
+reject it. Do not cite a passing per-crate `cargo test` as evidence
+of CI-readiness — they are not equivalent.
 
 ## Code Style
 
