@@ -168,11 +168,23 @@ fn is_os_managed_directory(rootfs: &std::path::Path, path: &std::path::Path) -> 
 /// — avoids re-parsing the binary. Same magic the `go_binary` reader
 /// looks for (source: Go stdlib `debug/buildinfo`).
 fn is_go_binary(bytes: &[u8]) -> bool {
-    // Scan the first 2 MB — BuildInfo typically lives in a dedicated
-    // `.go.buildinfo` section near the start of the file. Scanning
-    // further would be worst-case ~100ms per binary; bounded probe
-    // matches the existing `go_binary.rs` approach.
-    const PROBE: usize = 2 * 1024 * 1024;
+    // Scan the first 64 MB — BuildInfo lives in the `.go.buildinfo`
+    // section, which the Go linker places AFTER the text/data
+    // sections. Real-world offsets commonly exceed the old 2 MB
+    // probe cap: a 6 MB Go binary puts BuildInfo around 3.9 MB; a
+    // larger service binary can push it past 10 MB. 64 MB covers
+    // virtually all Go binaries while keeping bounded worst-case
+    // cost on pathological non-Go files. The probe is a
+    // `windows().any()` scan which modern rustc/LLVM optimizes
+    // aggressively — measurable cost on a 64 MB file is tens of
+    // milliseconds, acceptable for the correctness win.
+    //
+    // For comparison, `go_binary.rs::detect_is_go` first does a
+    // section-name lookup via the object crate (fast, precise), then
+    // falls back to memmem over the entire file (up to 500 MB). This
+    // cheaper byte-scan covers the common case without pulling in
+    // ELF parsing here.
+    const PROBE: usize = 64 * 1024 * 1024;
     let end = bytes.len().min(PROBE);
     bytes[..end]
         .windows(14)
@@ -420,9 +432,14 @@ pub fn read(
                     path.display()
                 );
             } else if go_in_linux {
+                // G1: Go binaries now emit file-level (with
+                // detected_go = Some(true)) but still skip
+                // secondary evidence (linkage, ELF-note,
+                // version-strings).
                 eprintln!(
-                    "WALKER {}: SKIPPED reason=go-in-linux",
-                    path.display()
+                    "WALKER {}: EMITTED file-level class={} detected_go=true (secondary-evidence suppressed)",
+                    path.display(),
+                    scan.binary_class
                 );
             } else if collapsed_by_python {
                 eprintln!(
@@ -443,15 +460,39 @@ pub fn read(
             }
         }
 
-        let skip_file_level_and_linkage = path_claimed
+        // G1: split the skip gate. Go binaries on Linux still skip
+        // secondary evidence emission (DT_NEEDED linkage, ELF-note
+        // package, embedded-version-string scanner), but they
+        // SHOULD emit the file-level `pkg:generic/<name>?file-sha256=...`
+        // component. The ground truth counts the binary artifact
+        // itself as a component alongside its embedded
+        // `pkg:golang/<module>@<ver>` identities (emitted separately
+        // by go_binary.rs) — same dual-identity pattern as the
+        // Maven JAR ↔ RPM case.
+        //
+        // `skip_file_level`: claimed / rpm-dir / python / jdk
+        // collapse cases ONLY. Go binaries no longer skip here.
+        //
+        // `skip_secondary_evidence`: `skip_file_level` ∪ `go_in_linux`.
+        // Statically-linked Go binaries produce minimal DT_NEEDED
+        // (just libc); emitting per-library linkage components
+        // would inflate the SBOM with noise. ELF-note and
+        // version-string scanners are also suppressed for Go —
+        // their output is redundant with the golang module
+        // emission from `go_binary.rs`.
+        let skip_file_level = path_claimed
             || rpm_dir_heuristic
-            || go_in_linux
             || collapsed_by_python
             || collapsed_by_jdk;
+        let skip_secondary_evidence = skip_file_level || go_in_linux;
 
-        if !skip_file_level_and_linkage {
-            // File-level binary component.
-            let file_level = make_file_level_component(&path, &bytes, &scan);
+        if !skip_file_level {
+            // File-level binary component. When `go_in_linux` is
+            // true, the emitted entry carries `detected_go = Some(true)`
+            // to cross-link it with the golang module component(s)
+            // that `go_binary.rs` emits for the same bytes
+            // (milestone 004 US2 R8 flat cross-link).
+            let file_level = make_file_level_component(&path, &bytes, &scan, go_in_linux);
             let parent_bom_ref = file_level.purl.as_str().to_string();
             out.push(file_level);
 
@@ -465,19 +506,29 @@ pub fn read(
             // resolve to a path claimed by a package-db reader.
             // Fixes `libc.so.6` double-emission alongside the libc6
             // deb.
-            for soname in &scan.imports {
-                if is_host_system_path(soname) {
-                    continue;
+            //
+            // G1: `skip_secondary_evidence` adds `go_in_linux` on top of the
+            // file-level gates. Go binaries are statically linked by
+            // default so their DT_NEEDED set is tiny (libc only) —
+            // not worth inflating the SBOM with per-library linkage
+            // components. The file-level `pkg:generic/...` component
+            // plus the `pkg:golang/.../module@version` components
+            // from `go_binary.rs` give the right granularity.
+            if !skip_secondary_evidence {
+                for soname in &scan.imports {
+                    if is_host_system_path(soname) {
+                        continue;
+                    }
+                    linkage_agg.add_with_claim_check(
+                        soname,
+                        &path,
+                        &parent_bom_ref,
+                        rootfs,
+                        claimed_paths,
+                        #[cfg(unix)]
+                        claimed_inodes,
+                    );
                 }
-                linkage_agg.add_with_claim_check(
-                    soname,
-                    &path,
-                    &parent_bom_ref,
-                    rootfs,
-                    claimed_paths,
-                    #[cfg(unix)]
-                    claimed_inodes,
-                );
             }
         }
 
@@ -491,7 +542,7 @@ pub fn read(
         // entry from the package-db reader. Fedora images previously
         // produced 50 such ghosts. Unclaimed binaries still emit —
         // this is the only identity source for them.
-        if !skip_file_level_and_linkage {
+        if !skip_secondary_evidence {
             if let Some(note) = &scan.note_package {
                 if let Some(note_entry) = note_package_to_entry(
                     note,
@@ -513,7 +564,7 @@ pub fn read(
         // binaries (dpkg/rpm-owned, collapsed-by-python/jdk, go
         // binaries on Linux) don't double-emit `pkg:generic/curl`
         // alongside the package-db scanner's authoritative entry.
-        if !skip_file_level_and_linkage {
+        if !skip_secondary_evidence {
             for m in version_strings::scan(&scan.string_region) {
                 if let Some(entry) = version_match_to_entry(&m, &path) {
                     out.push(entry);
@@ -888,6 +939,7 @@ fn make_file_level_component(
     path: &Path,
     bytes: &[u8],
     scan: &BinaryScan,
+    detected_go: bool,
 ) -> PackageDbEntry {
     let sha256 = {
         let mut hasher = Sha256::new();
@@ -943,7 +995,12 @@ fn make_file_level_component(
         binary_class: Some(scan.binary_class.to_string()),
         binary_stripped: Some(scan.stripped),
         linkage_kind: Some(linkage),
-        detected_go: None,
+        // G1: milestone 004 US2 R8 cross-link — set when the same
+        // bytes carry `runtime/debug.BuildInfo` so downstream
+        // consumers can pair the file-level `pkg:generic/<name>`
+        // component with its `pkg:golang/<module>@<version>`
+        // siblings from `go_binary.rs`.
+        detected_go: if detected_go { Some(true) } else { None },
         confidence: None,
         binary_packed: scan.packer.map(|p| p.as_str().to_string()),
         raw_version: None,
@@ -1522,11 +1579,80 @@ mod tests {
     }
 
     #[test]
-    fn is_go_binary_bounded_probe() {
-        // Magic past the 2 MB probe window should NOT match.
-        let mut bytes = vec![0u8; 3 * 1024 * 1024];
-        bytes[2_500_000..2_500_014].copy_from_slice(b"\xff Go buildinf:");
+    fn is_go_binary_detects_magic_past_old_2mb_cap() {
+        // Regression guard: the old 2 MB probe window missed real
+        // Go binaries where BuildInfo lives past that offset
+        // (common for Go binaries ≥5 MB). Probe cap is now 64 MB.
+        let mut bytes = vec![0u8; 5 * 1024 * 1024];
+        bytes[3_900_000..3_900_014].copy_from_slice(b"\xff Go buildinf:");
+        assert!(is_go_binary(&bytes));
+    }
+
+    #[test]
+    fn is_go_binary_bounded_probe_at_64mb() {
+        // Magic past the 64 MB probe window should NOT match —
+        // defense against scanning huge non-Go files completely.
+        // 64 MB = 67,108,864 bytes; place magic at 68 MB so it's
+        // clearly outside the window.
+        let mut bytes = vec![0u8; 70 * 1024 * 1024];
+        bytes[68 * 1024 * 1024..68 * 1024 * 1024 + 14]
+            .copy_from_slice(b"\xff Go buildinf:");
         assert!(!is_go_binary(&bytes));
+    }
+
+    // --- G1: dual-identity file-level emission for Go binaries ----------
+
+    fn fake_binary_scan() -> BinaryScan {
+        BinaryScan {
+            binary_class: "elf",
+            imports: Vec::new(),
+            has_dynamic: false,
+            stripped: false,
+            note_package: None,
+            string_region: Vec::new(),
+            packer: None,
+        }
+    }
+
+    #[test]
+    fn make_file_level_component_sets_detected_go_when_flag_set() {
+        // G1 wiring: `make_file_level_component` receives
+        // `detected_go = true` when the caller's `go_in_linux`
+        // check fires. The emitted PackageDbEntry carries
+        // `detected_go = Some(true)` so the CDX emitter surfaces
+        // `mikebom:detected-go = true` on the file-level
+        // component, cross-linking it with the sibling
+        // `pkg:golang/.../module@version` entries from
+        // `go_binary.rs`.
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("goapp");
+        std::fs::write(&path, b"dummy-bytes").unwrap();
+        let scan = fake_binary_scan();
+        let entry =
+            make_file_level_component(&path, b"dummy-bytes", &scan, true);
+        assert_eq!(entry.name, "goapp");
+        assert_eq!(entry.detected_go, Some(true));
+        assert_eq!(entry.binary_class.as_deref(), Some("elf"));
+        assert!(
+            entry.purl.as_str().starts_with("pkg:generic/goapp"),
+            "expected pkg:generic/goapp PURL: {}",
+            entry.purl.as_str(),
+        );
+    }
+
+    #[test]
+    fn make_file_level_component_leaves_detected_go_none_for_non_go() {
+        // Regression guard: non-Go file-level entries (plain ELF,
+        // Mach-O binaries without BuildInfo) keep `detected_go =
+        // None` so the CDX property is only emitted when the
+        // cross-link is real.
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("plain-tool");
+        std::fs::write(&path, b"plain-bytes").unwrap();
+        let scan = fake_binary_scan();
+        let entry =
+            make_file_level_component(&path, b"plain-bytes", &scan, false);
+        assert_eq!(entry.detected_go, None);
     }
 
     #[test]

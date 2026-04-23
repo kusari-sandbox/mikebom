@@ -316,3 +316,75 @@ fn scan_go_scratch_rootfs_via_path_flag() {
         "cobra missing from scratch scan: {purls:?}",
     );
 }
+
+// --- G1: dual-identity — file-level + module-level for Go binaries ----
+
+#[test]
+fn scan_go_binary_emits_both_generic_file_and_golang_module_components() {
+    // The ground truth for a compiled Go binary counts both:
+    //   - `pkg:generic/<basename>?file-sha256=...` — the binary file
+    //     identity (same shape the binary walker emits for every
+    //     non-Go ELF/Mach-O/PE).
+    //   - `pkg:golang/<module>@<version>` — the Go module identity
+    //     from the embedded BuildInfo (emitted by
+    //     `package_db::go_binary`).
+    //
+    // Pre-G1, mikebom only emitted the golang one — file-level was
+    // suppressed for Go binaries on Linux. Post-G1, both emit with
+    // `mikebom:detected-go = true` on the file-level entry as a
+    // cross-link marker.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let src = fixture("binaries").join("hello-linux-amd64");
+    let dst = dir.path().join("goapp");
+    std::fs::copy(&src, &dst).expect("copy binary");
+    // G1's `detected_go` cross-link wiring fires only when the
+    // binary walker's `go_in_linux` predicate matches, which
+    // requires the rootfs to be detected as Linux. Plant a minimal
+    // `/etc/os-release` so `detect_rootfs_kind` returns Linux.
+    let etc = dir.path().join("etc");
+    std::fs::create_dir_all(&etc).unwrap();
+    std::fs::write(etc.join("os-release"), "ID=debian\nVERSION_ID=\"12\"\n").unwrap();
+
+    let sbom = scan_path(dir.path());
+    let components = sbom["components"]
+        .as_array()
+        .expect("components array");
+
+    // File-level `pkg:generic/goapp?file-sha256=...` must be present.
+    let file_level = components.iter().find(|c| {
+        c["purl"]
+            .as_str()
+            .is_some_and(|p| p.starts_with("pkg:generic/goapp"))
+    });
+    assert!(
+        file_level.is_some(),
+        "pkg:generic/goapp file-level component missing; \
+         got purls = {:?}",
+        components
+            .iter()
+            .filter_map(|c| c["purl"].as_str())
+            .collect::<Vec<_>>(),
+    );
+    // `mikebom:detected-go = true` marks the file-level as a Go binary.
+    let props = file_level.unwrap()["properties"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let detected_go = props
+        .iter()
+        .find(|p| p["name"].as_str() == Some("mikebom:detected-go"))
+        .and_then(|p| p["value"].as_str().map(|s| s.to_string()));
+    assert_eq!(
+        detected_go.as_deref(),
+        Some("true"),
+        "file-level Go binary must carry mikebom:detected-go=true; \
+         props = {props:?}",
+    );
+
+    // Module-level `pkg:golang/...` entries still emit alongside.
+    let golang = golang_purls(&sbom);
+    assert!(
+        !golang.is_empty(),
+        "golang module components must still emit alongside file-level",
+    );
+}
