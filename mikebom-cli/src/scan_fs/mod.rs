@@ -486,6 +486,26 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
         }
     }
 
+    // Feature 008 US2 (G6): cache-ZIP-sourced Go components bypass
+    // G3/G4/G5 because those filters live in `package_db::read_all`
+    // and only touch `DbScanResult.entries`. The generic artifact
+    // walker above (lines 126-190) emits every file at
+    // `/go/pkg/mod/cache/download/<mod>/@v/<ver>.zip` as a
+    // `pkg:golang/<mod>@<ver>` analyzed-tier component via
+    // `path_resolver::resolve_go_path`. On polyglot-style images
+    // where `go mod tidy` populated the cache with test-scope
+    // transitives (testify / go-spew / go-difflib / yaml.v3), those
+    // transitives leak to `components[]` even though they aren't
+    // linked into the binary.
+    //
+    // When a Go binary's BuildInfo is ALSO on the same rootfs, it's
+    // authoritative for "what ships" (same rationale as G3). Drop
+    // cache-ZIP Go entries whose coord isn't confirmed by a non-cache
+    // analyzed-tier entry. Pure-scratch scans (cache present, no
+    // binary) retain all cache-ZIP entries — they're the only
+    // available signal there.
+    apply_go_cache_zip_filter(&mut components);
+
     let mut components = deduplicate(components);
     // Post-dedup CPE synthesis — runs on the merged set so a component
     // that exists in both the filename pass and the dpkg pass gets one
@@ -516,6 +536,67 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
 /// - **deb / apk / everything else** — lowercase. Debian and Alpine
 ///   treat names case-insensitively in practice; the installed db
 ///   stores them lowercase anyway but we stay tolerant.
+/// Feature 008 US2 (G6): drop `pkg:golang` analyzed-tier components
+/// whose source files are exclusively under `/go/pkg/mod/cache/download/`
+/// when a non-cache analyzed-tier Go entry (from a binary's BuildInfo)
+/// is also present on the rootfs. Cache-ZIP entries reflect what
+/// `go mod tidy` downloaded — a superset of linked modules — and leak
+/// test-scope transitives. BuildInfo reflects what the linker actually
+/// embedded.
+///
+/// When no non-cache analyzed-tier Go entry exists at all (pure scratch
+/// scan: cache present, no binary), the filter no-ops and cache-ZIP
+/// entries remain the authoritative signal. This matches the design
+/// comment at `path_resolver::resolve_go_path` line 284-294.
+///
+/// A component's source files are considered "from cache" when EVERY
+/// path listed in `evidence.source_file_paths` contains
+/// `/cache/download/`. A mixed entry (one cache source + one BuildInfo
+/// source, merged by upstream dedup) is NOT from cache and passes
+/// through.
+fn apply_go_cache_zip_filter(components: &mut Vec<mikebom_common::resolution::ResolvedComponent>) {
+    use std::collections::HashSet;
+    let buildinfo_linked: HashSet<(String, String)> = components
+        .iter()
+        .filter(|c| {
+            c.purl.ecosystem() == "golang"
+                && c.sbom_tier.as_deref() == Some("analyzed")
+                && !c
+                    .evidence
+                    .source_file_paths
+                    .iter()
+                    .all(|p| p.contains("/cache/download/"))
+        })
+        .map(|c| (c.name.clone(), c.version.clone()))
+        .collect();
+    if buildinfo_linked.is_empty() {
+        return;
+    }
+    let before = components.len();
+    components.retain(|c| {
+        if c.purl.ecosystem() != "golang" {
+            return true;
+        }
+        let from_cache_only = !c.evidence.source_file_paths.is_empty()
+            && c.evidence
+                .source_file_paths
+                .iter()
+                .all(|p| p.contains("/cache/download/"));
+        if !from_cache_only {
+            return true;
+        }
+        buildinfo_linked.contains(&(c.name.clone(), c.version.clone()))
+    });
+    let dropped = before.saturating_sub(components.len());
+    if dropped > 0 {
+        tracing::info!(
+            dropped,
+            buildinfo_linked_count = buildinfo_linked.len(),
+            "G6 filter: dropped cache-ZIP Go components not confirmed by BuildInfo",
+        );
+    }
+}
+
 fn normalize_dep_name(ecosystem: &str, name: &str) -> String {
     match ecosystem {
         "pypi" => name.replace('_', "-").to_lowercase(),

@@ -666,3 +666,78 @@ fn scan_go_main_module_from_binary_buildinfo_is_suppressed() {
         "BuildInfo dep logrus must be retained: {golang:?}",
     );
 }
+
+// --- 008 US2: G6 cache-ZIP filter ---------------------------------------
+
+#[test]
+fn scan_go_cache_zip_not_in_buildinfo_is_dropped() {
+    // Feature 008 US2 polyglot scenario: rootfs contains a Go binary
+    // whose BuildInfo lists a set of linked modules, AND a
+    // `/go/pkg/mod/cache/download/` tree with EXTRA test-scope
+    // modules that the artifact walker would otherwise emit as
+    // analyzed-tier golang components. G6 must drop the cache-ZIP-
+    // only entries whose coord isn't also in BuildInfo.
+    let dir = tempfile::tempdir().expect("tempdir");
+    // Place the Go binary so its BuildInfo provides the linked set:
+    // example.com/simple links logrus + ~8 other modules (see
+    // `go version -m tests/fixtures/go/binaries/hello-linux-amd64`).
+    let src = fixture("binaries").join("hello-linux-amd64");
+    std::fs::copy(&src, dir.path().join("app")).expect("copy binary");
+    // Synthesize cache-ZIP entries for modules NOT in the binary's
+    // BuildInfo. Both must be dropped by G6. (Every module the
+    // hello-linux-amd64 fixture actually links is uninteresting
+    // here — it's the non-linked extras that should get dropped.)
+    let cache_dir = dir.path().join("root/go/pkg/mod/cache/download");
+    let orphan_a = cache_dir.join("github.com/never-linked/fake/@v");
+    let orphan_b = cache_dir.join("gopkg.in/bogus-test-helper.v2/@v");
+    std::fs::create_dir_all(&orphan_a).unwrap();
+    std::fs::create_dir_all(&orphan_b).unwrap();
+    // The path_resolver only needs the filename to match the
+    // `<version>.zip` pattern; file contents aren't inspected.
+    std::fs::write(orphan_a.join("v9.9.9.zip"), b"\x50\x4b\x03\x04fake zip").unwrap();
+    std::fs::write(orphan_b.join("v2.0.0.zip"), b"\x50\x4b\x03\x04fake zip").unwrap();
+
+    let sbom = scan_path(dir.path());
+    let golang = golang_purls(&sbom);
+
+    // Both orphan modules are in cache but NOT in BuildInfo → G6
+    // drops them.
+    assert!(
+        !golang.iter().any(|p| p.contains("never-linked/fake")),
+        "never-linked/fake from cache/download/ must be dropped by \
+         G6 since it isn't in the binary's BuildInfo: {golang:?}",
+    );
+    assert!(
+        !golang
+            .iter()
+            .any(|p| p.contains("bogus-test-helper")),
+        "bogus-test-helper from cache/download/ must be dropped: {golang:?}",
+    );
+    // BuildInfo deps must still be emitted (regression guard — G6
+    // must not over-suppress).
+    assert!(
+        golang.iter().any(|p| p.contains("sirupsen/logrus")),
+        "logrus from BuildInfo must be retained: {golang:?}",
+    );
+}
+
+#[test]
+fn scan_go_cache_zip_alone_is_retained_when_no_binary() {
+    // Scratch/distroless scenario: ONLY cache-ZIP entries, no Go
+    // binary on the rootfs. G6 must no-op and preserve cache-ZIP
+    // entries as the authoritative signal (the "distroless win"
+    // preserved per path_resolver::resolve_go_path design).
+    let dir = tempfile::tempdir().expect("tempdir");
+    let cache_dir = dir.path().join("root/go/pkg/mod/cache/download");
+    let logrus_dir = cache_dir.join("github.com/sirupsen/logrus/@v");
+    std::fs::create_dir_all(&logrus_dir).unwrap();
+    std::fs::write(logrus_dir.join("v1.9.4.zip"), b"\x50\x4b\x03\x04fake zip").unwrap();
+
+    let sbom = scan_path(dir.path());
+    let golang = golang_purls(&sbom);
+    assert!(
+        golang.iter().any(|p| p.contains("sirupsen/logrus@v1.9.4")),
+        "scratch scan must retain cache-ZIP entry when no \
+         BuildInfo contradicts: {golang:?}",
+    );
+}
