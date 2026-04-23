@@ -176,6 +176,7 @@ pub(crate) fn resolve_coords(
 }
 
 #[cfg(test)]
+#[cfg_attr(test, allow(clippy::unwrap_used))]
 mod tests {
     use super::*;
     use std::fs;
