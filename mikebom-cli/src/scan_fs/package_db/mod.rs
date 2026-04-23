@@ -305,6 +305,63 @@ pub(crate) fn insert_claim_with_canonical(
     claimed.insert(abs_path);
 }
 
+/// G3 — filter `pkg:golang` source-tier emissions (from
+/// `golang.rs`'s go.sum parsing) against the analyzed-tier set
+/// produced by `go_binary.rs`'s BuildInfo extraction. When at least
+/// one Go binary was scanned, retain only source-tier entries whose
+/// `(name, version)` the BuildInfo confirms as linked. Source-tree-
+/// only scans (no Go binary present → empty analyzed set) no-op.
+///
+/// go.sum lists every module the resolver ever touched, including
+/// test-only transitives and indirect deps. BuildInfo lists what
+/// the linker actually embedded in the compiled binary. When both
+/// are available, BuildInfo is authoritative for "what ships" on
+/// image-style scans (polyglot-builder-image was emitting 22
+/// source-tier golang entries, only 7 of which were in any
+/// scanned binary's BuildInfo — the other 15 were test/tool deps
+/// that never linked).
+///
+/// Runs post-reader, pre-dedup. The existing Go-specific tier-
+/// preference in `resolve::deduplicator::deduplicate` (source wins
+/// over analyzed on same-coord collision) still applies to
+/// surviving entries.
+fn apply_go_linked_filter(entries: &mut Vec<PackageDbEntry>) {
+    let linked: std::collections::HashSet<(String, String)> = entries
+        .iter()
+        .filter(|e| {
+            e.purl.ecosystem() == "golang"
+                && e.sbom_tier.as_deref() == Some("analyzed")
+        })
+        .map(|e| (e.name.clone(), e.version.clone()))
+        .collect();
+    if linked.is_empty() {
+        // No Go binary was scanned — pure source-tree path.
+        // Leave every go.sum entry in place.
+        return;
+    }
+    let before = entries.len();
+    entries.retain(|e| {
+        if e.purl.ecosystem() != "golang" {
+            return true;
+        }
+        if e.sbom_tier.as_deref() != Some("source") {
+            // Analyzed-tier golang entries (the BuildInfo emissions
+            // themselves) pass through; anything without a tier
+            // is an edge case we don't filter aggressively.
+            return true;
+        }
+        linked.contains(&(e.name.clone(), e.version.clone()))
+    });
+    let dropped = before.saturating_sub(entries.len());
+    if dropped > 0 {
+        tracing::info!(
+            dropped,
+            linked_count = linked.len(),
+            "G3 filter: dropped go.sum entries not confirmed by Go binary BuildInfo",
+        );
+    }
+}
+
 /// Try every supported database reader against `rootfs` and return all
 /// successful entries. Missing db files are not an error — a rootfs
 /// with no apt/apk is just empty output. Only fail-closed errors (npm
@@ -459,6 +516,23 @@ pub fn read_all(
     // npm v1 refusal pattern.
     out.extend(cargo::read(rootfs, include_dev)?);
     out.extend(gem::read(rootfs, include_dev));
+
+    // G3: when a scan produced BOTH `pkg:golang` source-tier entries
+    // (from `golang.rs`'s go.sum parsing) AND `pkg:golang` analyzed-
+    // tier entries (from `go_binary.rs`'s BuildInfo extraction),
+    // filter the source-tier emissions to only those coords the
+    // BuildInfo confirms as linked.
+    //
+    // Rationale: go.sum is a resolver-touched manifest — it includes
+    // test-only transitives, indirect deps, and anything
+    // `go mod tidy` ever fetched. BuildInfo lists what the linker
+    // actually embedded in the compiled binary. On image scans that
+    // carry both, BuildInfo is authoritative for "what ships."
+    //
+    // Source-tree-only scans (no Go binary present) are unchanged:
+    // the filter no-ops when the analyzed set is empty, and go.sum
+    // remains the only signal.
+    apply_go_linked_filter(&mut out);
 
     Ok(DbScanResult {
         entries: out,
@@ -619,6 +693,203 @@ Architecture: arm64
                 .iter()
                 .any(|f| f == "VERSION_ID"),
             "expected diagnostics to record missing VERSION_ID"
+        );
+    }
+
+    // --- G3: filter go.sum against BuildInfo ----------------------------
+
+    fn make_entry(
+        purl_str: &str,
+        name: &str,
+        version: &str,
+        sbom_tier: Option<&str>,
+    ) -> PackageDbEntry {
+        PackageDbEntry {
+            purl: Purl::new(purl_str).expect("valid purl"),
+            name: name.to_string(),
+            version: version.to_string(),
+            arch: None,
+            source_path: String::new(),
+            depends: Vec::new(),
+            maintainer: None,
+            licenses: Vec::new(),
+            is_dev: None,
+            requirement_range: None,
+            source_type: None,
+            buildinfo_status: None,
+            evidence_kind: None,
+            binary_class: None,
+            binary_stripped: None,
+            linkage_kind: None,
+            detected_go: None,
+            confidence: None,
+            binary_packed: None,
+            raw_version: None,
+            parent_purl: None,
+            npm_role: None,
+            co_owned_by: None,
+            hashes: Vec::new(),
+            sbom_tier: sbom_tier.map(String::from),
+        }
+    }
+
+    #[test]
+    fn g3_drops_go_sum_entries_without_buildinfo_match() {
+        // Three source-tier Go entries (from go.sum). Two
+        // analyzed-tier (from BuildInfo) — only `logrus` overlaps.
+        // Plus non-Go entries that must pass through untouched.
+        let mut entries = vec![
+            // go.sum emissions — source tier.
+            make_entry(
+                "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+                "github.com/davecgh/go-spew",
+                "v1.1.1",
+                Some("source"),
+            ),
+            make_entry(
+                "pkg:golang/github.com/stretchr/testify@v1.7.0",
+                "github.com/stretchr/testify",
+                "v1.7.0",
+                Some("source"),
+            ),
+            make_entry(
+                "pkg:golang/github.com/sirupsen/logrus@v1.9.3",
+                "github.com/sirupsen/logrus",
+                "v1.9.3",
+                Some("source"),
+            ),
+            // BuildInfo emissions — analyzed tier.
+            make_entry(
+                "pkg:golang/github.com/sirupsen/logrus@v1.9.3",
+                "github.com/sirupsen/logrus",
+                "v1.9.3",
+                Some("analyzed"),
+            ),
+            make_entry(
+                "pkg:golang/golang.org/x/sys@v0.0.0-20220715",
+                "golang.org/x/sys",
+                "v0.0.0-20220715",
+                Some("analyzed"),
+            ),
+            // Non-Go entries that must pass through unchanged.
+            make_entry(
+                "pkg:maven/com.google.guava/guava@32.1.3-jre",
+                "guava",
+                "32.1.3-jre",
+                Some("source"),
+            ),
+            make_entry(
+                "pkg:cargo/serde@1.0.0",
+                "serde",
+                "1.0.0",
+                Some("source"),
+            ),
+        ];
+
+        apply_go_linked_filter(&mut entries);
+
+        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        // Unmatched Go source-tier entries → dropped.
+        assert!(
+            !names.contains(&"github.com/davecgh/go-spew"),
+            "go-spew source-tier must drop (no BuildInfo match): {names:?}",
+        );
+        assert!(
+            !names.contains(&"github.com/stretchr/testify"),
+            "testify source-tier must drop (no BuildInfo match): {names:?}",
+        );
+        // Matched Go source-tier entry → kept.
+        assert!(
+            names.contains(&"github.com/sirupsen/logrus"),
+            "logrus source-tier must be kept (in BuildInfo): {names:?}",
+        );
+        // Analyzed-tier entries pass through.
+        assert!(
+            names.contains(&"golang.org/x/sys"),
+            "x/sys analyzed-tier must pass through: {names:?}",
+        );
+        // Non-Go entries untouched.
+        assert!(names.contains(&"guava"), "maven must pass through: {names:?}");
+        assert!(names.contains(&"serde"), "cargo must pass through: {names:?}");
+    }
+
+    #[test]
+    fn g3_noop_when_no_buildinfo_present() {
+        // Pure source-tree scan: go.sum entries only, no binary
+        // analyzed-tier. Filter must no-op — go.sum is the only
+        // available signal.
+        let mut entries = vec![
+            make_entry(
+                "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+                "github.com/davecgh/go-spew",
+                "v1.1.1",
+                Some("source"),
+            ),
+            make_entry(
+                "pkg:golang/github.com/never-in-binary/pkg@v9.9.9",
+                "github.com/never-in-binary/pkg",
+                "v9.9.9",
+                Some("source"),
+            ),
+        ];
+
+        let before = entries.len();
+        apply_go_linked_filter(&mut entries);
+        assert_eq!(
+            entries.len(),
+            before,
+            "filter must no-op when no BuildInfo (analyzed) entries present",
+        );
+    }
+
+    #[test]
+    fn g3_filter_doesnt_touch_non_go_ecosystems() {
+        // Filter should only affect Go entries even when the
+        // `linked` set is non-empty. A Maven / cargo / npm coord
+        // that happens to share a name with an absent Go module
+        // must NOT be dropped.
+        let mut entries = vec![
+            // One Go analyzed entry to activate the filter.
+            make_entry(
+                "pkg:golang/github.com/sirupsen/logrus@v1.9.3",
+                "github.com/sirupsen/logrus",
+                "v1.9.3",
+                Some("analyzed"),
+            ),
+            // Non-Go source-tier entries — all must survive.
+            make_entry(
+                "pkg:maven/com.example/never@1.0.0",
+                "never",
+                "1.0.0",
+                Some("source"),
+            ),
+            make_entry(
+                "pkg:cargo/never@1.0.0",
+                "never",
+                "1.0.0",
+                Some("source"),
+            ),
+            make_entry(
+                "pkg:npm/never@1.0.0",
+                "never",
+                "1.0.0",
+                Some("source"),
+            ),
+            make_entry(
+                "pkg:pypi/never@1.0.0",
+                "never",
+                "1.0.0",
+                Some("source"),
+            ),
+        ];
+
+        let before = entries.len();
+        apply_go_linked_filter(&mut entries);
+        // All 5 should survive: 4 non-Go + 1 Go analyzed.
+        assert_eq!(
+            entries.len(),
+            before,
+            "non-Go ecosystems must be unaffected by G3 filter",
         );
     }
 }
