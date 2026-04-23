@@ -2026,14 +2026,19 @@ pub fn read_with_claims(
             //    common case where the built artifact's name
             //    matches the image tag.
             //
-            // 2. **Fat-jar heuristic (M3).** The JAR contains ≥2
+            // 2. **Unclaimed fat-jar heuristic (M3 + post-PR-#2
+            //    refinement).** The JAR contains ≥2
             //    `META-INF/maven/<g>/<a>/pom.properties` entries —
             //    classic shade-plugin fat-jar signature with one
-            //    primary + N vendored children. An unclaimed
+            //    primary + N vendored children. An *unclaimed*
             //    fat-jar on disk is almost certainly the build
-            //    output, not a dependency. (Claimed JARs are
-            //    skipped earlier by the JAR walker, so we know
-            //    we're looking at an unclaimed one here.)
+            //    output, not a dependency. Post-PR-#2, the JAR
+            //    walker no longer skips OS-claimed JARs (they emit
+            //    with `co_owned_by = "rpm"/"deb"/"apk"` tags), so
+            //    this heuristic gates on `co_owned_by.is_none()`:
+            //    distro-shipped fat JARs like Fedora's
+            //    `/usr/share/java/guava/guava.jar` must NOT be
+            //    treated as the scan subject.
             //
             // Surfaces the suppressed coord through
             // `scan_target_coord` back to the caller for
@@ -2042,12 +2047,32 @@ pub fn read_with_claims(
                 let target_name_matches = scan_target_name
                     .map(|t| meta.coord.artifact_id.eq_ignore_ascii_case(t))
                     .unwrap_or(false);
-                let is_fat_jar = meta_list.len() >= 2;
-                if target_name_matches || is_fat_jar {
+                // Fat-jar heuristic (M3 + refinement): a JAR with ≥2
+                // embedded META-INF/maven/ entries is almost always a
+                // shade-plugin fat-jar, i.e. a build output that IS
+                // the scan subject. BUT after the PR #2 claim-skip
+                // lift, this loop now also runs on RPM/deb/apk-owned
+                // JARs — distro-shipped fat JARs like Fedora's
+                // `/usr/share/java/guava/guava.jar` (which bundles
+                // `failureaccess` etc.). Those are dependencies of
+                // the scan target, not the scan subject, so the
+                // heuristic must NOT suppress their primary coord.
+                //
+                // Gate on `co_owned_by.is_none()`: only unclaimed
+                // fat JARs are scan-subject candidates. Claimed fat
+                // JARs emit their primary normally (carrying the
+                // `mikebom:co-owned-by = rpm` tag PR #2 established).
+                let is_unclaimed_fat_jar =
+                    meta_list.len() >= 2 && co_owned_by.is_none();
+                if target_name_matches || is_unclaimed_fat_jar {
                     tracing::debug!(
                         artifact_id = %meta.coord.artifact_id,
                         version = %meta.coord.version,
-                        reason = if target_name_matches { "target-name-match" } else { "fat-jar-heuristic" },
+                        reason = if target_name_matches {
+                            "target-name-match"
+                        } else {
+                            "unclaimed-fat-jar-heuristic"
+                        },
                         "suppressing scan-target primary coord from components[]"
                     );
                     // Record the suppressed coord for metadata.component
@@ -3800,13 +3825,14 @@ mod tests {
         #[cfg(unix)]
         let claimed_inodes: std::collections::HashSet<(u64, u64)> =
             std::collections::HashSet::new();
-        let out = read_with_claims(
+        let (out, _scan_target) = read_with_claims(
             dir.path(),
             false,
             true,
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
+            None,
         );
         let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
         assert!(
@@ -4167,6 +4193,70 @@ mod tests {
         assert!(
             scan_target.is_none(),
             "plain-JAR primary must not populate scan_target_coord: {scan_target:?}",
+        );
+    }
+
+    #[test]
+    fn fat_jar_primary_claimed_by_rpm_emits_normally() {
+        // Post-PR-#2 regression guard (M3 refinement): a fat JAR
+        // owned by an OS package-db reader must NOT trigger M3's
+        // "this is the scan subject" heuristic. Fedora's
+        // `/usr/share/java/guava/guava.jar` bundles `failureaccess`
+        // etc. but is a dep of the scan target, not the target
+        // itself. Its primary coord must emit with
+        // `co_owned_by = Some("rpm")`, and `scan_target_coord`
+        // must stay None.
+        let dir = tempfile::tempdir().unwrap();
+        let share_java = dir.path().join("usr/share/java");
+        std::fs::create_dir_all(&share_java).unwrap();
+        let jar_path = share_java.join("guava.jar");
+        write_jar(
+            &jar_path,
+            &[
+                (
+                    "META-INF/maven/com.google.guava/guava/pom.properties",
+                    b"groupId=com.google.guava\nartifactId=guava\nversion=32.1.3-jre\n",
+                ),
+                (
+                    "META-INF/maven/com.google.guava/failureaccess/pom.properties",
+                    b"groupId=com.google.guava\nartifactId=failureaccess\nversion=1.0.1\n",
+                ),
+            ],
+        );
+
+        let mut claimed: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        claimed.insert(jar_path.clone());
+        #[cfg(unix)]
+        let claimed_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let (out, scan_target) = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &claimed,
+            #[cfg(unix)]
+            &claimed_inodes,
+            None,
+        );
+        let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.contains(&"guava"),
+            "claimed fat-jar primary must still emit: {names:?}",
+        );
+        assert!(
+            names.contains(&"failureaccess"),
+            "shaded child must still emit: {names:?}",
+        );
+        let guava = out.iter().find(|e| e.name == "guava").unwrap();
+        assert_eq!(
+            guava.co_owned_by.as_deref(),
+            Some("rpm"),
+            "primary coord must carry co_owned_by=rpm",
+        );
+        assert!(
+            scan_target.is_none(),
+            "claimed fat-jar must NOT promote to metadata.component: {scan_target:?}",
         );
     }
 
