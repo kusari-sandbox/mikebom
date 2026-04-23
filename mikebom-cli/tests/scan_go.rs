@@ -388,3 +388,105 @@ fn scan_go_binary_emits_both_generic_file_and_golang_module_components() {
         "golang module components must still emit alongside file-level",
     );
 }
+
+// --- G3: filter go.sum against Go binary BuildInfo ------------------
+
+#[test]
+fn scan_go_source_plus_binary_filters_go_sum_to_linked_subset() {
+    // G3 regression: when a scan carries both a go.sum and a Go
+    // binary's BuildInfo, go.sum entries that don't appear in the
+    // binary's linked-module set get dropped. Polyglot-builder-
+    // image emits 22 go.sum entries, only 7 of which are actually
+    // linked — the other 15 are test/tool transitives go.sum
+    // carries for lockfile completeness but that don't ship in
+    // the binary.
+    //
+    // Reproduction: the `hello-linux-amd64` fixture contains
+    // BuildInfo with a known module set. We add an invented
+    // `github.com/never-linked/fake v9.9.9` to go.sum that's NOT
+    // in BuildInfo. Post-G3, it must be dropped.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = dir.path().join("opt/goapp");
+    std::fs::create_dir_all(&app).unwrap();
+    // Drop the binary in place.
+    let bin_src = fixture("binaries").join("hello-linux-amd64");
+    std::fs::copy(&bin_src, app.join("appbin")).expect("copy binary");
+    // Write go.mod + go.sum. go.sum lists the `never-linked/fake`
+    // module plus a handful of the binary's real BuildInfo
+    // entries, so the filter has BOTH a keep case and a drop
+    // case to exercise.
+    std::fs::write(
+        app.join("go.mod"),
+        "module example.com/app\ngo 1.22\nrequire github.com/never-linked/fake v9.9.9\n",
+    )
+    .unwrap();
+    std::fs::write(
+        app.join("go.sum"),
+        concat!(
+            "github.com/never-linked/fake v9.9.9 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+            "github.com/sirupsen/logrus v1.9.4 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+            "github.com/davecgh/go-spew v1.1.1 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+        ),
+    )
+    .unwrap();
+
+    let sbom = scan_path(dir.path());
+    let golang = golang_purls(&sbom);
+
+    // The never-linked module must NOT appear — it was in go.sum
+    // but not in BuildInfo.
+    assert!(
+        !golang.iter().any(|p| p.contains("never-linked/fake")),
+        "never-linked/fake must be dropped by G3 filter: {golang:?}",
+    );
+
+    // The binary's BuildInfo modules (logrus, go-spew, etc.) DO
+    // emit — as analyzed-tier entries from go_binary.rs and/or
+    // via dedup'd source+analyzed collapse.
+    assert!(
+        golang.iter().any(|p| p.contains("sirupsen/logrus")),
+        "logrus from BuildInfo must emit: {golang:?}",
+    );
+    assert!(
+        golang.iter().any(|p| p.contains("davecgh/go-spew")),
+        "go-spew from BuildInfo must emit: {golang:?}",
+    );
+}
+
+#[test]
+fn scan_go_source_only_preserves_full_go_sum() {
+    // Source-tree-only scan: go.mod + go.sum present, no compiled
+    // binary. G3 filter must no-op because the analyzed-tier set
+    // is empty. Every go.sum entry emits as source-tier, including
+    // coords that would be dropped in a source+binary scan.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = dir.path().join("app");
+    std::fs::create_dir_all(&app).unwrap();
+    std::fs::write(
+        app.join("go.mod"),
+        "module example.com/sourceonly\ngo 1.22\nrequire github.com/never-linked/fake v9.9.9\n",
+    )
+    .unwrap();
+    std::fs::write(
+        app.join("go.sum"),
+        concat!(
+            "github.com/never-linked/fake v9.9.9 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+            "github.com/also-never-linked/other v1.0.0 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+        ),
+    )
+    .unwrap();
+
+    let sbom = scan_path(dir.path());
+    let golang = golang_purls(&sbom);
+
+    // Both "never-linked" modules should survive — there's no
+    // BuildInfo to filter against, so go.sum is authoritative.
+    assert!(
+        golang.iter().any(|p| p.contains("never-linked/fake")),
+        "never-linked/fake must survive in source-only scan: {golang:?}",
+    );
+    assert!(
+        golang.iter().any(|p| p.contains("also-never-linked/other")),
+        "also-never-linked/other must survive in source-only scan: {golang:?}",
+    );
+}
