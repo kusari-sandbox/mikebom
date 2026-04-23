@@ -13,6 +13,7 @@ Auto-generated from all feature plans. Last updated: 2026-04-23
 - N/A — in-memory per scan; no persistence. (005-purl-and-scope-alignment)
 - N/A — attestations are single JSON files (signed or (006-sbomit-suite)
 - Rust stable, same workspace toolchain as milestones 001–006. No nightly features. `mikebom-ebpf` untouched. + Existing only — `quick-xml = "0.31"` for POM parsing (already used in `maven.rs`), `walkdir`, `serde`/`serde_json`, `tracing`. No new crates. (007-polyglot-fp-cleanup)
+- Rust stable, same workspace as milestones 001–007. No nightly features. `mikebom-ebpf` untouched. + Existing only — `quick-xml`, `zip`, `walkdir`, `serde`/`serde_json`, `tracing`. No new crates. (008-polyglot-final-cleanup)
 
 - Rust stable (user-space) + nightly (eBPF target via `aya-ebpf`) + aya, aya-ebpf, aya-build, tokio, clap, reqwest, serde/serde_json, cyclonedx-bom, packageurl, sha2, chrono, thiserror, anyhow, tracing (001-build-trace-pipeline)
 
@@ -57,9 +58,9 @@ of CI-readiness — they are not equivalent.
 Rust stable (user-space) + nightly (eBPF target via `aya-ebpf`): Follow standard conventions
 
 ## Recent Changes
+- 008-polyglot-final-cleanup: Added Rust stable, same workspace as milestones 001–007. No nightly features. `mikebom-ebpf` untouched. + Existing only — `quick-xml`, `zip`, `walkdir`, `serde`/`serde_json`, `tracing`. No new crates.
 - 007-polyglot-fp-cleanup: Added Rust stable, same workspace toolchain as milestones 001–006. No nightly features. `mikebom-ebpf` untouched. + Existing only — `quick-xml = "0.31"` for POM parsing (already used in `maven.rs`), `walkdir`, `serde`/`serde_json`, `tracing`. No new crates.
 - 006-sbomit-suite: Added Rust stable (same workspace toolchain as milestones
-- 005-purl-and-scope-alignment: Added Rust stable (same workspace toolchain as milestones 001–004) + No new crates. Existing: `tar = 0.4`, `object = 0.36`, `rpm = 0.22`, `cyclonedx-bom`, `serde/serde_json`, `flate2`, `tempfile`, `tracing`.
 
 
 <!-- MANUAL ADDITIONS START -->
