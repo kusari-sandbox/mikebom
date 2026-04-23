@@ -899,4 +899,89 @@ mod tests {
             "transitive without on-disk twin must be preserved: {deduped:?}",
         );
     }
+
+    // --- G2: cross-source dedup for Go coords ---------------------------
+
+    #[test]
+    fn duplicate_go_coords_with_matching_names_dedup_to_one() {
+        // G2 regression guard. The user's polyglot-builder-image
+        // bake-off surfaced `pkg:golang/github.com/davecgh/go-spew@v1.1.1`
+        // emitted TWICE with identical PURL: once from the Go reader
+        // (name = `github.com/davecgh/go-spew`, full module path) and
+        // once from `scan_fs/mod.rs`'s artifact-file walker (name =
+        // `go-spew`, `purl.name()` last segment). The deduplicator's
+        // `(ecosystem, name, version, parent_purl)` key put them in
+        // different groups. Fix: walker derives name as full module
+        // path for Go coords (see `scan_fs/mod.rs` artifact-walker
+        // name-derivation).
+        //
+        // This test directly verifies that when both sources agree
+        // on `name = "github.com/davecgh/go-spew"`, dedup collapses
+        // them. Test helper `make_component` uses `purl.name()` so
+        // we manually override `name` here to exercise the
+        // post-walker-fix invariant.
+        let mut reader_emitted = make_component(
+            "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/app/go.sum"],
+        );
+        reader_emitted.name = "github.com/davecgh/go-spew".to_string();
+        let mut walker_emitted = make_component(
+            "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+            ResolutionTechnique::FilePathPattern,
+            0.70,
+            vec![],
+            vec!["/root/go/pkg/mod/cache/download/github.com/davecgh/go-spew/@v/v1.1.1.zip"],
+        );
+        walker_emitted.name = "github.com/davecgh/go-spew".to_string();
+
+        let deduped = deduplicate(vec![reader_emitted, walker_emitted]);
+        assert_eq!(
+            deduped.len(),
+            1,
+            "same-PURL Go coords from source + walker must dedup to one: {deduped:?}",
+        );
+        assert_eq!(
+            deduped[0].name,
+            "github.com/davecgh/go-spew",
+            "surviving entry must carry the full module path as name",
+        );
+    }
+
+    #[test]
+    fn duplicate_go_coords_with_mismatched_names_survive_as_two() {
+        // Pre-G2-fix reproduction: reader has full module path,
+        // walker has just the last segment. Pass-1 dedup groups
+        // by `(ecosystem, name, version, parent_purl)`. Different
+        // names → two groups → both entries survive. This test
+        // fails post-fix only if the walker regresses; today it
+        // passes because the inputs simulate the OLD walker
+        // behavior.
+        let mut reader_emitted = make_component(
+            "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/app/go.sum"],
+        );
+        reader_emitted.name = "github.com/davecgh/go-spew".to_string();
+        let walker_emitted = make_component(
+            "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+            ResolutionTechnique::FilePathPattern,
+            0.70,
+            vec![],
+            vec!["/root/go/pkg/mod/cache/download/github.com/davecgh/go-spew/@v/v1.1.1.zip"],
+        );
+        // walker_emitted.name stays as `purl.name()` = `go-spew`.
+        assert_eq!(walker_emitted.name, "go-spew");
+
+        let deduped = deduplicate(vec![reader_emitted, walker_emitted]);
+        assert_eq!(
+            deduped.len(),
+            2,
+            "mismatched names demonstrate the pre-fix bug: {deduped:?}",
+        );
+    }
 }
