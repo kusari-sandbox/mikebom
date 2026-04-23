@@ -123,10 +123,111 @@ pub fn deduplicate(components: Vec<ResolvedComponent>) -> Vec<ResolvedComponent>
         result.push(best);
     }
 
+    // Second pass: cross-source dedup between on-disk components and
+    // deps.dev-emitted `declared-not-cached` entries for the same
+    // canonical `(ecosystem, group, artifact, version)` coord.
+    //
+    // The first-pass 4-tuple key includes `parent_purl` so shade-jar
+    // vendored coords stay distinct from their top-level twins — see
+    // the `parent_purl in dedup key` doc above. But when deps.dev
+    // reports a coord that's also on disk inside a shade-jar, the
+    // on-disk entry has `parent_purl = Some(...)` while the deps.dev
+    // entry has `parent_purl = None`, and pass 1 leaves both. Empirical
+    // result: aopalliance-style coords double-emit.
+    //
+    // Pass 2 folds each declared-not-cached entry into every
+    // matching on-disk entry (merging deps.dev evidence) and drops
+    // the declared-not-cached entry. Declared-not-cached entries
+    // without any on-disk twin are preserved — manifest-SBOM users on
+    // `--path` scans expect them.
+    fold_declared_not_cached(&mut result);
+
     // Sort the output deterministically by PURL string.
     result.sort_by(|a, b| a.purl.as_str().cmp(b.purl.as_str()));
 
     result
+}
+
+/// Canonical coord key for Fix A's cross-source fold. Maven coords
+/// use the PURL namespace as the group; other ecosystems' namespaces
+/// are (by convention) empty and produce `""` here. Name + version
+/// come from the struct fields (not PURL parsing) so any subtle PURL
+/// string normalization differences don't affect the lookup.
+fn canonical_coord_key(c: &ResolvedComponent) -> (String, String, String, String) {
+    (
+        c.purl.ecosystem().to_string(),
+        c.purl.namespace().unwrap_or("").to_string(),
+        c.name.clone(),
+        c.version.clone(),
+    )
+}
+
+/// Fold `declared-not-cached` entries into matching on-disk entries
+/// when the canonical `(ecosystem, group, artifact, version)` coord
+/// is already represented. Merges deps.dev evidence, then removes the
+/// declared entry. Declared entries with no on-disk twin stay in
+/// place so manifest-SBOM users on `--path` scans continue to see
+/// the full declared dependency set.
+fn fold_declared_not_cached(components: &mut Vec<ResolvedComponent>) {
+    // Build a canonical-coord index of every non-declared-not-cached
+    // entry. Value: indices into `components` (plural — shade-jar
+    // siblings with different parent_purls legitimately share a key).
+    let mut on_disk: HashMap<(String, String, String, String), Vec<usize>> = HashMap::new();
+    for (i, c) in components.iter().enumerate() {
+        if c.source_type.as_deref() == Some("declared-not-cached") {
+            continue;
+        }
+        on_disk.entry(canonical_coord_key(c)).or_default().push(i);
+    }
+
+    // Iterate declared-not-cached entries in REVERSE so we can
+    // `remove(i)` without shifting indices we haven't visited yet.
+    // Collect the indices first (the components vec borrow has to be
+    // released before we can mutate it).
+    let declared_indices: Vec<usize> = components
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| c.source_type.as_deref() == Some("declared-not-cached"))
+        .map(|(i, _)| i)
+        .collect();
+
+    for &decl_idx in declared_indices.iter().rev() {
+        let key = canonical_coord_key(&components[decl_idx]);
+        let Some(on_disk_indices) = on_disk.get(&key) else {
+            // No on-disk twin. Keep the declared-not-cached entry —
+            // manifest-SBOM convention. Continue.
+            continue;
+        };
+        // Clone the declared entry's evidence before we drop it, then
+        // fold into every on-disk match.
+        let decl = components[decl_idx].clone();
+        for &dst_idx in on_disk_indices {
+            let dst = &mut components[dst_idx];
+            // Mark the evidence trail with deps.dev so downstream
+            // consumers know this on-disk coord is also declared by
+            // the dep graph. Avoids adding `"deps.dev"` twice.
+            let has_deps_dev = dst
+                .evidence
+                .source_file_paths
+                .iter()
+                .any(|p| p == "deps.dev");
+            if !has_deps_dev {
+                dst.evidence.source_file_paths.push("deps.dev".to_string());
+            }
+            // Merge `source_connection_ids` (union, no duplicates).
+            for conn_id in &decl.evidence.source_connection_ids {
+                if !dst.evidence.source_connection_ids.contains(conn_id) {
+                    dst.evidence.source_connection_ids.push(conn_id.clone());
+                }
+            }
+            // If the on-disk entry doesn't have a `deps_dev_match` but
+            // the declared one does, carry it forward.
+            if dst.evidence.deps_dev_match.is_none() && decl.evidence.deps_dev_match.is_some() {
+                dst.evidence.deps_dev_match = decl.evidence.deps_dev_match.clone();
+            }
+        }
+        components.remove(decl_idx);
+    }
 }
 
 #[cfg(test)]
@@ -417,5 +518,170 @@ mod tests {
             .collect();
         assert!(paths.contains("/app/go.sum"));
         assert!(paths.contains("/app/hello-bin"));
+    }
+
+    // --- Cross-source fold (Fix A) -------------------------------------
+
+    fn make_declared_not_cached(purl_str: &str) -> ResolvedComponent {
+        let mut c = make_component(
+            purl_str,
+            ResolutionTechnique::UrlPattern,
+            0.75,
+            vec![],
+            vec!["deps.dev"],
+        );
+        c.source_type = Some("declared-not-cached".to_string());
+        c.sbom_tier = Some("source".to_string());
+        c
+    }
+
+    #[test]
+    fn declared_not_cached_folds_into_shade_jar_sibling() {
+        // On-disk aopalliance is vendored inside a shade-jar (has
+        // parent_purl). deps.dev also reports aopalliance as a
+        // top-level declared-not-cached dep. Pre-Fix-A, these would
+        // NOT merge (different parent_purl means different pass-1
+        // dedup key). Post-Fix-A, pass 2 folds the declared entry
+        // into the on-disk sibling and drops it.
+        let mut on_disk = make_component(
+            "pkg:maven/aopalliance/aopalliance@1.0",
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/app/spring-boot.jar"],
+        );
+        on_disk.parent_purl =
+            Some("pkg:maven/org.springframework.boot/spring-boot@3.0.0".to_string());
+        on_disk.sbom_tier = Some("analyzed".to_string());
+
+        let declared = make_declared_not_cached("pkg:maven/aopalliance/aopalliance@1.0");
+
+        let deduped = deduplicate(vec![on_disk, declared]);
+        assert_eq!(
+            deduped.len(),
+            1,
+            "declared-not-cached must fold into on-disk sibling: {deduped:?}",
+        );
+        let survivor = &deduped[0];
+        assert_eq!(survivor.name, "aopalliance");
+        assert_eq!(survivor.sbom_tier.as_deref(), Some("analyzed"));
+        assert!(
+            survivor.parent_purl.is_some(),
+            "on-disk sibling must retain parent_purl (shade-jar nesting)",
+        );
+        // deps.dev provenance marker attached.
+        assert!(
+            survivor
+                .evidence
+                .source_file_paths
+                .iter()
+                .any(|p| p == "deps.dev"),
+            "declared-not-cached evidence must fold in: {:?}",
+            survivor.evidence.source_file_paths,
+        );
+    }
+
+    #[test]
+    fn declared_not_cached_folds_into_multiple_siblings() {
+        // aopalliance vendored in TWO different shade-jars (different
+        // parent_purls) + one deps.dev declared-not-cached top-level.
+        // After dedup: both siblings preserved (distinct parents),
+        // each carries the deps.dev marker.
+        let mut sib_a = make_component(
+            "pkg:maven/aopalliance/aopalliance@1.0",
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/app/spring-boot.jar"],
+        );
+        sib_a.parent_purl = Some("pkg:maven/org.springframework.boot/spring-boot@3.0.0".to_string());
+        sib_a.sbom_tier = Some("analyzed".to_string());
+
+        let mut sib_b = make_component(
+            "pkg:maven/aopalliance/aopalliance@1.0",
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/app/other-service.jar"],
+        );
+        sib_b.parent_purl = Some("pkg:maven/com.example/other-service@1.2.3".to_string());
+        sib_b.sbom_tier = Some("analyzed".to_string());
+
+        let declared = make_declared_not_cached("pkg:maven/aopalliance/aopalliance@1.0");
+
+        let deduped = deduplicate(vec![sib_a, sib_b, declared]);
+        assert_eq!(
+            deduped.len(),
+            2,
+            "two shade-jar siblings must survive (distinct parent_purls): {deduped:?}",
+        );
+        for entry in &deduped {
+            assert_eq!(entry.name, "aopalliance");
+            assert!(
+                entry
+                    .evidence
+                    .source_file_paths
+                    .iter()
+                    .any(|p| p == "deps.dev"),
+                "both siblings must pick up the deps.dev marker: {:?}",
+                entry.evidence.source_file_paths,
+            );
+        }
+    }
+
+    #[test]
+    fn declared_not_cached_without_on_disk_twin_preserved() {
+        // A purely declarative coord (provided-scope, shade-stripped,
+        // etc.) with no on-disk match must stay in the output —
+        // manifest-SBOM convention for `--path` / `--include-declared-deps`.
+        let declared = make_declared_not_cached(
+            "pkg:maven/javax.servlet/javax.servlet-api@4.0.1",
+        );
+        let unrelated = make_component(
+            "pkg:maven/com.google.guava/guava@32.1.3-jre",
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/app/guava.jar"],
+        );
+
+        let deduped = deduplicate(vec![declared, unrelated]);
+        assert_eq!(deduped.len(), 2, "declared entry with no twin must survive");
+        let has_declared = deduped
+            .iter()
+            .any(|c| c.source_type.as_deref() == Some("declared-not-cached"));
+        assert!(
+            has_declared,
+            "declared-not-cached without twin must be preserved: {deduped:?}",
+        );
+    }
+
+    #[test]
+    fn declared_not_cached_folds_into_top_level_twin() {
+        // Both entries top-level (parent_purl = None), same coord.
+        // Pass 1 groups by (ecosystem, name, version, None) so it
+        // already collapses this case. Pass 2 shouldn't touch it —
+        // nothing remains for pass 2 to match. This test is a
+        // regression guard: the pass-1 behavior stays intact.
+        let mut on_disk = make_component(
+            "pkg:maven/com.google.guava/guava@32.1.3-jre",
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/app/guava.jar"],
+        );
+        on_disk.sbom_tier = Some("analyzed".to_string());
+
+        let declared =
+            make_declared_not_cached("pkg:maven/com.google.guava/guava@32.1.3-jre");
+
+        let deduped = deduplicate(vec![on_disk, declared]);
+        assert_eq!(
+            deduped.len(),
+            1,
+            "top-level + top-level same coord must collapse to one",
+        );
+        // Pass 1 picks the higher-confidence on-disk entry.
+        assert_eq!(deduped[0].sbom_tier.as_deref(), Some("analyzed"));
     }
 }

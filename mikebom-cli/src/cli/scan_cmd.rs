@@ -207,6 +207,12 @@ pub async fn execute(
         include_legacy_rpmdb,
         scan_mode,
         effective_include_declared_deps,
+        // Scan-target filter: the Maven walker uses this to skip
+        // emitting the scan target's own primary coord as a component
+        // (it represents the SBOM subject, not a dependency). See
+        // `maven::read_with_claims` and docs/design-notes.md "Scan
+        // target identity" for rationale.
+        Some(&target_name),
     )
     .map_err(|e| anyhow::anyhow!("{e}"))?;
     tracing::info!(

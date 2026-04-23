@@ -1428,6 +1428,7 @@ pub fn read(rootfs: &Path, include_dev: bool) -> Vec<PackageDbEntry> {
         &claimed,
         #[cfg(unix)]
         &claimed_inodes,
+        None,
     )
 }
 
@@ -1455,6 +1456,7 @@ pub fn read_with_claims(
     include_declared_deps: bool,
     claimed: &std::collections::HashSet<std::path::PathBuf>,
     #[cfg(unix)] claimed_inodes: &std::collections::HashSet<(u64, u64)>,
+    scan_target_name: Option<&str>,
 ) -> Vec<PackageDbEntry> {
     let mut out: Vec<PackageDbEntry> = Vec::new();
     let mut seen_purls: HashSet<String> = HashSet::new();
@@ -1761,6 +1763,34 @@ pub fn read_with_claims(
                     coord_index.get(&key).map(|_v| d.artifact_id.clone())
                 })
                 .collect();
+            // Scan-target filter (Fix B): when the scan target's name
+            // matches this primary coord's artifactId, skip emission.
+            // The coord IS the SBOM subject (what this SBOM is about),
+            // not a dependency of it — it belongs in CDX's
+            // `metadata.component`, not `components[]`. Vendored
+            // children of the same JAR stay emitted with their
+            // `parent_purl` pointing at the (now-absent) primary; the
+            // CDX builder's orphan-fallback path at
+            // `builder.rs:build_components` demotes them to top-level.
+            //
+            // Heuristic match: case-insensitive exact equality between
+            // the artifactId and the scan target name. Covers the
+            // common fat-jar-matches-image-name pattern. Non-matching
+            // primaries (vendored fat-jars inside the artifact, shade
+            // plugins with a different primary coord than the target,
+            // etc.) continue to emit.
+            if meta.is_primary {
+                if let Some(target) = scan_target_name {
+                    if meta.coord.artifact_id.eq_ignore_ascii_case(target) {
+                        tracing::debug!(
+                            artifact_id = %meta.coord.artifact_id,
+                            target = %target,
+                            "suppressing scan-target primary coord from components[]"
+                        );
+                        continue;
+                    }
+                }
+            }
             // Primary coord stays top-level (parent_purl = None); every
             // other coord in the same JAR nests under the primary via
             // its parent_purl.
@@ -3112,6 +3142,7 @@ mod tests {
             &empty_claims,
             #[cfg(unix)]
             &empty_inodes,
+            None,
         );
         assert_eq!(no_claim.len(), 1, "baseline: expected 1 Maven entry");
         assert_eq!(no_claim[0].name, "commons-io");
@@ -3130,6 +3161,7 @@ mod tests {
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
+            None,
         );
         assert_eq!(
             with_claim.len(),
@@ -3173,6 +3205,7 @@ mod tests {
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
+            None,
         );
         assert_eq!(
             out.len(),
@@ -3207,6 +3240,7 @@ mod tests {
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
+            None,
         );
         let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"alpha"), "alpha missing: {names:?}");
@@ -3250,6 +3284,7 @@ mod tests {
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
+            None,
         );
         let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
         assert!(
@@ -3260,6 +3295,142 @@ mod tests {
             !names.contains(&"beta"),
             "uncached beta must be dropped in artifact scope: {names:?}",
         );
+    }
+
+    // --- Scan-target filter (Fix B) -------------------------------------
+
+    #[test]
+    fn scan_target_primary_coord_skipped_when_artifactid_matches() {
+        // A fat-jar named `myapp.jar` with primary coord
+        // `com.example:myapp:1.0.0` plus two vendored non-primary
+        // children. Pass `scan_target_name = Some("myapp")`. The
+        // primary coord IS the SBOM subject — must be suppressed from
+        // components[]. Vendored children still emit.
+        let dir = tempfile::tempdir().unwrap();
+        let jar_path = dir.path().join("myapp.jar");
+        write_jar(
+            &jar_path,
+            &[
+                (
+                    "META-INF/maven/com.example/myapp/pom.properties",
+                    b"groupId=com.example\nartifactId=myapp\nversion=1.0.0\n",
+                ),
+                (
+                    "META-INF/maven/com.google.guava/guava/pom.properties",
+                    b"groupId=com.google.guava\nartifactId=guava\nversion=32.1.3-jre\n",
+                ),
+                (
+                    "META-INF/maven/org.slf4j/slf4j-api/pom.properties",
+                    b"groupId=org.slf4j\nartifactId=slf4j-api\nversion=2.0.9\n",
+                ),
+            ],
+        );
+
+        let empty_claims: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        #[cfg(unix)]
+        let empty_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let out = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &empty_claims,
+            #[cfg(unix)]
+            &empty_inodes,
+            Some("myapp"),
+        );
+        let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            !names.contains(&"myapp"),
+            "primary coord matching scan target must be suppressed: {names:?}",
+        );
+        assert!(
+            names.contains(&"guava"),
+            "vendored guava must still emit: {names:?}",
+        );
+        assert!(
+            names.contains(&"slf4j-api"),
+            "vendored slf4j-api must still emit: {names:?}",
+        );
+    }
+
+    #[test]
+    fn scan_target_primary_coord_emits_when_artifactid_differs() {
+        // Same fat-jar, but scan target doesn't match the primary
+        // coord's artifactId. All three coords emit — the primary is
+        // NOT the SBOM subject in this scenario.
+        let dir = tempfile::tempdir().unwrap();
+        let jar_path = dir.path().join("myapp.jar");
+        write_jar(
+            &jar_path,
+            &[
+                (
+                    "META-INF/maven/com.example/myapp/pom.properties",
+                    b"groupId=com.example\nartifactId=myapp\nversion=1.0.0\n",
+                ),
+                (
+                    "META-INF/maven/com.google.guava/guava/pom.properties",
+                    b"groupId=com.google.guava\nartifactId=guava\nversion=32.1.3-jre\n",
+                ),
+            ],
+        );
+
+        let empty_claims: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        #[cfg(unix)]
+        let empty_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let out = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &empty_claims,
+            #[cfg(unix)]
+            &empty_inodes,
+            Some("other-service"),
+        );
+        let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.contains(&"myapp"),
+            "primary coord with non-matching target must emit: {names:?}",
+        );
+        assert!(
+            names.contains(&"guava"),
+            "vendored guava must emit: {names:?}",
+        );
+    }
+
+    #[test]
+    fn scan_target_none_leaves_behavior_unchanged() {
+        // scan_target_name=None (backward-compat path). All primary
+        // coords emit regardless — no filter applied.
+        let dir = tempfile::tempdir().unwrap();
+        let jar_path = dir.path().join("myapp.jar");
+        write_jar(
+            &jar_path,
+            &[(
+                "META-INF/maven/com.example/myapp/pom.properties",
+                b"groupId=com.example\nartifactId=myapp\nversion=1.0.0\n",
+            )],
+        );
+
+        let empty_claims: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        #[cfg(unix)]
+        let empty_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let out = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &empty_claims,
+            #[cfg(unix)]
+            &empty_inodes,
+            None,
+        );
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].name, "myapp");
     }
 
     // --- Sidecar hash helper (sbomqs Integrity lift, Maven) -------------

@@ -298,6 +298,7 @@ pub fn read_all(
     include_legacy_rpmdb: bool,
     scan_mode: crate::scan_fs::ScanMode,
     include_declared_deps: bool,
+    scan_target_name: Option<&str>,
 ) -> Result<DbScanResult, PackageDbError> {
     let mut out = Vec::new();
     let mut claimed: std::collections::HashSet<std::path::PathBuf> =
@@ -428,6 +429,7 @@ pub fn read_all(
         &claimed,
         #[cfg(unix)]
         &claimed_inodes,
+        scan_target_name,
     ));
     // Cargo is fail-closed on v1/v2 lockfiles (FR-040), mirroring the
     // npm v1 refusal pattern.
@@ -554,7 +556,7 @@ Architecture: arm64
             false,
             false,
             crate::scan_fs::ScanMode::Path,
-            true,
+            true, None,
         )
         .unwrap();
 
