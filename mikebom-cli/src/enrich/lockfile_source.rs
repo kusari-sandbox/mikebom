@@ -310,6 +310,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
             raw_version: None,
             parent_purl: None,
             co_owned_by: None,
+            shade_relocation: None,
             external_references: Vec::new(),
         }
     }

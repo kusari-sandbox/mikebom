@@ -476,6 +476,12 @@ impl CycloneDxBuilder {
                     "value": "true"
                 }));
             }
+            if component.shade_relocation == Some(true) {
+                properties.push(json!({
+                    "name": "mikebom:shade-relocation",
+                    "value": "true"
+                }));
+            }
             if let Some(ref packed) = component.binary_packed {
                 debug_assert_eq!(
                     packed, "upx",
@@ -679,6 +685,7 @@ mod tests {
             raw_version: None,
             parent_purl: None,
             co_owned_by: None,
+            shade_relocation: None,
             external_references: Vec::new(),
         }
     }

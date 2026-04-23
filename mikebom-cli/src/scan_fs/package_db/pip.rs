@@ -475,6 +475,7 @@ impl PipDistInfoEntry {
             co_owned_by: None,
             hashes: Vec::new(),
             sbom_tier: Some("deployed".to_string()),
+            shade_relocation: None,
         })
     }
 }
@@ -817,6 +818,7 @@ pub(crate) fn parse_poetry_lock(
             co_owned_by: None,
             hashes: Vec::new(),
             sbom_tier: Some("source".to_string()),
+            shade_relocation: None,
         });
         // `hashes` currently collected but not wired into ContentHash;
         // hash propagation from lockfiles is a follow-up (would need
@@ -931,6 +933,7 @@ pub(crate) fn parse_pipfile_lock(
                 co_owned_by: None,
                 hashes: Vec::new(),
                 sbom_tier: Some("source".to_string()),
+                shade_relocation: None,
             });
         }
     }
@@ -1041,6 +1044,7 @@ impl RequirementsTxtEntry {
             co_owned_by: None,
             hashes: self.hashes,
             sbom_tier: Some(tier.to_string()),
+            shade_relocation: None,
         })
     }
 }

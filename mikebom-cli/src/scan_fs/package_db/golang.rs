@@ -554,6 +554,7 @@ pub(crate) fn build_entries_from_go_module(
             co_owned_by: None,
             hashes,
             sbom_tier: Some("source".to_string()),
+            shade_relocation: None,
         });
     }
 

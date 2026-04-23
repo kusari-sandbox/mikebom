@@ -24,6 +24,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use mikebom_common::types::license::SpdxExpression;
 use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
 use super::PackageDbEntry;
@@ -198,6 +199,15 @@ impl MavenRepoCache {
     /// log messages.
     pub(crate) fn total_roots(&self) -> usize {
         self.rootfs_roots.len() + self.host_roots.len()
+    }
+
+    /// Feature 009: accessor for rootfs-scoped `.m2` roots. Used by
+    /// the deep-JAR walker that finds shade-relocated JARs inside
+    /// `.m2/repository/<g>/<a>/<v>/<a>-<v>.jar` paths (which exceed
+    /// the general-purpose [`walk_for_maven`] depth cap and live
+    /// under dotdirs the general walker skips).
+    pub(crate) fn rootfs_roots(&self) -> &[PathBuf] {
+        &self.rootfs_roots
     }
 
     /// Iterate every discovered root in priority order: host roots
@@ -1155,6 +1165,273 @@ pub(crate) fn jar_stem_matches_coord(jar_path: &Path, coord: &PomProperties) -> 
 /// leaking into `components[]` as a self-reference.
 ///
 /// Returns `false` on any I/O, zip, or manifest-parse failure.
+/// Feature 009: walk every `.jar` under a MavenRepoCache's
+/// rootfs-scoped roots, without the depth cap / dotdir skip that
+/// `walk_for_maven` applies. `.m2/repository/` is a dotdir that
+/// `walk_for_maven` skips outright, and its JARs live at depth 8+
+/// (`<repo>/<g-parts>/<a>/<v>/<a>-<v>.jar`) which exceeds
+/// [`MAX_PROJECT_ROOT_DEPTH`]. Needed so shade-relocated JARs
+/// inside `.m2` (e.g. `surefire-shared-utils-3.2.2.jar`) get their
+/// `META-INF/DEPENDENCIES` read.
+fn walk_m2_jars(repo_cache: &MavenRepoCache) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = Vec::new();
+    for root in repo_cache.rootfs_roots() {
+        let mut stack: Vec<PathBuf> = vec![root.clone()];
+        while let Some(dir) = stack.pop() {
+            let entries = match std::fs::read_dir(&dir) {
+                Ok(it) => it,
+                Err(_) => continue,
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let ft = match entry.file_type() {
+                    Ok(t) => t,
+                    Err(_) => continue,
+                };
+                if ft.is_dir() {
+                    stack.push(path);
+                    continue;
+                }
+                if !ft.is_file() {
+                    continue;
+                }
+                let is_jar = path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.eq_ignore_ascii_case("jar"))
+                    .unwrap_or(false);
+                if is_jar {
+                    out.push(path);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Feature 009: read the bytes of a single named entry inside a JAR
+/// (a zip archive). Returns `None` on open failure, missing entry,
+/// read error, or entries exceeding [`MAX_JAR_ENTRY_BYTES`].
+pub(crate) fn read_jar_entry_bytes(archive_path: &Path, entry_name: &str) -> Option<Vec<u8>> {
+    let file = std::fs::File::open(archive_path).ok()?;
+    let mut zip = zip::ZipArchive::new(file).ok()?;
+    let mut entry = zip.by_name(entry_name).ok()?;
+    if entry.size() > MAX_JAR_ENTRY_BYTES {
+        return None;
+    }
+    use std::io::Read;
+    let mut buf = Vec::with_capacity(entry.size() as usize);
+    entry.read_to_end(&mut buf).ok()?;
+    Some(buf)
+}
+
+// ---------------------------------------------------------------------------
+// Feature 009: Shade-relocation ancestor emission
+// ---------------------------------------------------------------------------
+
+/// Feature 009: one parsed entry from a JAR's `META-INF/DEPENDENCIES`
+/// file (Apache Maven Dependency Plugin's `dependency:list` output
+/// format). Represents one ancestor coord whose bytecode was
+/// shade-relocated into the enclosing JAR.
+#[derive(Clone, Debug)]
+pub(crate) struct ShadeAncestor {
+    pub group_id: String,
+    pub artifact_id: String,
+    pub classifier: Option<String>,
+    pub version: String,
+    pub license: Option<SpdxExpression>,
+}
+
+/// Feature 009: parse a JAR's `META-INF/DEPENDENCIES` file body and
+/// return one `ShadeAncestor` per successfully-parsed coord entry.
+///
+/// Format (Apache Maven Dependency Plugin `dependency:list` output):
+///
+/// ```text
+///   - Apache Commons Compress (https://commons.apache.org/...) org.apache.commons:commons-compress:jar:1.23.0
+///     License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+/// ```
+///
+/// Parse strategy: line-based, no regex dependency. Detect coord
+/// lines by `- ` prefix (after trim) + `:jar:` or `:jar:<cls>:`
+/// anchor in the LAST whitespace-separated token. After each coord,
+/// look at the next non-blank line; if it starts with `License:`
+/// (case-sensitive — matches Apache plugin output), extract the
+/// SPDX expression via `SpdxExpression::try_canonical`. On parse
+/// failure (unrecognized license, malformed coord, non-UTF-8 bytes,
+/// etc.), degrade silently: skip that entry or its license — never
+/// abort the broader scan.
+pub(crate) fn parse_dependencies_file(bytes: &[u8]) -> Vec<ShadeAncestor> {
+    let text = match std::str::from_utf8(bytes) {
+        Ok(t) => t,
+        Err(_) => return Vec::new(),
+    };
+    let mut out: Vec<ShadeAncestor> = Vec::new();
+    let lines: Vec<&str> = text.lines().collect();
+    let mut idx = 0usize;
+    while idx < lines.len() {
+        let raw = lines[idx];
+        let trimmed = raw.trim_start();
+        if !trimmed.starts_with('-') {
+            idx += 1;
+            continue;
+        }
+        // The coord is the LAST whitespace-separated token on the
+        // line. Skip the leading `-` and anything before the last
+        // whitespace-delimited token.
+        let Some(coord_raw) = trimmed.split_whitespace().next_back() else {
+            idx += 1;
+            continue;
+        };
+        let parts: Vec<&str> = coord_raw.split(':').collect();
+        let ancestor_opt = match parts.as_slice() {
+            [g, a, "jar", v] if !g.is_empty() && !a.is_empty() && !v.is_empty() => {
+                Some((g.to_string(), a.to_string(), None::<String>, v.to_string()))
+            }
+            [g, a, "jar", cls, v]
+                if !g.is_empty()
+                    && !a.is_empty()
+                    && !cls.is_empty()
+                    && !v.is_empty() =>
+            {
+                Some((
+                    g.to_string(),
+                    a.to_string(),
+                    Some(cls.to_string()),
+                    v.to_string(),
+                ))
+            }
+            _ => None,
+        };
+        let Some((group_id, artifact_id, classifier, version)) = ancestor_opt else {
+            idx += 1;
+            continue;
+        };
+        // Peek ahead to the next non-blank line for a License:
+        // continuation. If the next non-blank line is another coord
+        // (starts with `-` after trim) or end-of-file, no license.
+        let mut license: Option<SpdxExpression> = None;
+        let mut peek = idx + 1;
+        while peek < lines.len() && lines[peek].trim().is_empty() {
+            peek += 1;
+        }
+        if peek < lines.len() {
+            let next_trimmed = lines[peek].trim_start();
+            if let Some(rest) = next_trimmed.strip_prefix("License:") {
+                // Strip trailing "(url)" parenthetical, if any, then
+                // trim. The Apache plugin's format puts the URL in
+                // parens after the SPDX ID.
+                let mut candidate = rest.trim();
+                if let Some(paren_start) = candidate.rfind('(') {
+                    candidate = candidate[..paren_start].trim();
+                }
+                match SpdxExpression::try_canonical(candidate) {
+                    Ok(expr) => license = Some(expr),
+                    Err(_) => {
+                        tracing::warn!(
+                            raw_license = %candidate,
+                            "shade-relocation license not parseable"
+                        );
+                    }
+                }
+            }
+        }
+        out.push(ShadeAncestor {
+            group_id,
+            artifact_id,
+            classifier,
+            version,
+            license,
+        });
+        idx += 1;
+    }
+    out
+}
+
+/// Feature 009: emit `PackageDbEntry` values for a set of parsed
+/// `ShadeAncestor` entries, nested under an enclosing JAR's primary
+/// coord. Applies the self-reference guard (spec FR-005) and the
+/// within-JAR dedup guard (FR-006) via `seen_ancestor_keys`. Each
+/// emitted entry carries `shade_relocation = Some(true)` so the CDX
+/// serializer emits the `mikebom:shade-relocation = true` property.
+pub(crate) fn emit_shade_relocation_entries(
+    ancestors: Vec<ShadeAncestor>,
+    enclosing_primary: &PomProperties,
+    enclosing_purl_str: &str,
+    co_owned_by: Option<String>,
+    source_path: &str,
+    out: &mut Vec<PackageDbEntry>,
+    seen_ancestor_keys: &mut HashSet<String>,
+) {
+    for ancestor in ancestors {
+        // FR-005 self-reference guard.
+        if ancestor.group_id == enclosing_primary.group_id
+            && ancestor.artifact_id == enclosing_primary.artifact_id
+            && ancestor.version == enclosing_primary.version
+        {
+            continue;
+        }
+        // FR-006 within-JAR dedup.
+        let key = format!(
+            "{}:{}:{}:{}",
+            ancestor.group_id,
+            ancestor.artifact_id,
+            ancestor.classifier.as_deref().unwrap_or(""),
+            ancestor.version,
+        );
+        if !seen_ancestor_keys.insert(key) {
+            continue;
+        }
+        // Build the PURL. Maven coord goes in path; classifier (when
+        // present) goes in the `?classifier=<value>` qualifier.
+        let mut purl_str = format!(
+            "pkg:maven/{}/{}@{}",
+            encode_purl_segment(&ancestor.group_id),
+            encode_purl_segment(&ancestor.artifact_id),
+            encode_purl_segment(&ancestor.version),
+        );
+        if let Some(ref cls) = ancestor.classifier {
+            purl_str.push_str("?classifier=");
+            purl_str.push_str(&encode_purl_segment(cls));
+        }
+        let Ok(purl) = Purl::new(&purl_str) else {
+            continue;
+        };
+        let licenses = ancestor
+            .license
+            .map(|l| vec![l])
+            .unwrap_or_default();
+        out.push(PackageDbEntry {
+            purl,
+            name: ancestor.artifact_id.clone(),
+            version: ancestor.version.clone(),
+            arch: None,
+            source_path: source_path.to_string(),
+            depends: Vec::new(),
+            maintainer: None,
+            licenses,
+            is_dev: None,
+            requirement_range: None,
+            source_type: None,
+            buildinfo_status: None,
+            evidence_kind: None,
+            binary_class: None,
+            binary_stripped: None,
+            linkage_kind: None,
+            detected_go: None,
+            confidence: None,
+            binary_packed: None,
+            raw_version: None,
+            parent_purl: Some(enclosing_purl_str.to_string()),
+            npm_role: None,
+            co_owned_by: co_owned_by.clone(),
+            hashes: Vec::new(),
+            sbom_tier: Some("analyzed".to_string()),
+            shade_relocation: Some(true),
+        });
+    }
+}
+
 pub(crate) fn jar_has_main_class_manifest(archive_path: &Path) -> bool {
     let Ok(file) = std::fs::File::open(archive_path) else {
         return false;
@@ -1404,6 +1681,7 @@ fn pom_dep_to_entry(
         co_owned_by: None,
         hashes,
         sbom_tier: Some(tier),
+        shade_relocation: None,
     })
 }
 
@@ -1660,6 +1938,7 @@ fn build_transitive_entry(
         co_owned_by: None,
         hashes,
         sbom_tier: Some("source".to_string()),
+        shade_relocation: None,
     })
 }
 
@@ -1711,6 +1990,7 @@ fn jar_pom_to_entry(
         co_owned_by,
         hashes,
         sbom_tier: Some("analyzed".to_string()),
+        shade_relocation: None,
     })
 }
 
@@ -1827,6 +2107,11 @@ pub fn read_with_claims(
     let sidecar_index = super::maven_sidecar::FedoraSidecarIndex::build(rootfs);
     let mut sidecar_resolved: usize = 0;
     let mut jar_meta: Vec<(String, Vec<EmbeddedMavenMeta>, Option<String>)> = Vec::new();
+    // Feature 009: shade-relocation ancestors parsed from each JAR's
+    // `META-INF/DEPENDENCIES` file, keyed by the JAR's source path.
+    // Populated during the JAR loop; consumed in the emission loop
+    // below (keyed off the same `source_path`).
+    let mut shade_ancestors_by_jar: HashMap<String, Vec<ShadeAncestor>> = HashMap::new();
     for jar_path in &jar_files {
         let co_owned_by = if crate::scan_fs::binary::is_path_claimed(
             jar_path,
@@ -1860,6 +2145,17 @@ pub fn read_with_claims(
         } else {
             None
         };
+        // Feature 009: parse `META-INF/DEPENDENCIES` (Apache Maven
+        // Dependency Plugin output) for shade-relocated ancestor
+        // coords. Stash per-JAR; emitted later once the primary coord
+        // is known. Absent DEPENDENCIES file → no-op.
+        if let Some(deps_bytes) = read_jar_entry_bytes(jar_path, "META-INF/DEPENDENCIES") {
+            let ancestors = parse_dependencies_file(&deps_bytes);
+            if !ancestors.is_empty() {
+                shade_ancestors_by_jar
+                    .insert(jar_path.to_string_lossy().into_owned(), ancestors);
+            }
+        }
         let meta = walk_jar_maven_meta(jar_path);
         if meta.is_empty() {
             // Feature 007 US1: Fedora sidecar POM fallback. When the
@@ -2354,6 +2650,115 @@ pub fn read_with_claims(
                 out.push(entry);
             }
         }
+        // Feature 009: emit shade-relocation ancestor entries for this
+        // JAR. Requires a resolvable primary coord + PURL (pulled from
+        // the inner loop's `primary_purl` computation above).
+        if let Some(ancestors) = shade_ancestors_by_jar.remove(&source_path) {
+            let primary_coord_opt = meta_list
+                .iter()
+                .find(|m| m.is_primary)
+                .map(|m| m.coord.clone());
+            match (primary_coord_opt, primary_purl.as_ref()) {
+                (Some(primary_coord), Some(primary_purl_str)) => {
+                    let ancestor_count = ancestors.len();
+                    let before = out.len();
+                    let mut seen_ancestor_keys: HashSet<String> = HashSet::new();
+                    emit_shade_relocation_entries(
+                        ancestors,
+                        &primary_coord,
+                        primary_purl_str,
+                        co_owned_by.clone(),
+                        &source_path,
+                        &mut out,
+                        &mut seen_ancestor_keys,
+                    );
+                    let emitted = out.len().saturating_sub(before);
+                    if emitted > 0 {
+                        tracing::info!(
+                            jar = %source_path,
+                            parent = %primary_purl_str,
+                            ancestors_parsed = ancestor_count,
+                            emitted,
+                            "shade-relocation ancestors emitted"
+                        );
+                    }
+                }
+                _ => {
+                    tracing::warn!(
+                        jar = %source_path,
+                        ancestors = ancestors.len(),
+                        "skipping shade-relocation for JAR with no primary coord"
+                    );
+                }
+            }
+        }
+    }
+
+    // Feature 009: walk_for_maven skips dotdirs (`.m2/`) and caps at
+    // depth 6, missing JARs cached at depth 8+ under
+    // `.m2/repository/<g>/<a>/<v>/<a>-<v>.jar` (e.g.
+    // surefire-shared-utils-3.2.2.jar). Add a dedicated pass that
+    // walks those JARs strictly to extract shade-relocation ancestors
+    // via `META-INF/DEPENDENCIES`. The primary coords for these JARs
+    // are already emitted by the .m2 BFS walk above (as transitive);
+    // we only need to attach shade children under them by parent_purl.
+    {
+        let already_seen: HashSet<PathBuf> = jar_files.iter().cloned().collect();
+        let m2_jars = walk_m2_jars(&repo_cache);
+        for jar_path in m2_jars {
+            if already_seen.contains(&jar_path) {
+                continue;
+            }
+            let Some(deps_bytes) =
+                read_jar_entry_bytes(&jar_path, "META-INF/DEPENDENCIES")
+            else {
+                continue;
+            };
+            let ancestors = parse_dependencies_file(&deps_bytes);
+            if ancestors.is_empty() {
+                continue;
+            }
+            let meta = walk_jar_maven_meta(&jar_path);
+            let Some(primary_meta) = meta.iter().find(|m| m.is_primary) else {
+                tracing::warn!(
+                    jar = %jar_path.display(),
+                    ancestors = ancestors.len(),
+                    "skipping shade-relocation for .m2 JAR with no primary coord"
+                );
+                continue;
+            };
+            let Some(primary_purl) = build_maven_purl(
+                &primary_meta.coord.group_id,
+                &primary_meta.coord.artifact_id,
+                &primary_meta.coord.version,
+            ) else {
+                continue;
+            };
+            let source_path = jar_path.to_string_lossy().into_owned();
+            let primary_purl_str = primary_purl.as_str().to_string();
+            let ancestor_count = ancestors.len();
+            let before = out.len();
+            let mut seen_ancestor_keys: HashSet<String> = HashSet::new();
+            emit_shade_relocation_entries(
+                ancestors,
+                &primary_meta.coord,
+                &primary_purl_str,
+                None, // .m2 cache JARs aren't claimed by OS package-db
+                &source_path,
+                &mut out,
+                &mut seen_ancestor_keys,
+            );
+            let emitted = out.len().saturating_sub(before);
+            if emitted > 0 {
+                tracing::info!(
+                    jar = %source_path,
+                    parent = %primary_purl_str,
+                    ancestors_parsed = ancestor_count,
+                    emitted,
+                    "shade-relocation ancestors emitted (.m2)"
+                );
+            }
+        }
     }
 
     if !out.is_empty() {
@@ -2361,6 +2766,26 @@ pub fn read_with_claims(
             rootfs = %rootfs.display(),
             entries = out.len(),
             "parsed Maven coordinates",
+        );
+    }
+    // Feature 009 summary: count shade-relocation entries emitted this
+    // scan. Low-signal when zero; useful on multi-JAR Java images.
+    let shade_count = out
+        .iter()
+        .filter(|e| e.shade_relocation == Some(true))
+        .count();
+    if shade_count > 0 {
+        let jar_count = out
+            .iter()
+            .filter(|e| e.shade_relocation == Some(true))
+            .map(|e| e.source_path.clone())
+            .collect::<HashSet<_>>()
+            .len();
+        tracing::info!(
+            rootfs = %rootfs.display(),
+            emitted = shade_count,
+            jars = jar_count,
+            "maven shade-relocation scan: emitted N ancestor coords across M JARs"
         );
     }
     (out, scan_target_coord)

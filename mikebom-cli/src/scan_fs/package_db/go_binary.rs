@@ -608,6 +608,7 @@ fn emit_entries_from_info(
                     co_owned_by: None,
                     hashes: Vec::new(),
                     sbom_tier: Some("analyzed".to_string()),
+                    shade_relocation: None,
                 });
             }
         }
@@ -642,6 +643,7 @@ fn emit_entries_from_info(
                     co_owned_by: None,
                     hashes: Vec::new(),
                     sbom_tier: Some("analyzed".to_string()),
+                    shade_relocation: None,
                 });
             }
         }
@@ -693,6 +695,7 @@ fn emit_file_level_diagnostic(
         co_owned_by: None,
         hashes: Vec::new(),
         sbom_tier: Some("analyzed".to_string()),
+        shade_relocation: None,
     });
 }
 

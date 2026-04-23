@@ -173,6 +173,14 @@ pub struct ResolvedComponent {
     /// `None` on standalone artifacts (no cross-ecosystem overlap).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub co_owned_by: Option<String>,
+    /// Feature 009: `Some(true)` when the component was derived from a
+    /// shaded JAR's `META-INF/DEPENDENCIES` file (ancestor dep with
+    /// relocated bytecode inside the enclosing JAR). Vulnerability
+    /// scanners can match against these coords even when the classes
+    /// are namespace-relocated in the image. Surfaced via CDX property
+    /// `mikebom:shade-relocation = true`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shade_relocation: Option<bool>,
     /// External references for this component — repository URLs,
     /// homepages, issue trackers. Maps to CycloneDX
     /// `components[].externalReferences[]`. Populated from PURL
@@ -356,6 +364,7 @@ mod tests {
             raw_version: None,
             parent_purl: None,
             co_owned_by: None,
+            shade_relocation: None,
             external_references: Vec::new(),
         };
 
@@ -409,6 +418,7 @@ mod tests {
             raw_version: None,
             parent_purl: None,
             co_owned_by: None,
+            shade_relocation: None,
             external_references: Vec::new(),
         };
 

@@ -434,6 +434,7 @@ pub(crate) fn parse_package_lock(
             co_owned_by: None,
             hashes,
             sbom_tier: Some("source".to_string()),
+            shade_relocation: None,
         });
     }
 
@@ -597,6 +598,7 @@ pub(crate) fn parse_pnpm_lock(
             co_owned_by: None,
             hashes,
             sbom_tier: Some("source".to_string()),
+            shade_relocation: None,
         });
     }
 
@@ -759,6 +761,7 @@ fn walk_node_modules(
             co_owned_by: None,
             hashes: Vec::new(),
             sbom_tier: Some("deployed".to_string()),
+            shade_relocation: None,
         });
 
         // Feature 005 US1: in --image mode, after emitting the `npm`
@@ -919,6 +922,7 @@ pub(crate) fn parse_root_package_json(
                 co_owned_by: None,
                 hashes: Vec::new(),
                 sbom_tier: Some("design".to_string()),
+                shade_relocation: None,
             });
         }
     }
