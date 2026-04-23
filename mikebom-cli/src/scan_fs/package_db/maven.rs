@@ -1111,6 +1111,61 @@ pub(crate) struct EmbeddedMavenMeta {
 /// the embedded `pom.xml`'s `<dependencies>` list when that file is
 /// present alongside. Refuses zip-slip attempts by rejecting any
 /// entry whose normalised path contains `..`.
+/// Feature 007 US4: check whether a JAR's manifest declares an
+/// executable entry point (`Main-Class: …`). Executable JARs are
+/// almost always build outputs (shade-plugin / spring-boot-plugin /
+/// maven-assembly-plugin); a dependency JAR would rarely declare one.
+/// Used to broaden the fat-jar project-self heuristic so Spring-Boot-
+/// style executable JARs — which typically bundle their dependencies
+/// in a way that erases the nested `META-INF/maven/` metadata and so
+/// fail the `meta_list.len() >= 2` check — are still recognized as
+/// scan subjects and promoted to `metadata.component` instead of
+/// leaking into `components[]` as a self-reference.
+///
+/// Returns `false` on any I/O, zip, or manifest-parse failure.
+pub(crate) fn jar_has_main_class_manifest(archive_path: &Path) -> bool {
+    let Ok(file) = std::fs::File::open(archive_path) else {
+        return false;
+    };
+    let Ok(mut zip) = zip::ZipArchive::new(file) else {
+        return false;
+    };
+    let Ok(mut entry) = zip.by_name("META-INF/MANIFEST.MF") else {
+        return false;
+    };
+    // Cap manifest read — real manifests are small (<8KB); truncating
+    // the scan at a modest bound prevents DoS from a zip with a huge
+    // MANIFEST.MF entry.
+    const MANIFEST_READ_CAP: u64 = 64 * 1024;
+    if entry.size() > MANIFEST_READ_CAP {
+        return false;
+    }
+    use std::io::Read;
+    let mut buf = Vec::with_capacity(entry.size() as usize);
+    if entry.read_to_end(&mut buf).is_err() {
+        return false;
+    }
+    let text = match std::str::from_utf8(&buf) {
+        Ok(t) => t,
+        Err(_) => return false,
+    };
+    // Manifest attributes are one-per-line, case-insensitive keys,
+    // continuation lines begin with a single leading space. Detecting
+    // `Main-Class:` at the start of a line (post-line-unfold) is
+    // sufficient — Main-Class values never span continuation lines
+    // in practice.
+    for line in text.lines() {
+        let lower = line.to_ascii_lowercase();
+        if lower.starts_with("main-class:") {
+            // Value must be non-empty after the colon.
+            if line.splitn(2, ':').nth(1).is_some_and(|v| !v.trim().is_empty()) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 pub(crate) fn walk_jar_maven_meta(archive_path: &Path) -> Vec<EmbeddedMavenMeta> {
     let Ok(file) = std::fs::File::open(archive_path) else {
         return Vec::new();
@@ -2156,15 +2211,36 @@ pub fn read_with_claims(
                 // `mikebom:co-owned-by = rpm` tag PR #2 established).
                 let is_unclaimed_fat_jar =
                     meta_list.len() >= 2 && co_owned_by.is_none();
-                if target_name_matches || is_unclaimed_fat_jar {
+                // Feature 007 US4: broaden the heuristic to also
+                // cover executable JARs with a single recognizable
+                // coord. Spring Boot's repackage plugin, the Maven
+                // assembly plugin's `jar-with-dependencies`
+                // descriptor, and similar tooling produce an
+                // executable JAR whose vendored deps live at
+                // non-standard paths (`BOOT-INF/lib/*.jar`, flat
+                // `lib/*`, etc.) — so `walk_jar_maven_meta` sees
+                // only the project's own primary coord and the
+                // `meta_list.len() >= 2` check misses. A
+                // `Main-Class:` in the manifest reliably
+                // distinguishes a build output from a dependency.
+                let is_executable_unclaimed_jar = meta.is_primary
+                    && co_owned_by.is_none()
+                    && jar_has_main_class_manifest(std::path::Path::new(&source_path));
+                if target_name_matches
+                    || is_unclaimed_fat_jar
+                    || is_executable_unclaimed_jar
+                {
+                    let reason = if target_name_matches {
+                        "target-name-match"
+                    } else if is_unclaimed_fat_jar {
+                        "unclaimed-fat-jar-heuristic"
+                    } else {
+                        "executable-jar-heuristic"
+                    };
                     tracing::debug!(
                         artifact_id = %meta.coord.artifact_id,
                         version = %meta.coord.version,
-                        reason = if target_name_matches {
-                            "target-name-match"
-                        } else {
-                            "unclaimed-fat-jar-heuristic"
-                        },
+                        reason = reason,
                         "suppressing scan-target primary coord from components[]"
                     );
                     // Record the suppressed coord for metadata.component
@@ -2291,6 +2367,71 @@ fn should_skip_descent(name: &str) -> bool {
 #[cfg_attr(test, allow(clippy::unwrap_used))]
 mod tests {
     use super::*;
+
+    fn write_jar_with_entries(entries: &[(&str, &[u8])]) -> tempfile::NamedTempFile {
+        let tmp = tempfile::NamedTempFile::with_suffix(".jar").unwrap();
+        let file = std::fs::File::create(tmp.path()).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::FileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        for (name, body) in entries {
+            zip.start_file(*name, options).unwrap();
+            use std::io::Write;
+            zip.write_all(body).unwrap();
+        }
+        zip.finish().unwrap();
+        tmp
+    }
+
+    #[test]
+    fn main_class_manifest_detects_executable_jar() {
+        let tmp = write_jar_with_entries(&[
+            (
+                "META-INF/MANIFEST.MF",
+                b"Manifest-Version: 1.0\nMain-Class: com.example.Main\n",
+            ),
+        ]);
+        assert!(jar_has_main_class_manifest(tmp.path()));
+    }
+
+    #[test]
+    fn main_class_manifest_case_insensitive() {
+        let tmp = write_jar_with_entries(&[
+            (
+                "META-INF/MANIFEST.MF",
+                b"Manifest-Version: 1.0\nmain-class: com.example.Main\n",
+            ),
+        ]);
+        assert!(jar_has_main_class_manifest(tmp.path()));
+    }
+
+    #[test]
+    fn main_class_manifest_rejects_library_jar_without_main_class() {
+        let tmp = write_jar_with_entries(&[
+            (
+                "META-INF/MANIFEST.MF",
+                b"Manifest-Version: 1.0\nCreated-By: Apache Maven 3.9.1\n",
+            ),
+        ]);
+        assert!(!jar_has_main_class_manifest(tmp.path()));
+    }
+
+    #[test]
+    fn main_class_manifest_rejects_empty_value() {
+        let tmp = write_jar_with_entries(&[
+            (
+                "META-INF/MANIFEST.MF",
+                b"Manifest-Version: 1.0\nMain-Class: \n",
+            ),
+        ]);
+        assert!(!jar_has_main_class_manifest(tmp.path()));
+    }
+
+    #[test]
+    fn main_class_manifest_returns_false_when_no_manifest() {
+        let tmp = write_jar_with_entries(&[("SomeClass.class", b"not-a-manifest")]);
+        assert!(!jar_has_main_class_manifest(tmp.path()));
+    }
 
     #[test]
     fn parses_minimal_pom() {
