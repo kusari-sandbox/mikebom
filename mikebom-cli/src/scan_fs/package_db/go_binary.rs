@@ -460,10 +460,8 @@ fn walk_for_binaries(
             continue;
         };
         if meta.is_dir() {
-            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-                if should_skip_binary_descent(name) {
-                    continue;
-                }
+            if should_skip_binary_descent(&path) {
+                continue;
             }
             walk_for_binaries(
                 &path,
@@ -527,14 +525,34 @@ fn walk_for_binaries(
     }
 }
 
-fn should_skip_binary_descent(name: &str) -> bool {
+fn should_skip_binary_descent(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+        return true;
+    };
     if name.starts_with('.') {
         return true;
     }
-    matches!(
+    if matches!(
         name,
         "vendor" | "node_modules" | "target" | "__pycache__" | "proc" | "sys"
-    )
+    ) {
+        return true;
+    }
+    // Skip the Go module cache for the same reason `golang.rs` does
+    // (build-time residue, not runtime artifacts). Go binaries
+    // rarely live under `pkg/mod/` in practice — `go install` drops
+    // them in `go/bin/` — but we match the source-walker's skip
+    // rules to keep the two readers' scope consistent.
+    let components: Vec<&str> = path
+        .components()
+        .filter_map(|c| c.as_os_str().to_str())
+        .collect();
+    for window in components.windows(3) {
+        if window == ["go", "pkg", "mod"] {
+            return true;
+        }
+    }
+    false
 }
 
 fn emit_entries_from_info(

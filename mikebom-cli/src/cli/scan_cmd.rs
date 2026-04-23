@@ -197,6 +197,7 @@ pub async fn execute(
         mut relationships,
         complete_ecosystems,
         os_release_missing_fields,
+        scan_target_coord,
     } = scan_fs::scan_path(
         &root_path,
         effective_codename,
@@ -207,6 +208,12 @@ pub async fn execute(
         include_legacy_rpmdb,
         scan_mode,
         effective_include_declared_deps,
+        // Scan-target filter: the Maven walker uses this to skip
+        // emitting the scan target's own primary coord as a component
+        // (it represents the SBOM subject, not a dependency). See
+        // `maven::read_with_claims` and docs/design-notes.md "Scan
+        // target identity" for rationale.
+        Some(&target_name),
     )
     .map_err(|e| anyhow::anyhow!("{e}"))?;
     tracing::info!(
@@ -266,6 +273,28 @@ pub async fn execute(
         relationships.extend(new_dep_graph_edges);
     }
 
+    // Cross-source dedup pass (Fix A). `scan_fs::scan_path` already ran
+    // pass-1 + pass-2 before returning, but `enrich_dep_graph` above
+    // pushed `source_type = "declared-not-cached"` entries AFTER that
+    // dedup — so pass-2's fold-into-on-disk-twin logic had nothing to
+    // fold. Re-running `deduplicate()` here closes the loop: pass-1 is
+    // a no-op on an already-deduped set; pass-2 now sees the freshly-
+    // pushed declared entries and collapses each one whose canonical
+    // `(ecosystem, group, artifact, version)` matches an on-disk
+    // component (shade-jar vendored coord or top-level).
+    //
+    // See `resolve/deduplicator.rs::fold_declared_not_cached` for the
+    // full matching rule.
+    let pre_fold_count = components.len();
+    components = crate::resolve::deduplicator::deduplicate(components);
+    let folded = pre_fold_count.saturating_sub(components.len());
+    if folded > 0 {
+        tracing::info!(
+            folded,
+            "folded declared-not-cached entries into on-disk twins",
+        );
+    }
+
     // `trace_integrity` is a clean record: no eBPF ran, so there's nothing
     // to have overflowed or dropped.
     let integrity = TraceIntegrity {
@@ -292,6 +321,7 @@ pub async fn execute(
         &integrity,
         &target_name,
         &complete_ecosystems,
+        scan_target_coord.as_ref(),
     )?;
 
     write_cyclonedx_json(&bom, &args.output)?;

@@ -674,24 +674,54 @@ fn walk_for_go_roots(
         if !path.is_dir() {
             continue;
         }
-        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
-            continue;
-        };
-        if should_skip_descent(name) {
+        if should_skip_descent(&path) {
             continue;
         }
         walk_for_go_roots(&path, depth + 1, out, visited);
     }
 }
 
-fn should_skip_descent(name: &str) -> bool {
+/// Skip descent into directories that can't legitimately hold a
+/// project root — dev-time residue, build outputs, and language-
+/// specific vendor trees. Also skips Go's module cache
+/// (`.../go/pkg/mod/...`) wherever it appears in the rootfs: the
+/// cache is populated at build time by `go mod download` and
+/// shouldn't contribute components to the scanned-image SBOM.
+/// (This is a typical signature of a multi-stage Docker build that
+/// copied the builder's cache into the image.)
+fn should_skip_descent(path: &std::path::Path) -> bool {
+    let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+        return true;
+    };
     if name.starts_with('.') {
         return true;
     }
-    matches!(
+    if matches!(
         name,
         "vendor" | "node_modules" | "target" | "dist" | "build" | "__pycache__"
-    )
+    ) {
+        return true;
+    }
+    // Go module cache: `.../go/pkg/mod/...` anywhere in the
+    // rootfs. Each cached module ships its own `go.mod`, so without
+    // this skip the walker treats every cached module as a project
+    // root and emits its deps as components — 21 FPs on polyglot.
+    //
+    // Recognize the three-component signature `.../go/pkg/mod/...`
+    // via a sliding-window check over path components. Catches
+    // `$HOME/go/pkg/mod`, `/root/go/pkg/mod`, `/go/pkg/mod`,
+    // `/workspace/go/pkg/mod`, etc. — any layout where Go's
+    // standard `GOMODCACHE` convention applies.
+    let components: Vec<&str> = path
+        .components()
+        .filter_map(|c| c.as_os_str().to_str())
+        .collect();
+    for window in components.windows(3) {
+        if window == ["go", "pkg", "mod"] {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -1074,5 +1104,86 @@ replace github.com/old/lib v1.0.0 => github.com/new/lib v2.0.0
         // transitive dep surfaces as a component.
         assert!(!entries.iter().any(|e| e.name == "example.com/api"));
         assert!(entries.iter().any(|e| e.name == "github.com/x/y"));
+    }
+
+    // --- Go module cache exclusion (M4) ---------------------------------
+
+    fn write_go_project(root: &Path, module: &str, deps: &[(&str, &str)]) {
+        std::fs::create_dir_all(root).unwrap();
+        let mut go_mod = format!("module {module}\ngo 1.22\n");
+        if !deps.is_empty() {
+            go_mod.push_str("require (\n");
+            for (path, version) in deps {
+                go_mod.push_str(&format!("    {path} {version}\n"));
+            }
+            go_mod.push_str(")\n");
+        }
+        std::fs::write(root.join("go.mod"), go_mod).unwrap();
+        let mut go_sum = String::new();
+        for (path, version) in deps {
+            go_sum.push_str(&format!("{path} {version} h1:fake=\n"));
+        }
+        std::fs::write(root.join("go.sum"), go_sum).unwrap();
+    }
+
+    #[test]
+    fn walker_skips_root_go_pkg_mod_trees() {
+        // Multi-stage Docker build pattern: build-stage `go mod
+        // download` populates `/root/go/pkg/mod/`, which then gets
+        // carried into the final image. Each cached module has its
+        // own `go.mod` — the walker must NOT treat them as project
+        // roots.
+        let dir = tempfile::tempdir().unwrap();
+        let cache =
+            dir.path().join("root/go/pkg/mod/github.com/foo/bar@v1.0.0");
+        write_go_project(&cache, "github.com/foo/bar", &[("github.com/x/y", "v2.0.0")]);
+        let entries = read(dir.path(), false);
+        assert!(
+            entries.is_empty(),
+            "walker must skip /root/go/pkg/mod cache tree: {entries:?}",
+        );
+    }
+
+    #[test]
+    fn walker_skips_home_user_go_pkg_mod() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache =
+            dir.path().join("home/alice/go/pkg/mod/github.com/foo/bar@v1.0.0");
+        write_go_project(&cache, "github.com/foo/bar", &[("github.com/x/y", "v2.0.0")]);
+        let entries = read(dir.path(), false);
+        assert!(
+            entries.is_empty(),
+            "walker must skip $HOME/go/pkg/mod cache tree: {entries:?}",
+        );
+    }
+
+    #[test]
+    fn walker_still_finds_legitimate_project_roots() {
+        // Control: a real project at `/app/go.mod` + `/app/go.sum`
+        // still emits normally after M4.
+        let dir = tempfile::tempdir().unwrap();
+        let app = dir.path().join("app");
+        write_go_project(&app, "example.com/app", &[("github.com/real/dep", "v1.2.3")]);
+        let entries = read(dir.path(), false);
+        assert!(
+            entries.iter().any(|e| e.name == "github.com/real/dep"),
+            "legitimate project root must still emit: {entries:?}",
+        );
+    }
+
+    #[test]
+    fn walker_skips_gopath_outside_standard_paths() {
+        // Non-standard `GOPATH` layout — still matches the
+        // `.../go/pkg/mod/...` path-component signature.
+        let dir = tempfile::tempdir().unwrap();
+        let cache = dir
+            .path()
+            .join("workspace/go/pkg/mod/github.com/foo/bar@v1.0.0");
+        write_go_project(&cache, "github.com/foo/bar", &[("github.com/x/y", "v2.0.0")]);
+        let entries = read(dir.path(), false);
+        assert!(
+            entries.is_empty(),
+            "walker must skip /workspace/go/pkg/mod cache tree: {entries:?}",
+        );
     }
 }

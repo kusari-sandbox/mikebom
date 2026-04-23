@@ -46,10 +46,46 @@ const MAX_JAR_ENTRY_BYTES: u64 = 64 * 1024 * 1024;
 /// BFS lookups but never enumerated wholesale — otherwise a developer
 /// running mikebom against a project fixture would drag every cached
 /// artifact on their laptop into the SBOM.
+/// Maven coord identified as the scan subject — either by
+/// artifactId match against `target_name` (Fix B) or by the fat-jar
+/// heuristic (M3). Surfaced through the Maven reader's return value
+/// up to `scan_cmd::execute`, where it overrides the generic
+/// `pkg:generic/<target_name>@0.0.0` `metadata.component` with the
+/// real Maven coord.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScanTargetCoord {
+    pub group: String,
+    pub artifact: String,
+    pub version: String,
+}
+
 #[derive(Clone, Debug, Default)]
 pub(crate) struct MavenRepoCache {
     rootfs_roots: Vec<PathBuf>,
     host_roots: Vec<PathBuf>,
+}
+
+/// Provenance of fetched POM bytes.
+///
+/// `Rootfs` — the `.pom` came from the scanned rootfs's
+/// `.m2/repository/` (or was embedded in a scanned JAR via
+/// `PomStore`). Represents actual bytes present on the scanned
+/// filesystem — in scope under the artifact-SBOM principle.
+///
+/// `Host` — the `.pom` was satisfied from the operator's host
+/// caches (`$HOME/.m2`, `$M2_REPO`, `$MAVEN_HOME`). Used for
+/// parent-chain and BOM-import resolution so property interpolation
+/// and inherited `<dependencyManagement>` stay correct, but does
+/// NOT represent an artifact in the scanned image. Emission sites
+/// gate on `Rootfs` to avoid leaking host cache contents into the
+/// scanned-image SBOM.
+///
+/// See docs/design-notes.md "Scope: artifact vs manifest SBOM" for
+/// the broader on-disk-vs-declared framing this supports.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum PomSource {
+    Rootfs,
+    Host,
 }
 
 impl MavenRepoCache {
@@ -144,6 +180,20 @@ impl MavenRepoCache {
         }
     }
 
+    /// Test-only helper: build a cache with explicit rootfs + host
+    /// root lists. Used by tests that exercise the host-vs-rootfs
+    /// provenance distinction ([`PomSource`]).
+    #[cfg(test)]
+    pub(crate) fn for_tests_with_host(
+        rootfs_roots: Vec<PathBuf>,
+        host_roots: Vec<PathBuf>,
+    ) -> Self {
+        Self {
+            rootfs_roots,
+            host_roots,
+        }
+    }
+
     /// Total number of discovered roots (rootfs + host). Useful for
     /// log messages.
     pub(crate) fn total_roots(&self) -> usize {
@@ -152,8 +202,9 @@ impl MavenRepoCache {
 
     /// Iterate every discovered root in priority order: host roots
     /// first (they win pom/hash lookups per the discover ordering),
-    /// then rootfs roots. Used by [`read_pom`] and
-    /// [`read_artifact_hash`].
+    /// then rootfs roots. Used by [`read_artifact_hash`]. POM reads
+    /// use [`read_pom`] directly so they can track provenance via
+    /// [`PomSource`].
     fn all_roots(&self) -> impl Iterator<Item = &Path> {
         self.host_roots
             .iter()
@@ -162,19 +213,41 @@ impl MavenRepoCache {
     }
 
     /// Read `<root>/<group-as-path>/<artifact>/<version>/<artifact>-<version>.pom`
-    /// from the first cache root that has it. Returns `None` when no
-    /// cache has the artefact or IO fails.
-    pub(crate) fn read_pom(&self, group: &str, artifact: &str, version: &str) -> Option<Vec<u8>> {
+    /// from the first cache root that has it. Walks `rootfs_roots`
+    /// first so scanned-image bytes win when the same coord is
+    /// cached in both places; falls back to `host_roots` for
+    /// parent-chain / BOM resolution.
+    ///
+    /// Returns `None` when no cache has the artefact or IO fails,
+    /// otherwise `Some((bytes, source))` where `source` identifies
+    /// whether the bytes came from the scanned rootfs or the
+    /// operator's host cache. Callers that only consume bytes for
+    /// resolution (parent-POM merging, `${...}` interpolation) can
+    /// ignore `source`; callers that EMIT components on the fetched
+    /// coord MUST gate emission on `source == PomSource::Rootfs` so
+    /// host-cache contents don't leak into the scanned-image SBOM.
+    pub(crate) fn read_pom(
+        &self,
+        group: &str,
+        artifact: &str,
+        version: &str,
+    ) -> Option<(Vec<u8>, PomSource)> {
         if self.total_roots() == 0 {
             return None;
         }
         let group_path = group.replace('.', "/");
         let relative =
             format!("{group_path}/{artifact}/{version}/{artifact}-{version}.pom");
-        for root in self.all_roots() {
+        for root in &self.rootfs_roots {
             let path = root.join(&relative);
             if let Ok(bytes) = std::fs::read(&path) {
-                return Some(bytes);
+                return Some((bytes, PomSource::Rootfs));
+            }
+        }
+        for root in &self.host_roots {
+            let path = root.join(&relative);
+            if let Ok(bytes) = std::fs::read(&path) {
+                return Some((bytes, PomSource::Host));
             }
         }
         None
@@ -316,6 +389,31 @@ impl MavenRepoCache {
             );
         }
         out
+    }
+
+    /// Check whether the rootfs `.m2/repository/` cache has a JAR
+    /// artifact for `(group, artifact, version)` — `<artifact>-<version>.jar`
+    /// sitting in the same directory as the coord's `.pom`.
+    ///
+    /// Used by the M1 artifact-presence gate for the common case
+    /// where a real Maven cache ships POM + JAR side by side: the
+    /// `find_maven_artifacts` walker skips hidden directories like
+    /// `.m2/` so those JARs aren't in the `jar_meta`-backed coord
+    /// index, but they ARE distributable artifacts on the scanned
+    /// filesystem. Only rootfs roots are consulted — host caches
+    /// stay excluded per the dual-SBOM principle.
+    pub(crate) fn has_rootfs_jar(&self, group: &str, artifact: &str, version: &str) -> bool {
+        if self.rootfs_roots.is_empty() {
+            return false;
+        }
+        let group_path = group.replace('.', "/");
+        let relative = format!("{group_path}/{artifact}/{version}/{artifact}-{version}.jar");
+        for root in &self.rootfs_roots {
+            if root.join(&relative).is_file() {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -640,15 +738,24 @@ fn coord_key(g: &str, a: &str, v: &str) -> String {
 
 /// Fetch POM bytes: prefer the in-memory store (JAR-embedded /
 /// previously-read), fall back to the on-disk M2 cache.
+/// Fetch POM bytes for `(g, a, v)` from the in-memory
+/// JAR-embedded-pom store, falling back to on-disk `.m2/repository/`
+/// caches. Returns `(bytes, source)` so emission sites can gate on
+/// [`PomSource::Rootfs`]; resolution-only callers ignore `source`.
+///
+/// `PomStore` hits are always `Rootfs` — the store is populated
+/// exclusively from JAR files discovered in the scanned rootfs
+/// (see `walk_jar_maven_meta` + the `jar_meta.pom_xml_bytes`
+/// population loop in `read_with_claims`).
 fn fetch_pom_bytes(
     store: &PomStore,
     cache: &MavenRepoCache,
     g: &str,
     a: &str,
     v: &str,
-) -> Option<Vec<u8>> {
+) -> Option<(Vec<u8>, PomSource)> {
     if let Some(bytes) = store.get(&coord_key(g, a, v)) {
-        return Some(bytes.clone());
+        return Some((bytes.clone(), PomSource::Rootfs));
     }
     cache.read_pom(g, a, v)
 }
@@ -740,7 +847,13 @@ pub(crate) fn build_effective_pom(
     if let Some((pg, pa, pv)) = doc.parent_coord.clone() {
         let parent_key = coord_key(&pg, &pa, &pv);
         if seen.insert(parent_key.clone()) {
-            if let Some(bytes) = fetch_pom_bytes(store, cache, &pg, &pa, &pv) {
+            // Parent-POM fetch is resolution-only (used to inherit
+            // `<properties>` and `<dependencyManagement>` for
+            // `${project.version}`-style interpolation); the parent
+            // coord itself is not emitted as a component from here,
+            // so we can consume parent bytes from either rootfs or
+            // host without violating the artifact-SBOM principle.
+            if let Some((bytes, _source)) = fetch_pom_bytes(store, cache, &pg, &pa, &pv) {
                 let parent_doc = parse_pom_xml(&bytes);
                 let parent_eff = build_effective_pom(parent_doc, cache, store, seen, memo);
                 for (k, v) in parent_eff.properties {
@@ -790,7 +903,13 @@ pub(crate) fn build_effective_pom(
         if !seen.insert(bom_key.clone()) {
             continue;
         }
-        if let Some(bytes) = fetch_pom_bytes(store, cache, &bom_g, &entry.artifact_id, &bom_v) {
+        // BOM-import fetch is resolution-only (imported POMs
+        // contribute `<dependencyManagement>` entries used to pin
+        // transitive versions); the imported coord is not emitted
+        // as a component from here, so host-sourced bytes are fine.
+        if let Some((bytes, _source)) =
+            fetch_pom_bytes(store, cache, &bom_g, &entry.artifact_id, &bom_v)
+        {
             let bom_doc = parse_pom_xml(&bytes);
             let bom_eff = build_effective_pom(bom_doc, cache, store, seen, memo);
             for (k, v) in bom_eff.dependency_management {
@@ -1206,6 +1325,16 @@ fn pom_dep_to_entry(
 /// Per-node property resolution uses the upstream pom's own
 /// `<properties>` + `${project.*}` derived from the current coord —
 /// NOT the scanned root's properties.
+/// `on_disk_jar_coords`: artifact-presence gate (M1). When `Some`, a
+/// BFS cache-hit emission fires only when the coord's
+/// `(group, artifact)` appears in this set — i.e. the JAR walk
+/// found a corresponding JAR in the scanned rootfs. When `None`,
+/// the gate is off (backward-compat for unit tests that exercise
+/// BFS behavior in isolation without a JAR-walk context). POMs
+/// whose coords are in the rootfs `.m2` cache but have no JAR on
+/// disk (parent POMs, BOM aggregators with `<packaging>pom</packaging>`)
+/// still drive BFS traversal for resolution but don't surface as
+/// components.
 fn bfs_transitive_poms(
     cache: &MavenRepoCache,
     store: &PomStore,
@@ -1213,6 +1342,7 @@ fn bfs_transitive_poms(
     include_dev: bool,
     include_declared_deps: bool,
     source_path: &str,
+    on_disk_jar_coords: Option<&HashSet<(String, String)>>,
 ) -> Vec<PackageDbEntry> {
     use std::collections::VecDeque;
 
@@ -1233,8 +1363,10 @@ fn bfs_transitive_poms(
             continue;
         }
 
-        let Some(bytes) = fetch_pom_bytes(store, cache, &group, &artifact, &version) else {
-            // Cache miss — no .pom and no .jar on disk for this coord.
+        let Some((bytes, source)) = fetch_pom_bytes(store, cache, &group, &artifact, &version)
+        else {
+            // Cache miss — no .pom and no .jar on disk for this coord,
+            // either in the scanned rootfs or the host cache.
             // In artifact scope (default for image scans) this is a
             // declared-but-not-on-disk transitive and is dropped. In
             // manifest scope (path scans, or `--include-declared-deps`)
@@ -1263,7 +1395,10 @@ fn bfs_transitive_poms(
         // Build the effective POM: merges properties and
         // dependencyManagement up the full parent chain so deps
         // with no inline version or with `${...}` placeholders can
-        // resolve through inherited declarations.
+        // resolve through inherited declarations. Resolution
+        // consumes parent/BOM bytes regardless of their source
+        // (rootfs or host) — that fallback is required for
+        // correctness when parent POMs aren't shipped in the image.
         let mut parent_seen: HashSet<String> = HashSet::new();
         let effective = build_effective_pom(upstream, cache, store, &mut parent_seen, &mut memo);
 
@@ -1282,15 +1417,63 @@ fn bfs_transitive_poms(
             .map(|d| d.artifact_id.clone())
             .collect();
 
-        if let Some(entry) = build_transitive_entry(
-            &group,
-            &artifact,
-            &version,
-            edges,
-            source_path,
-            Some(cache),
-        ) {
-            out.push(entry);
+        // Emit a component for this coord ONLY when the POM bytes
+        // came from the scanned rootfs. Host-sourced POMs represent
+        // the operator's laptop cache — their bytes aren't in the
+        // scanned image, so the coord isn't an artifact in scope.
+        // BFS continues regardless so transitive edges still resolve
+        // through host-cached parent chains (correctness preserved).
+        //
+        // This is the decisive gate that stops host-cache coords
+        // from leaking into scanned-image SBOMs (the 141 Maven FPs
+        // on polyglot-builder-image were all host-resolved).
+        // Artifact-presence gate (M1): even when the POM bytes are
+        // from the rootfs, require a matching JAR on disk before
+        // emitting. Rootfs `.m2/repository/` caches routinely
+        // contain parent POMs and BOM aggregators
+        // (`<packaging>pom</packaging>`) that have no distributable
+        // JAR — those POMs legitimately drive resolution but
+        // shouldn't surface as components.
+        //
+        // Two-source check:
+        //   1. `on_disk_jar_coords` — JARs the scanner's
+        //      `walk_jar_maven_meta` found outside `.m2/` (e.g.
+        //      `/app/*.jar`, `/usr/share/java/*.jar`). Keyed on
+        //      `(group, artifact)`, version-agnostic.
+        //   2. `cache.has_rootfs_jar(g, a, v)` — JARs living INSIDE
+        //      `.m2/repository/<path>/<artifact>-<version>.jar`.
+        //      The artifact walker skips `.m2/` (hidden dir), so
+        //      this filesystem check catches cache-resident JARs.
+        //
+        // When `on_disk_jar_coords` is `None` (tests that exercise
+        // BFS in isolation without a JAR-walk context), gate is
+        // off and Phase 1's `PomSource::Rootfs` check alone
+        // decides emission.
+        let jar_on_disk = match on_disk_jar_coords {
+            Some(set) => {
+                set.contains(&(group.clone(), artifact.clone()))
+                    || cache.has_rootfs_jar(&group, &artifact, &version)
+            }
+            None => true,
+        };
+        if matches!(source, PomSource::Rootfs) && jar_on_disk {
+            if let Some(entry) = build_transitive_entry(
+                &group,
+                &artifact,
+                &version,
+                edges,
+                source_path,
+                Some(cache),
+            ) {
+                out.push(entry);
+            }
+        } else {
+            tracing::trace!(
+                group = %group,
+                artifact = %artifact,
+                version = %version,
+                "BFS resolved coord via host cache; consulted for resolution but not emitted",
+            );
         }
 
         // Enqueue each resolvable upstream dep's concrete coord for
@@ -1434,14 +1617,18 @@ pub fn read(rootfs: &Path, include_dev: bool) -> Vec<PackageDbEntry> {
     // tests and other non-orchestrator callers get the pre-dual-SBOM
     // behavior (permissive — emit everything the POMs declare).
     // Production callers go through read_with_claims directly.
-    read_with_claims(
+    // Discard the scan-target coord — backward-compat shim for
+    // tests that only need the entries list.
+    let (entries, _scan_target) = read_with_claims(
         rootfs,
         include_dev,
         true,
         &claimed,
         #[cfg(unix)]
         &claimed_inodes,
-    )
+        None,
+    );
+    entries
 }
 
 /// Read Maven coords from the rootfs.
@@ -1468,9 +1655,15 @@ pub fn read_with_claims(
     include_declared_deps: bool,
     claimed: &std::collections::HashSet<std::path::PathBuf>,
     #[cfg(unix)] claimed_inodes: &std::collections::HashSet<(u64, u64)>,
-) -> Vec<PackageDbEntry> {
+    scan_target_name: Option<&str>,
+) -> (Vec<PackageDbEntry>, Option<ScanTargetCoord>) {
     let mut out: Vec<PackageDbEntry> = Vec::new();
     let mut seen_purls: HashSet<String> = HashSet::new();
+    // Populated when the JAR walker identifies a scan-subject
+    // primary coord (target-name match or fat-jar heuristic). The
+    // caller promotes this to `metadata.component` instead of the
+    // generic placeholder.
+    let mut scan_target_coord: Option<ScanTargetCoord> = None;
     let (pom_files, jar_files) = find_maven_artifacts(rootfs);
     // Discover M2 repo cache once per scan. Each dep's own pom.xml
     // sits at <repo>/<group-as-path>/<artifact>/<version>/<artifact>-<version>.pom;
@@ -1578,6 +1771,15 @@ pub fn read_with_claims(
             on_disk_coords.insert((m.coord.group_id.clone(), m.coord.artifact_id.clone()));
         }
     }
+    // Stricter JAR-only set (M1). Drives the BFS transitive-emission
+    // gate: a coord only emits as `source_type="transitive"` when a
+    // matching JAR was found in the scanned rootfs. POM-only coords
+    // (parent POMs, BOM aggregators with `<packaging>pom</packaging>`)
+    // legitimately drive BFS traversal for resolution but aren't
+    // distributable artifacts — they shouldn't surface as components.
+    // Built from `jar_meta` alone, before cached_pom_coords pulls in
+    // POM-only entries.
+    let on_disk_jar_coords: HashSet<(String, String)> = on_disk_coords.clone();
     // Same cap as the unconditional `.m2` walk below; populating the
     // coord set is cheap enough that we don't need a separate budget.
     const MAVEN_CACHE_POM_LIMIT: usize = 10_000;
@@ -1677,6 +1879,7 @@ pub fn read_with_claims(
             include_dev,
             include_declared_deps,
             &source_path,
+            Some(&on_disk_jar_coords),
         );
 
         // For each direct-dep entry, transplant the BFS's computed
@@ -1742,6 +1945,7 @@ pub fn read_with_claims(
             include_dev,
             include_declared_deps,
             &cache_source_path,
+            Some(&on_disk_jar_coords),
         );
         for entry in cache_entries {
             let key = entry.purl.as_str().to_string();
@@ -1805,6 +2009,67 @@ pub fn read_with_claims(
                     coord_index.get(&key).map(|_v| d.artifact_id.clone())
                 })
                 .collect();
+            // Scan-target filter (Fix B + M3): the primary coord of
+            // the artifact being scanned is the SBOM subject, not a
+            // dependency. It belongs in CDX's `metadata.component`,
+            // not `components[]`. Vendored children of the same JAR
+            // stay emitted with their `parent_purl` pointing at the
+            // (now-absent) primary; the CDX builder's orphan-
+            // fallback path at `builder.rs:build_components` demotes
+            // them to top-level.
+            //
+            // Two heuristics, either fires:
+            //
+            // 1. **target_name match (Fix B).** Case-insensitive
+            //    exact equality between the primary coord's
+            //    artifactId and the scan target name. Covers the
+            //    common case where the built artifact's name
+            //    matches the image tag.
+            //
+            // 2. **Fat-jar heuristic (M3).** The JAR contains ≥2
+            //    `META-INF/maven/<g>/<a>/pom.properties` entries —
+            //    classic shade-plugin fat-jar signature with one
+            //    primary + N vendored children. An unclaimed
+            //    fat-jar on disk is almost certainly the build
+            //    output, not a dependency. (Claimed JARs are
+            //    skipped earlier by the JAR walker, so we know
+            //    we're looking at an unclaimed one here.)
+            //
+            // Surfaces the suppressed coord through
+            // `scan_target_coord` back to the caller for
+            // `metadata.component` promotion.
+            if meta.is_primary {
+                let target_name_matches = scan_target_name
+                    .map(|t| meta.coord.artifact_id.eq_ignore_ascii_case(t))
+                    .unwrap_or(false);
+                let is_fat_jar = meta_list.len() >= 2;
+                if target_name_matches || is_fat_jar {
+                    tracing::debug!(
+                        artifact_id = %meta.coord.artifact_id,
+                        version = %meta.coord.version,
+                        reason = if target_name_matches { "target-name-match" } else { "fat-jar-heuristic" },
+                        "suppressing scan-target primary coord from components[]"
+                    );
+                    // Record the suppressed coord for metadata.component
+                    // promotion. If multiple primaries fire the
+                    // heuristic (rare: image contains several fat
+                    // JARs), the first-seen wins; rest are still
+                    // suppressed but logged.
+                    if scan_target_coord.is_none() {
+                        scan_target_coord = Some(ScanTargetCoord {
+                            group: meta.coord.group_id.clone(),
+                            artifact: meta.coord.artifact_id.clone(),
+                            version: meta.coord.version.clone(),
+                        });
+                    } else {
+                        tracing::warn!(
+                            artifact_id = %meta.coord.artifact_id,
+                            "multiple scan-target primary coords detected; keeping first-seen for metadata.component",
+                        );
+                    }
+                    continue;
+                }
+            }
             // Primary coord stays top-level (parent_purl = None); every
             // other coord in the same JAR nests under the primary via
             // its parent_purl.
@@ -1846,7 +2111,7 @@ pub fn read_with_claims(
             "parsed Maven coordinates",
         );
     }
-    out
+    (out, scan_target_coord)
 }
 
 fn find_maven_artifacts(rootfs: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
@@ -2464,10 +2729,11 @@ mod tests {
 </project>"#,
         );
         let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
-        let bytes = cache
+        let (bytes, source) = cache
             .read_pom("com.google.guava", "guava", "32.1.3-jre")
             .expect("cached pom readable");
         assert!(std::str::from_utf8(&bytes).unwrap().contains("failureaccess"));
+        assert_eq!(source, PomSource::Rootfs);
     }
 
     #[test]
@@ -2517,6 +2783,7 @@ mod tests {
             false,
             true,
             "/p/pom.xml",
+            None,
         );
         let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"a"));
@@ -2533,6 +2800,286 @@ mod tests {
             assert_eq!(e.source_type.as_deref(), Some("transitive"));
             assert_eq!(e.sbom_tier.as_deref(), Some("source"));
         }
+    }
+
+    // --- PomSource emission gate (Phase 1) ------------------------------
+
+    #[test]
+    fn bfs_emits_only_rootfs_sourced_transitives() {
+        // Rootfs has alpha's POM declaring a dep on beta.
+        // Host has beta's POM (no deps).
+        // Seed BFS from alpha.
+        // Expected: alpha emits (rootfs-sourced), beta does NOT
+        // emit (host-only sourced) — matches the artifact-SBOM
+        // principle that only bytes present in the scanned rootfs
+        // surface as components.
+        let dir = tempfile::tempdir().unwrap();
+        let rootfs_repo = dir.path().join("rootfs/.m2/repository");
+        let host_repo = dir.path().join("host/.m2/repository");
+        write_cached_pom(
+            &rootfs_repo,
+            "ex.a",
+            "alpha",
+            "1.0",
+            r#"<project><groupId>ex.a</groupId><artifactId>alpha</artifactId><version>1.0</version>
+<dependencies><dependency><groupId>ex.b</groupId><artifactId>beta</artifactId><version>1.0</version></dependency></dependencies>
+</project>"#,
+        );
+        write_cached_pom(
+            &host_repo,
+            "ex.b",
+            "beta",
+            "1.0",
+            r#"<project><groupId>ex.b</groupId><artifactId>beta</artifactId><version>1.0</version></project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests_with_host(vec![rootfs_repo], vec![host_repo]);
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[("ex.a".into(), "alpha".into(), "1.0".into())],
+            false,
+            true,
+            "/p/pom.xml",
+            None,
+        );
+        let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.contains(&"alpha"),
+            "rootfs-sourced alpha must emit: {names:?}",
+        );
+        assert!(
+            !names.contains(&"beta"),
+            "host-only beta must NOT emit: {names:?}",
+        );
+    }
+
+    #[test]
+    fn bfs_resolution_uses_host_parent_pom_but_doesnt_emit_it() {
+        // Rootfs has child's POM which inherits from a parent POM
+        // that's only in the host cache. The parent POM carries a
+        // property definition (`ext.version = 2.0`) that the child
+        // uses to pin its own dep on `ex.external:ext:${ext.version}`.
+        //
+        // Without the host fallback for resolution, `ext.version`
+        // would fail to resolve and the child's edge on `ext` would
+        // drop. With the fallback (but gated emission), resolution
+        // works AND the parent coord doesn't leak as a component.
+        let dir = tempfile::tempdir().unwrap();
+        let rootfs_repo = dir.path().join("rootfs/.m2/repository");
+        let host_repo = dir.path().join("host/.m2/repository");
+        write_cached_pom(
+            &rootfs_repo,
+            "ex.child",
+            "foo",
+            "1.0",
+            r#"<project>
+<parent><groupId>ex.parent</groupId><artifactId>parent</artifactId><version>1.0</version></parent>
+<groupId>ex.child</groupId><artifactId>foo</artifactId><version>1.0</version>
+<dependencies>
+  <dependency><groupId>ex.external</groupId><artifactId>ext</artifactId><version>${ext.version}</version></dependency>
+</dependencies>
+</project>"#,
+        );
+        write_cached_pom(
+            &host_repo,
+            "ex.parent",
+            "parent",
+            "1.0",
+            r#"<project><groupId>ex.parent</groupId><artifactId>parent</artifactId><version>1.0</version>
+<properties><ext.version>2.0</ext.version></properties>
+</project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests_with_host(vec![rootfs_repo], vec![host_repo]);
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[("ex.child".into(), "foo".into(), "1.0".into())],
+            false,
+            true,
+            "/p/pom.xml",
+            None,
+        );
+        let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
+        // foo is rootfs-sourced → emits.
+        assert!(names.contains(&"foo"), "rootfs foo must emit: {names:?}");
+        // Parent coord must NOT leak as a component — resolution-only.
+        assert!(
+            !names.contains(&"parent"),
+            "host parent must not emit: {names:?}",
+        );
+        // foo's declared edge on `ext` must resolve via host parent —
+        // the `depends` list carries the edge as proof the host-
+        // sourced parent POM was consulted for property resolution.
+        let foo = entries.iter().find(|e| e.name == "foo").unwrap();
+        assert!(
+            foo.depends.iter().any(|d| d == "ext"),
+            "ext edge must resolve via host parent: depends = {:?}",
+            foo.depends,
+        );
+    }
+
+    #[test]
+    fn bfs_host_only_coords_dont_leak_when_seeded_from_host() {
+        // Degenerate case: rootfs empty, host populated. Nothing
+        // should emit — even if we seed BFS with a coord whose POM
+        // sits in the host cache (this shouldn't happen in practice
+        // because `walk_rootfs_poms` is rootfs-scoped, but the gate
+        // must hold regardless).
+        let dir = tempfile::tempdir().unwrap();
+        let host_repo = dir.path().join("host/.m2/repository");
+        write_cached_pom(
+            &host_repo,
+            "ex.only",
+            "hosted",
+            "1.0",
+            r#"<project><groupId>ex.only</groupId><artifactId>hosted</artifactId><version>1.0</version></project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests_with_host(Vec::new(), vec![host_repo]);
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[("ex.only".into(), "hosted".into(), "1.0".into())],
+            false,
+            true,
+            "/p/pom.xml",
+            None,
+        );
+        assert!(
+            entries.is_empty(),
+            "host-only coords must never emit even when BFS-seeded: {entries:?}",
+        );
+    }
+
+    // --- On-disk JAR gate (M1) ------------------------------------------
+
+    #[test]
+    fn bfs_pom_only_coord_without_jar_does_not_emit() {
+        // Rootfs has alpha's POM cached but no JAR. Under M1's
+        // artifact-presence gate, alpha must NOT emit — the POM
+        // alone isn't a distributable artifact (matches the
+        // parent-POM / BOM-aggregator case: cached `.pom` but no
+        // accompanying `.jar`).
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().join(".m2/repository");
+        write_cached_pom(
+            &repo_root,
+            "ex.a",
+            "alpha",
+            "1.0",
+            r#"<project><groupId>ex.a</groupId><artifactId>alpha</artifactId><version>1.0</version></project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests(vec![repo_root]);
+        // Empty on_disk_jar_coords → alpha has no JAR on disk.
+        let on_disk: HashSet<(String, String)> = HashSet::new();
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[("ex.a".into(), "alpha".into(), "1.0".into())],
+            false,
+            true,
+            "/p/pom.xml",
+            Some(&on_disk),
+        );
+        assert!(
+            entries.is_empty(),
+            "POM-only coord without on-disk JAR must not emit: {entries:?}",
+        );
+    }
+
+    #[test]
+    fn bfs_pom_plus_jar_coord_emits_transitive() {
+        // Rootfs has both alpha's POM AND a matching JAR (signaled
+        // via `on_disk_jar_coords`). Transitive emission fires.
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().join(".m2/repository");
+        write_cached_pom(
+            &repo_root,
+            "ex.a",
+            "alpha",
+            "1.0",
+            r#"<project><groupId>ex.a</groupId><artifactId>alpha</artifactId><version>1.0</version></project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests(vec![repo_root]);
+        let mut on_disk: HashSet<(String, String)> = HashSet::new();
+        on_disk.insert(("ex.a".into(), "alpha".into()));
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[("ex.a".into(), "alpha".into(), "1.0".into())],
+            false,
+            true,
+            "/p/pom.xml",
+            Some(&on_disk),
+        );
+        let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"alpha"), "POM+JAR coord must emit: {names:?}");
+    }
+
+    #[test]
+    fn bfs_parent_pom_consulted_for_resolution_doesnt_emit_without_jar() {
+        // Rootfs has child's POM + JAR (child emits). Parent POM is
+        // ALSO in the cache (packaging=pom, no JAR) and is needed
+        // for property resolution. Parent must NOT emit but its
+        // properties must flow through to child's edges.
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().join(".m2/repository");
+        write_cached_pom(
+            &repo_root,
+            "ex.child",
+            "foo",
+            "1.0",
+            r#"<project>
+<parent><groupId>ex.parent</groupId><artifactId>parent</artifactId><version>1.0</version></parent>
+<groupId>ex.child</groupId><artifactId>foo</artifactId><version>1.0</version>
+<dependencies>
+  <dependency><groupId>ex.external</groupId><artifactId>ext</artifactId><version>${ext.version}</version></dependency>
+</dependencies>
+</project>"#,
+        );
+        write_cached_pom(
+            &repo_root,
+            "ex.parent",
+            "parent",
+            "1.0",
+            r#"<project><groupId>ex.parent</groupId><artifactId>parent</artifactId><version>1.0</version>
+<packaging>pom</packaging>
+<properties><ext.version>2.0</ext.version></properties>
+</project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests(vec![repo_root]);
+        // Only foo has a JAR; parent does not (it's packaging=pom).
+        let mut on_disk: HashSet<(String, String)> = HashSet::new();
+        on_disk.insert(("ex.child".into(), "foo".into()));
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[("ex.child".into(), "foo".into(), "1.0".into())],
+            false,
+            true,
+            "/p/pom.xml",
+            Some(&on_disk),
+        );
+        let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"foo"), "foo must emit (has JAR): {names:?}");
+        assert!(
+            !names.contains(&"parent"),
+            "parent POM must not emit (no JAR): {names:?}",
+        );
+        // foo's declared edge on `ext` resolves via the (non-emitted)
+        // parent POM's property — the `depends` list proves parent
+        // was consulted for resolution.
+        let foo = entries.iter().find(|e| e.name == "foo").unwrap();
+        assert!(
+            foo.depends.iter().any(|d| d == "ext"),
+            "ext edge must resolve via parent POM property: depends = {:?}",
+            foo.depends,
+        );
     }
 
     #[test]
@@ -2565,6 +3112,7 @@ mod tests {
             false,
             true,
             "/p/pom.xml",
+            None,
         );
         // Each coord emitted exactly once — cycle short-circuited by
         // the seen-set on the second visit to "a".
@@ -2597,6 +3145,7 @@ mod tests {
             false,
             true,
             "/p/pom.xml",
+            None,
         );
         assert_eq!(entries.len(), 2);
         let a = entries.iter().find(|e| e.name == "a").unwrap();
@@ -2645,6 +3194,7 @@ mod tests {
             false,
             true,
             "/p/pom.xml",
+            None,
         );
         let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
         assert_eq!(names, vec!["a"]);
@@ -2662,6 +3212,7 @@ mod tests {
             true,
             true,
             "/p/pom.xml",
+            None,
         );
         let names_dev: Vec<_> = entries_dev.iter().map(|e| e.name.as_str()).collect();
         assert!(names_dev.contains(&"a"));
@@ -2693,6 +3244,7 @@ mod tests {
             false,
             true,
             "/p/pom.xml",
+            None,
         );
         assert_eq!(entries.len(), 1);
         let a = &entries[0];
@@ -2712,6 +3264,7 @@ mod tests {
             false,
             true,
             "/p/pom.xml",
+            None,
         );
         // Cache miss on the seed — we still emit the coord with
         // empty depends so downstream consumers see the node.
@@ -3080,6 +3633,7 @@ mod tests {
             false,
             true,
             "/p/pom.xml",
+            None,
         );
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
         for expected in [
@@ -3154,13 +3708,14 @@ mod tests {
         #[cfg(unix)]
         let empty_inodes: std::collections::HashSet<(u64, u64)> =
             std::collections::HashSet::new();
-        let no_claim = read_with_claims(
+        let (no_claim, _) = read_with_claims(
             dir.path(),
             false,
             true,
             &empty_claims,
             #[cfg(unix)]
             &empty_inodes,
+            None,
         );
         assert_eq!(no_claim.len(), 1, "baseline: expected 1 Maven entry");
         assert_eq!(no_claim[0].name, "commons-io");
@@ -3178,13 +3733,14 @@ mod tests {
         #[cfg(unix)]
         let claimed_inodes: std::collections::HashSet<(u64, u64)> =
             std::collections::HashSet::new();
-        let with_claim = read_with_claims(
+        let (with_claim, _) = read_with_claims(
             dir.path(),
             false,
             true,
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
+            None,
         );
         assert_eq!(
             with_claim.len(),
@@ -3294,13 +3850,14 @@ mod tests {
         let claimed = std::collections::HashSet::new();
         #[cfg(unix)]
         let claimed_inodes = std::collections::HashSet::new();
-        let out = read_with_claims(
+        let (out, _) = read_with_claims(
             dir.path(),
             false,
             false,
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
+            None,
         );
         assert_eq!(
             out.len(),
@@ -3328,13 +3885,14 @@ mod tests {
         let claimed = std::collections::HashSet::new();
         #[cfg(unix)]
         let claimed_inodes = std::collections::HashSet::new();
-        let out = read_with_claims(
+        let (out, _) = read_with_claims(
             dir.path(),
             false,
             true,
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
+            None,
         );
         let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"alpha"), "alpha missing: {names:?}");
@@ -3371,13 +3929,14 @@ mod tests {
         let claimed = std::collections::HashSet::new();
         #[cfg(unix)]
         let claimed_inodes = std::collections::HashSet::new();
-        let out = read_with_claims(
+        let (out, _) = read_with_claims(
             dir.path(),
             false,
             false,
             &claimed,
             #[cfg(unix)]
             &claimed_inodes,
+            None,
         );
         let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
         assert!(
@@ -3387,6 +3946,227 @@ mod tests {
         assert!(
             !names.contains(&"beta"),
             "uncached beta must be dropped in artifact scope: {names:?}",
+        );
+    }
+
+    // --- Scan-target filter (Fix B) -------------------------------------
+
+    #[test]
+    fn scan_target_primary_coord_skipped_when_artifactid_matches() {
+        // A fat-jar named `myapp.jar` with primary coord
+        // `com.example:myapp:1.0.0` plus two vendored non-primary
+        // children. Pass `scan_target_name = Some("myapp")`. The
+        // primary coord IS the SBOM subject — must be suppressed from
+        // components[]. Vendored children still emit.
+        let dir = tempfile::tempdir().unwrap();
+        let jar_path = dir.path().join("myapp.jar");
+        write_jar(
+            &jar_path,
+            &[
+                (
+                    "META-INF/maven/com.example/myapp/pom.properties",
+                    b"groupId=com.example\nartifactId=myapp\nversion=1.0.0\n",
+                ),
+                (
+                    "META-INF/maven/com.google.guava/guava/pom.properties",
+                    b"groupId=com.google.guava\nartifactId=guava\nversion=32.1.3-jre\n",
+                ),
+                (
+                    "META-INF/maven/org.slf4j/slf4j-api/pom.properties",
+                    b"groupId=org.slf4j\nartifactId=slf4j-api\nversion=2.0.9\n",
+                ),
+            ],
+        );
+
+        let empty_claims: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        #[cfg(unix)]
+        let empty_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let (out, _) = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &empty_claims,
+            #[cfg(unix)]
+            &empty_inodes,
+            Some("myapp"),
+        );
+        let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            !names.contains(&"myapp"),
+            "primary coord matching scan target must be suppressed: {names:?}",
+        );
+        assert!(
+            names.contains(&"guava"),
+            "vendored guava must still emit: {names:?}",
+        );
+        assert!(
+            names.contains(&"slf4j-api"),
+            "vendored slf4j-api must still emit: {names:?}",
+        );
+    }
+
+    #[test]
+    fn scan_target_primary_coord_emits_when_artifactid_differs() {
+        // Standalone JAR (not a fat-jar — only ONE embedded
+        // pom.properties), and scan target doesn't match the
+        // primary coord's artifactId. The primary coord must emit
+        // normally. This exercises Fix B's target-name gate in
+        // isolation: without the fat-jar heuristic firing (M3),
+        // suppression only happens when the artifactId matches.
+        let dir = tempfile::tempdir().unwrap();
+        let jar_path = dir.path().join("myapp.jar");
+        write_jar(
+            &jar_path,
+            &[(
+                "META-INF/maven/com.example/myapp/pom.properties",
+                b"groupId=com.example\nartifactId=myapp\nversion=1.0.0\n",
+            )],
+        );
+
+        let empty_claims: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        #[cfg(unix)]
+        let empty_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let (out, _) = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &empty_claims,
+            #[cfg(unix)]
+            &empty_inodes,
+            Some("other-service"),
+        );
+        let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.contains(&"myapp"),
+            "primary coord with non-matching target on standalone JAR must emit: {names:?}",
+        );
+    }
+
+    #[test]
+    fn scan_target_none_leaves_behavior_unchanged() {
+        // scan_target_name=None, non-fat JAR. Primary coord emits
+        // normally — neither heuristic fires.
+        let dir = tempfile::tempdir().unwrap();
+        let jar_path = dir.path().join("myapp.jar");
+        write_jar(
+            &jar_path,
+            &[(
+                "META-INF/maven/com.example/myapp/pom.properties",
+                b"groupId=com.example\nartifactId=myapp\nversion=1.0.0\n",
+            )],
+        );
+
+        let empty_claims: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        #[cfg(unix)]
+        let empty_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let (out, _) = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &empty_claims,
+            #[cfg(unix)]
+            &empty_inodes,
+            None,
+        );
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].name, "myapp");
+    }
+
+    // --- Fat-jar heuristic (M3) -----------------------------------------
+
+    #[test]
+    fn fat_jar_primary_suppressed_without_target_name() {
+        // Fat JAR (≥2 embedded META-INF/maven entries) with
+        // scan_target_name=None — M3's heuristic fires regardless of
+        // target-name match. Primary suppressed; vendored children
+        // still emit. Surfaced scan_target_coord carries the
+        // suppressed identity.
+        let dir = tempfile::tempdir().unwrap();
+        let jar_path = dir.path().join("sbom-fixture.jar");
+        write_jar(
+            &jar_path,
+            &[
+                (
+                    "META-INF/maven/com.example/sbom-fixture/pom.properties",
+                    b"groupId=com.example\nartifactId=sbom-fixture\nversion=1.0.0\n",
+                ),
+                (
+                    "META-INF/maven/com.google.guava/guava/pom.properties",
+                    b"groupId=com.google.guava\nartifactId=guava\nversion=32.1.3-jre\n",
+                ),
+                (
+                    "META-INF/maven/org.slf4j/slf4j-api/pom.properties",
+                    b"groupId=org.slf4j\nartifactId=slf4j-api\nversion=2.0.9\n",
+                ),
+            ],
+        );
+
+        let empty_claims: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        #[cfg(unix)]
+        let empty_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let (out, scan_target) = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &empty_claims,
+            #[cfg(unix)]
+            &empty_inodes,
+            None,
+        );
+        let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            !names.contains(&"sbom-fixture"),
+            "fat-jar primary must be suppressed: {names:?}",
+        );
+        assert!(names.contains(&"guava"));
+        assert!(names.contains(&"slf4j-api"));
+        let coord = scan_target.expect("scan_target_coord must be surfaced");
+        assert_eq!(coord.artifact, "sbom-fixture");
+        assert_eq!(coord.version, "1.0.0");
+    }
+
+    #[test]
+    fn non_fat_jar_primary_still_emits() {
+        // Single-entry JAR (not a fat-jar) with no target-name match.
+        // Neither heuristic fires — primary emits, scan_target_coord
+        // stays None.
+        let dir = tempfile::tempdir().unwrap();
+        let jar_path = dir.path().join("guava-32.1.3-jre.jar");
+        write_jar(
+            &jar_path,
+            &[(
+                "META-INF/maven/com.google.guava/guava/pom.properties",
+                b"groupId=com.google.guava\nartifactId=guava\nversion=32.1.3-jre\n",
+            )],
+        );
+
+        let empty_claims: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        #[cfg(unix)]
+        let empty_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let (out, scan_target) = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &empty_claims,
+            #[cfg(unix)]
+            &empty_inodes,
+            None,
+        );
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].name, "guava");
+        assert!(
+            scan_target.is_none(),
+            "plain-JAR primary must not populate scan_target_coord: {scan_target:?}",
         );
     }
 

@@ -1,7 +1,46 @@
 //! Integration tests for the Maven/Java ecosystem (milestone 003 US3).
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+/// Build a minimal JAR (ZIP archive) with the given entries. Used by
+/// cache-walker and container-layout tests to pair a `.pom` in an
+/// `.m2/repository/` tree with a matching `.jar` — matches real-world
+/// Maven cache layout where POMs and JARs sit side by side. The JAR
+/// walker's artifact-presence gate (M1) requires the JAR to be on
+/// disk before the BFS-resolved transitive coord emits as a
+/// component.
+fn write_jar(path: &Path, entries: &[(&str, Vec<u8>)]) {
+    let file = std::fs::File::create(path).unwrap();
+    let mut zip = zip::ZipWriter::new(file);
+    let opts = zip::write::FileOptions::default()
+        .compression_method(zip::CompressionMethod::Stored);
+    for (name, body) in entries {
+        zip.start_file(*name, opts).unwrap();
+        zip.write_all(body).unwrap();
+    }
+    zip.finish().unwrap();
+}
+
+/// Produce bytes for a `META-INF/maven/<g>/<a>/pom.properties` entry.
+fn pom_properties_bytes(g: &str, a: &str, v: &str) -> Vec<u8> {
+    format!("groupId={g}\nartifactId={a}\nversion={v}\n").into_bytes()
+}
+
+/// Write a minimal JAR alongside a cached `.pom` file in a synthetic
+/// `.m2/repository/` layout. The JAR carries just enough
+/// `META-INF/maven/<g>/<a>/pom.properties` to be walkable by the
+/// Maven JAR reader, so the coord lands in the on-disk JAR index
+/// that M1's gate consults.
+fn write_cached_jar(cache_root: &Path, g: &str, a: &str, v: &str) {
+    let rel = format!("{}/{}/{}", g.replace('.', "/"), a, v);
+    let dir = cache_root.join(&rel);
+    std::fs::create_dir_all(&dir).unwrap();
+    let jar_path = dir.join(format!("{a}-{v}.jar"));
+    let props_path = format!("META-INF/maven/{g}/{a}/pom.properties");
+    write_jar(&jar_path, &[(&props_path, pom_properties_bytes(g, a, v))]);
+}
 
 fn fixture_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -141,8 +180,14 @@ fn scan_maven_pulls_transitive_edges_from_cached_m2_repo() {
     )
     .unwrap();
 
-    // Synthetic ~/.m2 cache inside the rootfs.
-    let cache = dir.path().join("root/.m2/repository/com/example");
+    // Synthetic ~/.m2 cache inside the rootfs. Real Maven caches
+    // store POM + JAR side by side; M1's artifact-presence gate
+    // requires the JAR on disk before a BFS-resolved transitive
+    // coord emits as a component. Each cached POM gets a matching
+    // JAR with an embedded `META-INF/maven/.../pom.properties` so
+    // the JAR walker populates the on-disk coord index.
+    let cache_root = dir.path().join("root/.m2/repository");
+    let cache = cache_root.join("com/example");
     let foo_dir = cache.join("foo/1.0.0");
     let bar_dir = cache.join("bar/2.0.0");
     std::fs::create_dir_all(&foo_dir).unwrap();
@@ -164,6 +209,7 @@ fn scan_maven_pulls_transitive_edges_from_cached_m2_repo() {
 </project>"#,
     )
     .unwrap();
+    write_cached_jar(&cache_root, "com.example", "foo", "1.0.0");
     std::fs::write(
         bar_dir.join("bar-2.0.0.pom"),
         r#"<?xml version="1.0"?>
@@ -181,6 +227,7 @@ fn scan_maven_pulls_transitive_edges_from_cached_m2_repo() {
 </project>"#,
     )
     .unwrap();
+    write_cached_jar(&cache_root, "com.example", "bar", "2.0.0");
 
     let sbom = scan_path(dir.path());
     let deps = sbom["dependencies"]
@@ -305,6 +352,12 @@ fn scan_maven_cached_only_rootfs_emits_all_cached_coords() {
 </project>"#,
     )
     .unwrap();
+    // Pair each cached POM with a matching JAR so M1's artifact-
+    // presence gate permits emission. Pre-M1 this test exercised
+    // POM-only emission; post-M1 the realistic case is POM + JAR.
+    write_cached_jar(&cache, "com.example", "alpha", "1.0.0");
+    write_cached_jar(&cache, "org.sample", "beta", "2.1.5");
+    write_cached_jar(&cache, "io.test", "gamma", "0.9.0");
 
     let sbom = scan_path(dir.path());
     let maven = maven_components(&sbom);
@@ -524,8 +577,14 @@ fn scan_maven_parent_chain_resolves_full_transitive_tree() {
     .unwrap();
 
     // Synthetic ~/.m2 inside the rootfs so discovery finds it under
-    // <rootfs>/root/.m2/repository.
-    let cache = dir.path().join("root/.m2/repository/com/example");
+    // <rootfs>/root/.m2/repository. M1's artifact-presence gate
+    // requires each emitted transitive coord to have a matching
+    // JAR on disk; write dummy JARs for libfoo and libbar.
+    // libfoo-parent is packaging=pom (implicit via
+    // `<dependencyManagement>` only) and legitimately has NO JAR —
+    // it drives resolution but shouldn't emit as a component.
+    let cache_root = dir.path().join("root/.m2/repository");
+    let cache = cache_root.join("com/example");
     let libfoo_dir = cache.join("libfoo/1.0");
     let libfoo_parent_dir = cache.join("libfoo-parent/1.0");
     let libbar_dir = cache.join("libbar/2.0");
@@ -586,6 +645,12 @@ fn scan_maven_parent_chain_resolves_full_transitive_tree() {
 </project>"#,
     )
     .unwrap();
+    // Pair POMs with JARs for M1's on-disk gate. libfoo-parent
+    // intentionally has no JAR (it's a parent POM used for
+    // `<dependencyManagement>` inheritance only) — this exercises
+    // the "parent POM consulted for resolution, not emitted" path.
+    write_cached_jar(&cache_root, "com.example", "libfoo", "1.0");
+    write_cached_jar(&cache_root, "com.example", "libbar", "2.0");
 
     let sbom = scan_path(dir.path());
     let deps = sbom["dependencies"]
