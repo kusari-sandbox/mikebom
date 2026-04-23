@@ -204,6 +204,16 @@ pub struct DbScanResult {
     /// Surfaced into the SBOM's `metadata.properties` so consumers can
     /// detect degraded output without needing the scanner's log stream.
     pub diagnostics: ScanDiagnostics,
+    /// M3 — Maven scan-subject coord identified during the JAR walk,
+    /// either by `target_name` artifactId match or by the fat-jar
+    /// heuristic (≥2 embedded `META-INF/maven/` entries in a
+    /// non-OS-claimed JAR). Populated when mikebom suppresses the
+    /// primary coord from `components[]` because it represents the
+    /// SBOM subject, not a dependency. `None` when no Maven scan
+    /// subject was identified (non-Java target or plain-JAR layout).
+    /// The orchestrator uses this to promote the real Maven PURL
+    /// into `metadata.component` instead of the generic placeholder.
+    pub scan_target_coord: Option<maven::ScanTargetCoord>,
 }
 
 /// Non-fatal scan-time diagnostics accumulated during `read_all`. Drives
@@ -422,7 +432,7 @@ pub fn read_all(
     // Milestone 004 US4: legacy BDB rpmdb reader (stub until T061–T065
     // land). Gated behind --include-legacy-rpmdb; no-op when flag unset.
     out.extend(rpmdb_bdb::read(rootfs, include_legacy_rpmdb));
-    out.extend(maven::read_with_claims(
+    let (maven_entries, scan_target_coord) = maven::read_with_claims(
         rootfs,
         include_dev,
         include_declared_deps,
@@ -430,7 +440,8 @@ pub fn read_all(
         #[cfg(unix)]
         &claimed_inodes,
         scan_target_name,
-    ));
+    );
+    out.extend(maven_entries);
     // Cargo is fail-closed on v1/v2 lockfiles (FR-040), mirroring the
     // npm v1 refusal pattern.
     out.extend(cargo::read(rootfs, include_dev)?);
@@ -442,6 +453,7 @@ pub fn read_all(
         #[cfg(unix)]
         claimed_inodes,
         diagnostics,
+        scan_target_coord,
     })
 }
 

@@ -78,6 +78,7 @@ impl CycloneDxBuilder {
         integrity: &TraceIntegrity,
         target_name: &str,
         complete_ecosystems: &[String],
+        scan_target_coord: Option<&crate::scan_fs::package_db::maven::ScanTargetCoord>,
     ) -> anyhow::Result<serde_json::Value> {
         let serial_number = format!("urn:uuid:{}", Uuid::new_v4());
         let target_version = "0.0.0"; // Derived from build metadata when available
@@ -90,6 +91,7 @@ impl CycloneDxBuilder {
             components,
             &self.os_release_missing_fields,
             integrity,
+            scan_target_coord,
         );
         let cdx_components = self.build_components(components)?;
         let compositions =
@@ -672,7 +674,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&components, &[], &integrity, "myapp", &[])
+            .build(&components, &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         assert_eq!(bom["bomFormat"], "CycloneDX");
@@ -706,7 +708,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&components, &[], &integrity, "myapp", &[])
+            .build(&components, &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let top = bom["components"].as_array().expect("top-level array");
         // 1 top-level component (the fat-jar), 2 nested under it.
@@ -745,7 +747,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&components, &[], &integrity, "myapp", &[])
+            .build(&components, &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let top = bom["components"].as_array().expect("array");
         assert_eq!(top.len(), 1);
@@ -771,7 +773,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&components, &[], &integrity, "myapp", &[])
+            .build(&components, &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let top = bom["components"].as_array().expect("array");
         assert_eq!(top.len(), 2, "both parents at top level");
@@ -802,7 +804,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&components, &[], &integrity, "myapp", &[])
+            .build(&components, &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let cdx_components = bom["components"].as_array().expect("components array");
@@ -837,7 +839,7 @@ mod tests {
 
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let cdx_components = bom["components"].as_array().expect("components array");
@@ -850,7 +852,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[], &[], &integrity, "myapp", &[])
+            .build(&[], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         assert_eq!(bom["metadata"]["component"]["name"], "myapp");
@@ -867,7 +869,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let cdx = bom["components"].as_array().expect("components");
@@ -894,7 +896,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let cdx = bom["components"].as_array().expect("components");
@@ -920,7 +922,7 @@ mod tests {
         component.buildinfo_status = Some("missing".to_string());
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let cdx = bom["components"].as_array().expect("components");
         let props = cdx[0]["properties"].as_array().expect("properties");
@@ -938,7 +940,7 @@ mod tests {
         component.buildinfo_status = Some("unsupported".to_string());
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let cdx = bom["components"].as_array().expect("components");
         let props = cdx[0]["properties"].as_array().expect("properties");
@@ -956,7 +958,7 @@ mod tests {
         // buildinfo_status is None by default on non-Go components.
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let cdx = bom["components"].as_array().expect("components");
         let props = cdx[0].get("properties");
@@ -983,7 +985,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let comp = &bom["components"].as_array().expect("components")[0];
@@ -1018,7 +1020,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let comp = &bom["components"].as_array().expect("components")[0];
@@ -1047,7 +1049,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let comp = &bom["components"].as_array().expect("components")[0];
@@ -1073,7 +1075,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let comp = &bom["components"].as_array().expect("components")[0];
@@ -1099,7 +1101,7 @@ mod tests {
         ];
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let comp = &bom["components"].as_array().expect("components")[0];
         let licenses = comp["licenses"].as_array().unwrap();
@@ -1127,7 +1129,7 @@ mod tests {
         ];
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let comp = &bom["components"].as_array().expect("components")[0];
         let licenses = comp["licenses"].as_array().unwrap();
@@ -1153,7 +1155,7 @@ mod tests {
         ];
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let comp = &bom["components"].as_array().expect("components")[0];
         let licenses = comp["licenses"].as_array().unwrap();
@@ -1181,7 +1183,7 @@ mod tests {
         ];
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let comp = &bom["components"].as_array().expect("components")[0];
         let licenses = comp["licenses"].as_array().unwrap();
@@ -1206,7 +1208,7 @@ mod tests {
         ];
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let comp = &bom["components"].as_array().expect("components")[0];
         let licenses = comp["licenses"].as_array().unwrap();
@@ -1229,7 +1231,7 @@ mod tests {
         ];
         let integrity = clean_integrity();
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
         let comp = &bom["components"].as_array().expect("components")[0];
         let licenses = comp["licenses"].as_array().unwrap();
@@ -1250,7 +1252,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let comp = &bom["components"].as_array().expect("components")[0];
@@ -1275,7 +1277,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let comp = &bom["components"].as_array().expect("components")[0];
@@ -1304,7 +1306,7 @@ mod tests {
         let integrity = clean_integrity();
 
         let bom = builder
-            .build(&[component], &[], &integrity, "myapp", &[])
+            .build(&[component], &[], &integrity, "myapp", &[], None)
             .expect("build bom");
 
         let comp = &bom["components"].as_array().expect("components")[0];

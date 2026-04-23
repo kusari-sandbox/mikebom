@@ -98,11 +98,60 @@ pub fn deduplicate(components: Vec<ResolvedComponent>) -> Vec<ResolvedComponent>
             if best.requirement_range.is_none() {
                 best.requirement_range = other.requirement_range;
             }
-            if best.source_type.is_none() {
-                best.source_type = other.source_type;
+            // Capture `other.source_type` once — it drives both
+            // the "adopt when None" rule and the "is other a
+            // secondary?" check used for tier-promotion below.
+            let other_source_type = other.source_type.clone();
+            let other_is_secondary = is_secondary_source_type(other_source_type.as_deref());
+            // Don't overwrite `best.source_type = None` with a
+            // secondary tag from `other`. A JAR-walker-sourced entry
+            // with `source_type = None` is the authoritative on-disk
+            // identity; the BFS-sourced entry with
+            // `source_type = "transitive"` (or deps.dev's
+            // `"declared-not-cached"`) is a weaker witness. Without
+            // this guard, pass-1 would collapse the two same-coord
+            // entries and the surviving one would carry the weaker
+            // tag, masking the strong source — which breaks pass-2's
+            // ability to identify it as on-disk (M2).
+            if best.source_type.is_none() && !other_is_secondary {
+                best.source_type = other_source_type.clone();
             }
-            if best.sbom_tier.is_none() {
+            // Same rule for sbom_tier: don't overwrite None with
+            // `"source"` when the other side is a secondary. The
+            // JAR walker emits `sbom_tier = None` and gets promoted
+            // to `"deployed"` below when the secondary's evidence
+            // is folded in (M2).
+            if best.sbom_tier.is_none() && !other_is_secondary {
                 best.sbom_tier = other.sbom_tier.clone();
+            }
+            // M2 tier promotion + evidence tagging: when the
+            // collapsing `other` is a secondary (transitive /
+            // declared-not-cached) and `best` carries SHA-256 file
+            // evidence (JAR-walker / dpkg / rpm), promote
+            // `best.sbom_tier` from None to `"deployed"` and tag
+            // the evidence trail with a provenance marker. This
+            // catches the same-parent_purl case where pass-1 is
+            // the only collapse that fires — pass-2 can't run on
+            // entries that pass-1 already merged.
+            if other_is_secondary && has_on_disk_file_evidence(&best) {
+                if matches!(best.sbom_tier.as_deref(), None | Some("analyzed")) {
+                    best.sbom_tier = Some("deployed".to_string());
+                }
+                let marker = match other_source_type.as_deref() {
+                    Some("declared-not-cached") => Some("deps.dev"),
+                    Some("transitive") => Some("maven-cache-bfs"),
+                    _ => None,
+                };
+                if let Some(marker) = marker {
+                    if !best
+                        .evidence
+                        .source_file_paths
+                        .iter()
+                        .any(|p| p == marker)
+                    {
+                        best.evidence.source_file_paths.push(marker.to_string());
+                    }
+                }
             }
             // Go-specific rule (milestone 003 US1 T024): when the same
             // pkg:golang/...@... PURL appears once as `source` (go.sum)
@@ -162,71 +211,137 @@ fn canonical_coord_key(c: &ResolvedComponent) -> (String, String, String, String
     )
 }
 
-/// Fold `declared-not-cached` entries into matching on-disk entries
-/// when the canonical `(ecosystem, group, artifact, version)` coord
-/// is already represented. Merges deps.dev evidence, then removes the
-/// declared entry. Declared entries with no on-disk twin stay in
-/// place so manifest-SBOM users on `--path` scans continue to see
-/// the full declared dependency set.
+/// Return true if this source_type marks a "secondary" emission —
+/// a coord that mikebom knows about by declaration or transitive
+/// resolution but that an authoritative file-walk (JAR walker,
+/// dpkg, rpm, apk, npm node_modules, etc.) may ALSO have found.
+/// Secondary entries are candidates for folding into on-disk
+/// entries with the same `(ecosystem, group, artifact, version)`.
+fn is_secondary_source_type(source_type: Option<&str>) -> bool {
+    matches!(source_type, Some("declared-not-cached") | Some("transitive"))
+}
+
+/// Return true if this component has JAR-walker-style file evidence:
+/// a SHA-256 hash attached (computed by `walk_jar_maven_meta` /
+/// dpkg file-hash walker / rpm header parser). Used to decide
+/// whether a fold-target is authoritative enough to promote a
+/// secondary's `sbom_tier` from `source` to `deployed` on merge.
+fn has_on_disk_file_evidence(component: &ResolvedComponent) -> bool {
+    use mikebom_common::types::hash::HashAlgorithm;
+    component
+        .hashes
+        .iter()
+        .any(|h| matches!(h.algorithm, HashAlgorithm::Sha256))
+}
+
+/// Fold "secondary" entries (deps.dev declared-not-cached or
+/// BFS-resolved transitive) into matching on-disk entries when the
+/// canonical `(ecosystem, group, artifact, version)` coord is
+/// already represented. Merges evidence + depends, promotes sbom-
+/// tier when the on-disk twin carries JAR-walker file evidence,
+/// then removes the secondary entry.
+///
+/// Secondary entries with no on-disk twin stay in place — manifest-
+/// SBOM convention for `--path` scans expects declared/transitive
+/// coords to remain visible when they're the only evidence.
+///
+/// **Shape of the fix (M2):** pass-1 dedup keys on
+/// `(ecosystem, name, version, parent_purl)` so shade-jar siblings
+/// stay distinct. But a top-level JAR-walker emission and a
+/// BFS-sourced transitive for the same coord both have
+/// `parent_purl = None` yet emerge from `read_with_claims` with
+/// different dedup keys (bare PURL vs composite `<purl>#`). Both
+/// entries survive pass-1. This pass-2 catches them by canonical
+/// coord and promotes the JAR-walker entry (better evidence,
+/// `tier = "deployed"`) while preserving the BFS entry's `depends`
+/// graph.
 fn fold_declared_not_cached(components: &mut Vec<ResolvedComponent>) {
-    // Build a canonical-coord index of every non-declared-not-cached
-    // entry. Value: indices into `components` (plural — shade-jar
-    // siblings with different parent_purls legitimately share a key).
+    // Build a canonical-coord index of every "authoritative" entry
+    // (not a secondary source type). Value: indices into
+    // `components` (plural — shade-jar siblings with different
+    // parent_purls legitimately share a key).
     let mut on_disk: HashMap<(String, String, String, String), Vec<usize>> = HashMap::new();
     for (i, c) in components.iter().enumerate() {
-        if c.source_type.as_deref() == Some("declared-not-cached") {
+        if is_secondary_source_type(c.source_type.as_deref()) {
             continue;
         }
         on_disk.entry(canonical_coord_key(c)).or_default().push(i);
     }
 
-    // Iterate declared-not-cached entries in REVERSE so we can
-    // `remove(i)` without shifting indices we haven't visited yet.
-    // Collect the indices first (the components vec borrow has to be
-    // released before we can mutate it).
-    let declared_indices: Vec<usize> = components
+    // Iterate secondary entries in REVERSE so we can `remove(i)`
+    // without shifting indices we haven't visited yet. Collect the
+    // indices first (the components vec borrow has to be released
+    // before we can mutate it).
+    let secondary_indices: Vec<usize> = components
         .iter()
         .enumerate()
-        .filter(|(_, c)| c.source_type.as_deref() == Some("declared-not-cached"))
+        .filter(|(_, c)| is_secondary_source_type(c.source_type.as_deref()))
         .map(|(i, _)| i)
         .collect();
 
-    for &decl_idx in declared_indices.iter().rev() {
-        let key = canonical_coord_key(&components[decl_idx]);
-        let Some(on_disk_indices) = on_disk.get(&key) else {
-            // No on-disk twin. Keep the declared-not-cached entry —
+    for &sec_idx in secondary_indices.iter().rev() {
+        let key = canonical_coord_key(&components[sec_idx]);
+        let Some(on_disk_indices) = on_disk.get(&key).cloned() else {
+            // No on-disk twin. Keep the secondary entry —
             // manifest-SBOM convention. Continue.
             continue;
         };
-        // Clone the declared entry's evidence before we drop it, then
-        // fold into every on-disk match.
-        let decl = components[decl_idx].clone();
-        for &dst_idx in on_disk_indices {
+        // Clone the secondary entry's evidence before we drop it,
+        // then fold into every on-disk match.
+        let sec = components[sec_idx].clone();
+        for dst_idx in on_disk_indices {
             let dst = &mut components[dst_idx];
-            // Mark the evidence trail with deps.dev so downstream
-            // consumers know this on-disk coord is also declared by
-            // the dep graph. Avoids adding `"deps.dev"` twice.
-            let has_deps_dev = dst
+            // Evidence-trail marker: declared-not-cached → "deps.dev",
+            // transitive → "maven-cache-bfs". Avoids adding the same
+            // marker twice.
+            let marker = match sec.source_type.as_deref() {
+                Some("declared-not-cached") => "deps.dev",
+                Some("transitive") => "maven-cache-bfs",
+                _ => continue,
+            };
+            let already_marked = dst
                 .evidence
                 .source_file_paths
                 .iter()
-                .any(|p| p == "deps.dev");
-            if !has_deps_dev {
-                dst.evidence.source_file_paths.push("deps.dev".to_string());
+                .any(|p| p == marker);
+            if !already_marked {
+                dst.evidence.source_file_paths.push(marker.to_string());
             }
             // Merge `source_connection_ids` (union, no duplicates).
-            for conn_id in &decl.evidence.source_connection_ids {
+            for conn_id in &sec.evidence.source_connection_ids {
                 if !dst.evidence.source_connection_ids.contains(conn_id) {
                     dst.evidence.source_connection_ids.push(conn_id.clone());
                 }
             }
             // If the on-disk entry doesn't have a `deps_dev_match` but
-            // the declared one does, carry it forward.
-            if dst.evidence.deps_dev_match.is_none() && decl.evidence.deps_dev_match.is_some() {
-                dst.evidence.deps_dev_match = decl.evidence.deps_dev_match.clone();
+            // the secondary one does, carry it forward.
+            if dst.evidence.deps_dev_match.is_none() && sec.evidence.deps_dev_match.is_some() {
+                dst.evidence.deps_dev_match = sec.evidence.deps_dev_match.clone();
+            }
+            // Note: the dep graph lives in the separate
+            // `Relationship` stream (scan_fs::mod.rs → CDX
+            // `dependencies[]`), not on `ResolvedComponent`. BFS-
+            // sourced edges survive independently of this component
+            // fold — when the BFS-sourced entry's relationships
+            // pointed at it by PURL, those edges stay walkable even
+            // after the entry itself is dropped here (the pipeline
+            // guard rail accepts dangling `to` targets when the
+            // `from` side exists).
+            //
+            // M2: tier promotion. When the on-disk entry carries
+            // file evidence (SHA-256 from JAR walker / dpkg / rpm),
+            // promote the merged tier from `source` (BFS-inferred)
+            // to `deployed` (JAR present on disk). Only applies when
+            // the on-disk entry's existing tier is None or explicitly
+            // `analyzed` — don't downgrade stronger tiers.
+            let existing_tier = dst.sbom_tier.as_deref();
+            if has_on_disk_file_evidence(dst)
+                && matches!(existing_tier, None | Some("analyzed"))
+            {
+                dst.sbom_tier = Some("deployed".to_string());
             }
         }
-        components.remove(decl_idx);
+        components.remove(sec_idx);
     }
 }
 
@@ -683,5 +798,104 @@ mod tests {
         );
         // Pass 1 picks the higher-confidence on-disk entry.
         assert_eq!(deduped[0].sbom_tier.as_deref(), Some("analyzed"));
+    }
+
+    // --- Transitive cross-tier fold (M2) --------------------------------
+
+    fn make_jar_walker_entry(purl_str: &str, sha256_hex: &str) -> ResolvedComponent {
+        use mikebom_common::types::hash::ContentHash;
+        let mut c = make_component(
+            purl_str,
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/app/myjar.jar"],
+        );
+        // Simulate JAR walker output: no source_type (None), no
+        // sbom_tier (None) — the JAR walker emits bare entries that
+        // the merge step is supposed to promote.
+        c.source_type = None;
+        c.sbom_tier = None;
+        c.hashes.push(ContentHash::sha256(sha256_hex).expect("valid hash"));
+        c
+    }
+
+    fn make_transitive_entry(purl_str: &str) -> ResolvedComponent {
+        let mut c = make_component(
+            purl_str,
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/rootfs"],
+        );
+        c.source_type = Some("transitive".to_string());
+        c.sbom_tier = Some("source".to_string());
+        c
+    }
+
+    #[test]
+    fn transitive_folds_into_on_disk_twin_and_promotes_tier() {
+        // JAR walker emits aopalliance@1.0 (no source_type, SHA-256
+        // attached). BFS cache walker ALSO emits aopalliance@1.0
+        // (source_type=transitive). The pass-2 fold must:
+        //   - drop the transitive entry
+        //   - leave one surviving component — the JAR-walker one
+        //   - promote its sbom_tier: None → "deployed"
+        //   - tag its evidence with "maven-cache-bfs"
+        let on_disk = make_jar_walker_entry(
+            "pkg:maven/aopalliance/aopalliance@1.0",
+            "3fb1c873e1b9b056a4dc4c0c198b24c3ffa59243c322bfd971d2d5ef4f463ee1",
+        );
+        let transitive = make_transitive_entry("pkg:maven/aopalliance/aopalliance@1.0");
+
+        let deduped = deduplicate(vec![on_disk, transitive]);
+        assert_eq!(
+            deduped.len(),
+            1,
+            "transitive must fold into on-disk twin: {deduped:?}",
+        );
+        let survivor = &deduped[0];
+        assert_eq!(
+            survivor.sbom_tier.as_deref(),
+            Some("deployed"),
+            "tier must promote to deployed on JAR-evidence merge",
+        );
+        assert!(
+            survivor
+                .evidence
+                .source_file_paths
+                .iter()
+                .any(|p| p == "maven-cache-bfs"),
+            "BFS evidence marker must fold in: {:?}",
+            survivor.evidence.source_file_paths,
+        );
+    }
+
+    #[test]
+    fn transitive_without_on_disk_twin_preserved() {
+        // Pure BFS-sourced transitive with no JAR-walker twin (e.g.,
+        // `--path` manifest scan with cached POMs but no JARs). The
+        // transitive entry must survive (manifest-SBOM convention
+        // parallels the declared-not-cached case).
+        let transitive = make_transitive_entry(
+            "pkg:maven/com.example/purely-bfs@1.0.0",
+        );
+        let unrelated = make_component(
+            "pkg:maven/com.google.guava/guava@32.1.3-jre",
+            ResolutionTechnique::PackageDatabase,
+            0.85,
+            vec![],
+            vec!["/app/guava.jar"],
+        );
+
+        let deduped = deduplicate(vec![transitive, unrelated]);
+        assert_eq!(deduped.len(), 2, "transitive with no twin must survive");
+        let has_transitive = deduped
+            .iter()
+            .any(|c| c.source_type.as_deref() == Some("transitive"));
+        assert!(
+            has_transitive,
+            "transitive without on-disk twin must be preserved: {deduped:?}",
+        );
     }
 }

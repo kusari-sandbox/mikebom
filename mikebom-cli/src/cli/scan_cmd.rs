@@ -197,6 +197,7 @@ pub async fn execute(
         mut relationships,
         complete_ecosystems,
         os_release_missing_fields,
+        scan_target_coord,
     } = scan_fs::scan_path(
         &root_path,
         effective_codename,
@@ -320,6 +321,7 @@ pub async fn execute(
         &integrity,
         &target_name,
         &complete_ecosystems,
+        scan_target_coord.as_ref(),
     )?;
 
     write_cyclonedx_json(&bom, &args.output)?;

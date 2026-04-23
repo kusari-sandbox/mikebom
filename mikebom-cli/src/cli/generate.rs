@@ -142,6 +142,10 @@ pub async fn execute(args: GenerateArgs, offline: bool) -> anyhow::Result<()> {
         // Trace-sourced SBOMs never read installed-package databases; no
         // ecosystem can claim `aggregate: complete` here.
         &[],
+        // Trace-sourced SBOMs don't walk JARs, so no Maven scan-target
+        // coord is available. `metadata.component` stays on the
+        // generic `pkg:generic/<target>@0.0.0` placeholder.
+        None,
     )?;
 
     // Write output

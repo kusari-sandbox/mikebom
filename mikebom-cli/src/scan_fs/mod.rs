@@ -73,6 +73,12 @@ pub struct ScanResult {
     /// SBOM's `metadata.properties` as `mikebom:os-release-missing-fields`
     /// when non-empty. Empty vec means clean scan.
     pub os_release_missing_fields: Vec<String>,
+    /// M3 — Maven scan-subject coord identified during the JAR walk,
+    /// promoted from the `PackageDbEntry` layer to drive CDX
+    /// `metadata.component`. `None` when no Maven fat-jar matched
+    /// the scan-subject heuristic (non-Java target or simple
+    /// standalone JAR layout).
+    pub scan_target_coord: Option<package_db::maven::ScanTargetCoord>,
 }
 
 /// Walk `root`, hash matching artifact files, match each against the path
@@ -173,9 +179,11 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
     // fields). Carried from DbScanResult into the ScanResult so the
     // CycloneDX metadata builder can surface them.
     let mut os_release_missing_fields: Vec<String> = Vec::new();
+    let mut scan_target_coord: Option<package_db::maven::ScanTargetCoord> = None;
     if read_package_db {
         let scan_result = package_db::read_all(root, deb_codename, include_dev, include_legacy_rpmdb, scan_mode, include_declared_deps, scan_target_name)?;
         os_release_missing_fields = scan_result.diagnostics.os_release_missing_fields.clone();
+        scan_target_coord = scan_result.scan_target_coord.clone();
         let mut db_entries = scan_result.entries;
         let claimed_paths = scan_result.claimed_paths;
         #[cfg(unix)]
@@ -471,6 +479,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
         relationships,
         complete_ecosystems,
         os_release_missing_fields,
+        scan_target_coord,
     })
 }
 
