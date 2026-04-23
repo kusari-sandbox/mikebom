@@ -1325,16 +1325,27 @@ fn pom_dep_to_entry(
 /// Per-node property resolution uses the upstream pom's own
 /// `<properties>` + `${project.*}` derived from the current coord —
 /// NOT the scanned root's properties.
-/// `on_disk_jar_coords`: artifact-presence gate (M1). When `Some`, a
-/// BFS cache-hit emission fires only when the coord's
-/// `(group, artifact)` appears in this set — i.e. the JAR walk
-/// found a corresponding JAR in the scanned rootfs. When `None`,
-/// the gate is off (backward-compat for unit tests that exercise
-/// BFS behavior in isolation without a JAR-walk context). POMs
-/// whose coords are in the rootfs `.m2` cache but have no JAR on
-/// disk (parent POMs, BOM aggregators with `<packaging>pom</packaging>`)
-/// still drive BFS traversal for resolution but don't surface as
-/// components.
+/// `on_disk_jar_coords`: artifact-presence gate (M1 + M6
+/// version-aware tightening). When `Some`, a BFS cache-hit emission
+/// fires only when the coord's full
+/// `(group, artifact, version)` tuple appears in this set — i.e.
+/// the JAR walk found a corresponding JAR with that exact version
+/// in the scanned rootfs. When `None`, the gate is off
+/// (backward-compat for unit tests that exercise BFS behavior in
+/// isolation without a JAR-walk context). POMs whose coords are in
+/// the rootfs `.m2` cache but have no JAR on disk (parent POMs,
+/// BOM aggregators with `<packaging>pom</packaging>`) still drive
+/// BFS traversal for resolution but don't surface as components.
+///
+/// **M6 rationale for version-aware key:** the original M1 used a
+/// `(group, artifact)` key in the theory that "the coord family
+/// being present is enough — different versions suggest BFS is
+/// fabricating edges." That was backwards: the coarser key is more
+/// PERMISSIVE (any version of the coord passes). Real-world
+/// failure: `/usr/share/java/maven-artifact-3.9.6.jar` on disk, but
+/// BFS resolves `maven-artifact@3.2.5` through a cached parent POM
+/// — pre-M6, 3.2.5 emitted as a FP. Post-M6 the gate checks for
+/// the exact `3.2.5` and correctly drops.
 fn bfs_transitive_poms(
     cache: &MavenRepoCache,
     store: &PomStore,
@@ -1342,7 +1353,7 @@ fn bfs_transitive_poms(
     include_dev: bool,
     include_declared_deps: bool,
     source_path: &str,
-    on_disk_jar_coords: Option<&HashSet<(String, String)>>,
+    on_disk_jar_coords: Option<&HashSet<(String, String, String)>>,
 ) -> Vec<PackageDbEntry> {
     use std::collections::VecDeque;
 
@@ -1439,11 +1450,16 @@ fn bfs_transitive_poms(
         //   1. `on_disk_jar_coords` — JARs the scanner's
         //      `walk_jar_maven_meta` found outside `.m2/` (e.g.
         //      `/app/*.jar`, `/usr/share/java/*.jar`). Keyed on
-        //      `(group, artifact)`, version-agnostic.
+        //      `(group, artifact, version)` — version-aware as of
+        //      M6 so a disk JAR at `maven-artifact-3.9.6.jar`
+        //      doesn't green-light a BFS-resolved
+        //      `maven-artifact@3.2.5` reference through some
+        //      unrelated parent POM chain.
         //   2. `cache.has_rootfs_jar(g, a, v)` — JARs living INSIDE
         //      `.m2/repository/<path>/<artifact>-<version>.jar`.
         //      The artifact walker skips `.m2/` (hidden dir), so
         //      this filesystem check catches cache-resident JARs.
+        //      Already version-specific.
         //
         // When `on_disk_jar_coords` is `None` (tests that exercise
         // BFS in isolation without a JAR-walk context), gate is
@@ -1451,7 +1467,7 @@ fn bfs_transitive_poms(
         // decides emission.
         let jar_on_disk = match on_disk_jar_coords {
             Some(set) => {
-                set.contains(&(group.clone(), artifact.clone()))
+                set.contains(&(group.clone(), artifact.clone(), version.clone()))
                     || cache.has_rootfs_jar(&group, &artifact, &version)
             }
             None => true,
@@ -1771,15 +1787,29 @@ pub fn read_with_claims(
             on_disk_coords.insert((m.coord.group_id.clone(), m.coord.artifact_id.clone()));
         }
     }
-    // Stricter JAR-only set (M1). Drives the BFS transitive-emission
-    // gate: a coord only emits as `source_type="transitive"` when a
-    // matching JAR was found in the scanned rootfs. POM-only coords
+    // Stricter JAR-only set (M1 + M6 version-aware). Drives the
+    // BFS transitive-emission gate: a coord only emits as
+    // `source_type="transitive"` when a matching JAR was found in
+    // the scanned rootfs AT THE EXACT VERSION. POM-only coords
     // (parent POMs, BOM aggregators with `<packaging>pom</packaging>`)
     // legitimately drive BFS traversal for resolution but aren't
     // distributable artifacts — they shouldn't surface as components.
-    // Built from `jar_meta` alone, before cached_pom_coords pulls in
-    // POM-only entries.
-    let on_disk_jar_coords: HashSet<(String, String)> = on_disk_coords.clone();
+    // Version-aware so a disk JAR at `maven-artifact-3.9.6.jar`
+    // doesn't accidentally green-light BFS emission of
+    // `maven-artifact@3.2.5` (same coord family, wrong version).
+    //
+    // Built from `jar_meta` alone, before cached_pom_coords pulls
+    // in POM-only entries.
+    let mut on_disk_jar_coords: HashSet<(String, String, String)> = HashSet::new();
+    for (_src, meta_list, _co_owned) in &jar_meta {
+        for m in meta_list {
+            on_disk_jar_coords.insert((
+                m.coord.group_id.clone(),
+                m.coord.artifact_id.clone(),
+                m.coord.version.clone(),
+            ));
+        }
+    }
     // Same cap as the unconditional `.m2` walk below; populating the
     // coord set is cheap enough that we don't need a separate budget.
     const MAVEN_CACHE_POM_LIMIT: usize = 10_000;
@@ -2999,7 +3029,7 @@ mod tests {
 
         let cache = MavenRepoCache::for_tests(vec![repo_root]);
         // Empty on_disk_jar_coords → alpha has no JAR on disk.
-        let on_disk: HashSet<(String, String)> = HashSet::new();
+        let on_disk: HashSet<(String, String, String)> = HashSet::new();
         let entries = bfs_transitive_poms(
             &cache,
             &HashMap::new(),
@@ -3030,8 +3060,8 @@ mod tests {
         );
 
         let cache = MavenRepoCache::for_tests(vec![repo_root]);
-        let mut on_disk: HashSet<(String, String)> = HashSet::new();
-        on_disk.insert(("ex.a".into(), "alpha".into()));
+        let mut on_disk: HashSet<(String, String, String)> = HashSet::new();
+        on_disk.insert(("ex.a".into(), "alpha".into(), "1.0".into()));
         let entries = bfs_transitive_poms(
             &cache,
             &HashMap::new(),
@@ -3079,8 +3109,8 @@ mod tests {
 
         let cache = MavenRepoCache::for_tests(vec![repo_root]);
         // Only foo has a JAR; parent does not (it's packaging=pom).
-        let mut on_disk: HashSet<(String, String)> = HashSet::new();
-        on_disk.insert(("ex.child".into(), "foo".into()));
+        let mut on_disk: HashSet<(String, String, String)> = HashSet::new();
+        on_disk.insert(("ex.child".into(), "foo".into(), "1.0".into()));
         let entries = bfs_transitive_poms(
             &cache,
             &HashMap::new(),
@@ -3092,6 +3122,7 @@ mod tests {
         );
         let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"foo"), "foo must emit (has JAR): {names:?}");
+
         assert!(
             !names.contains(&"parent"),
             "parent POM must not emit (no JAR): {names:?}",
@@ -3104,6 +3135,96 @@ mod tests {
             foo.depends.iter().any(|d| d == "ext"),
             "ext edge must resolve via parent POM property: depends = {:?}",
             foo.depends,
+        );
+    }
+
+    // --- M6: version-aware artifact-presence gate ----------------------
+
+    #[test]
+    fn bfs_wrong_version_with_matching_group_artifact_does_not_emit() {
+        // JAR walk finds `maven-artifact-3.9.6.jar` on disk; BFS
+        // cache resolves a parent-POM chain that references
+        // `maven-artifact@3.2.5`. Pre-M6's coarser `(group, artifact)`
+        // key would let 3.2.5 through (the coord family matches).
+        // Post-M6 the gate requires exact version match, so 3.2.5
+        // drops — it has no JAR on disk.
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().join(".m2/repository");
+        // Cached POM for 3.2.5 (the wrong-version BFS target).
+        write_cached_pom(
+            &repo_root,
+            "org.apache.maven",
+            "maven-artifact",
+            "3.2.5",
+            r#"<project><groupId>org.apache.maven</groupId><artifactId>maven-artifact</artifactId><version>3.2.5</version></project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests(vec![repo_root]);
+        // On-disk coord set represents what JAR walker found:
+        // maven-artifact at version 3.9.6 only.
+        let mut on_disk: HashSet<(String, String, String)> = HashSet::new();
+        on_disk.insert((
+            "org.apache.maven".into(),
+            "maven-artifact".into(),
+            "3.9.6".into(),
+        ));
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[(
+                "org.apache.maven".into(),
+                "maven-artifact".into(),
+                "3.2.5".into(),
+            )],
+            false,
+            true,
+            "/p/pom.xml",
+            Some(&on_disk),
+        );
+        assert!(
+            entries.is_empty(),
+            "wrong-version coord must not emit even with matching group/artifact: {entries:?}",
+        );
+    }
+
+    #[test]
+    fn bfs_correct_version_still_emits() {
+        // Regression guard: the on-disk version matches the BFS-
+        // resolved version. Gate passes, entry emits.
+        let dir = tempfile::tempdir().unwrap();
+        let repo_root = dir.path().join(".m2/repository");
+        write_cached_pom(
+            &repo_root,
+            "org.apache.maven",
+            "maven-artifact",
+            "3.9.6",
+            r#"<project><groupId>org.apache.maven</groupId><artifactId>maven-artifact</artifactId><version>3.9.6</version></project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests(vec![repo_root]);
+        let mut on_disk: HashSet<(String, String, String)> = HashSet::new();
+        on_disk.insert((
+            "org.apache.maven".into(),
+            "maven-artifact".into(),
+            "3.9.6".into(),
+        ));
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[(
+                "org.apache.maven".into(),
+                "maven-artifact".into(),
+                "3.9.6".into(),
+            )],
+            false,
+            true,
+            "/p/pom.xml",
+            Some(&on_disk),
+        );
+        let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.contains(&"maven-artifact"),
+            "exact-version match must emit: {names:?}",
         );
     }
 
