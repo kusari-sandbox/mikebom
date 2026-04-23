@@ -575,6 +575,7 @@ fn emit_entries_from_info(
                     raw_version: None,
                     parent_purl: None,
                     npm_role: None,
+                    co_owned_by: None,
                     hashes: Vec::new(),
                     sbom_tier: Some("analyzed".to_string()),
                 });
@@ -608,6 +609,7 @@ fn emit_entries_from_info(
                     raw_version: None,
                     parent_purl: None,
                     npm_role: None,
+                    co_owned_by: None,
                     hashes: Vec::new(),
                     sbom_tier: Some("analyzed".to_string()),
                 });
@@ -658,6 +660,7 @@ fn emit_file_level_diagnostic(
         raw_version: None,
         parent_purl: None,
         npm_role: None,
+        co_owned_by: None,
         hashes: Vec::new(),
         sbom_tier: Some("analyzed".to_string()),
     });

@@ -469,3 +469,97 @@ locations that need to change when this lands:
   `"transitive"`, `"declared-not-cached"` tags carry useful
   provenance; the gate applies uniformly but the property values stay
   distinct.
+
+---
+
+## 2026-04-22 — Dual-identity: JAR-embedded Maven coords in RPM-owned artifacts
+
+A JAR at `/usr/share/java/guava/guava.jar` installed by Fedora's
+`dnf install guava` carries **two valid package identities**:
+
+- `pkg:rpm/rhel/guava@1:32.1.3-3.el9.src` — the distro-specific
+  NEVRA. What `rpm -qa` reports. Tracked against RHEL errata / RHSA
+  channels.
+- `pkg:maven/com.google.guava/guava@32.1.3-jre` — the
+  ecosystem-independent GAV extracted from the JAR's embedded
+  `META-INF/maven/com.google.guava/guava/pom.properties`. Tracked
+  against Maven Central advisories / GHSA entries.
+
+Both describe the same bytes on disk but answer different downstream
+questions. A distro-oriented CVE feed cares about the NEVRA. A
+Maven Central advisory feed keyed on `com.google.guava:guava` cares
+about the GAV. Current SBOM conformance ground-truth treats them as
+two separate components, and users want both.
+
+### Pre-fix behavior
+
+Commit `7688ddb` added `is_path_claimed` in the Maven JAR walker at
+`maven.rs:read_with_claims`. Any JAR whose on-disk path was owned by
+another package-db reader (RPM / dpkg / apk) was skipped wholesale.
+Two stated concerns:
+
+1. **Double-reporting** — avoid emitting `pkg:maven/...` alongside
+   `pkg:rpm/...` for the same file.
+2. **Empty versions** — RPM-packaged JARs often ship
+   `pom.properties` with unresolved `${project.version}`
+   placeholders, producing `pkg:maven/.../guava@` (empty version).
+
+On polyglot-builder-image that skip cost us **53 Maven coords** the
+JAR-walking GT correctly identifies. Trivy makes the same mistake.
+
+### Post-fix behavior
+
+Concern (2) is already handled upstream: `parse_pom_properties` at
+`maven.rs:921-926` returns `None` for `version.is_empty()` or
+`version.contains("${")`. Placeholder-version coords never surface
+as components regardless of claim status — no whole-JAR skip needed.
+
+Concern (1) turned out to be the wrong call. Double-identity is the
+*correct* semantics for bytes that legitimately carry two package
+identities. Instead of hiding the Maven coord, we emit it with a
+provenance tag:
+
+- `PackageDbEntry.co_owned_by = Some("rpm")` when the JAR path is
+  claimed by an OS reader. Derived from an on-disk-path heuristic
+  (`/usr/share/java/`, `/usr/lib/java/`) for now; a future refinement
+  would wire the owner ecosystem through the claim machinery
+  (today's claim set is `HashSet<PathBuf>`; would need
+  `HashMap<PathBuf, String>` surfacing the owning reader).
+- CDX emits this as `mikebom:co-owned-by = rpm` on the component.
+- `archive_sha256` is dropped on co-owned Maven coords — the archive
+  hash naturally belongs to the OS component that "owns" the bytes;
+  the Maven coord's identity is the embedded `pom.properties`, not
+  the archive. Keeps dedup cleaner.
+
+Downstream consumers that prefer a single-identity view can filter
+the property:
+```jq
+.components[] | select((.properties // [])
+  | map(.name) | index("mikebom:co-owned-by") | not)
+```
+
+### Relationship to "artifact vs manifest SBOM"
+
+Orthogonal. Dual-identity is about *how many identities describe
+the same physically-present bytes*. Artifact-vs-manifest is about
+*whether the bytes are physically present at all*. A co-owned Maven
+coord is always artifact-scope (both identities describe on-disk
+bytes). A manifest-scope declared-but-not-cached coord never has an
+RPM counterpart since there are no bytes for RPM to own.
+
+### TODO(owner-id)
+
+The current heuristic tags `/usr/share/java/*.jar` claimed JARs as
+`co_owned_by = "rpm"` and everything else as `"package-db"`. A
+proper fix threads the owning reader's identity through the claim
+set (or exposes a `HashMap<PathBuf, OwnerEcosystem>` alongside the
+existing flat `HashSet`). Touch points when this lands:
+
+- `mikebom-cli/src/scan_fs/package_db/mod.rs:insert_claim_with_canonical`
+  — broaden to accept + record the owner string.
+- Each reader's `collect_claimed_paths` callsite — pass its
+  ecosystem tag.
+- `mikebom-cli/src/scan_fs/binary/mod.rs:is_path_claimed` — add a
+  companion `lookup_claim_owner` returning the stored ecosystem.
+- `mikebom-cli/src/scan_fs/package_db/maven.rs:read_with_claims` —
+  replace the path heuristic with the real owner lookup.

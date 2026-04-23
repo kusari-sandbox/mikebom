@@ -165,6 +165,7 @@ fn package_to_entry(pkg: &CargoPackage, source_path: &str) -> Option<PackageDbEn
         raw_version: None,
         parent_purl: None,
         npm_role: None,
+        co_owned_by: None,
         hashes: Vec::new(),
         sbom_tier: Some("source".to_string()),
     })

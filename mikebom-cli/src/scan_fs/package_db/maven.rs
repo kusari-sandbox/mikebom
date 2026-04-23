@@ -1184,6 +1184,7 @@ fn pom_dep_to_entry(
         raw_version: None,
         parent_purl: None,
         npm_role: None,
+        co_owned_by: None,
         hashes,
         sbom_tier: Some(tier),
     })
@@ -1359,6 +1360,7 @@ fn build_transitive_entry(
         raw_version: None,
         parent_purl: None,
         npm_role: None,
+        co_owned_by: None,
         hashes,
         sbom_tier: Some("source".to_string()),
     })
@@ -1371,11 +1373,21 @@ fn jar_pom_to_entry(
     sidecar_hash: Option<mikebom_common::types::hash::ContentHash>,
     archive_sha256: Option<mikebom_common::types::hash::ContentHash>,
     parent_purl: Option<String>,
+    co_owned_by: Option<String>,
 ) -> Option<PackageDbEntry> {
     let purl = build_maven_purl(&p.group_id, &p.artifact_id, &p.version)?;
     let mut hashes: Vec<mikebom_common::types::hash::ContentHash> = Vec::new();
     hashes.extend(sidecar_hash);
-    hashes.extend(archive_sha256);
+    // `archive_sha256` is the SHA-256 of the JAR file on disk. When
+    // the JAR is co-owned by an OS package-db reader (RPM/deb/apk),
+    // the archive hash is more naturally attached to the OS
+    // component (which "owns" the bytes); the Maven coord's identity
+    // is the embedded pom.properties, not the archive. Dropping the
+    // hash here keeps dedup cleaner — the OS reader's file-occurrence
+    // hash remains authoritative.
+    if co_owned_by.is_none() {
+        hashes.extend(archive_sha256);
+    }
     Some(PackageDbEntry {
         purl,
         name: p.artifact_id.clone(),
@@ -1399,6 +1411,7 @@ fn jar_pom_to_entry(
         raw_version: None,
         parent_purl,
         npm_role: None,
+        co_owned_by,
         hashes,
         sbom_tier: Some("analyzed".to_string()),
     })
@@ -1481,28 +1494,59 @@ pub fn read_with_claims(
     // find parents shipped in-JAR (e.g. uber-JARs that vendor their
     // full parent hierarchy).
     //
-    // v6 fix (conformance bug 2b): skip JARs whose on-disk path is
-    // claimed by a package-db reader (dpkg / apk / rpm). Fedora's
-    // `dnf install maven` drops JARs at `/usr/share/java/*.jar` which
-    // are owned by RPM packages; walking them as Maven artefacts
-    // double-reports them as `pkg:maven/...` alongside `pkg:rpm/...`
-    // AND frequently emits empty versions because the RPM-packaged
-    // JARs ship `pom.properties` with unresolved `${project.version}`
-    // placeholders.
-    let mut jar_meta: Vec<(String, Vec<EmbeddedMavenMeta>)> = Vec::new();
+    // v7 (dual-identity): walk every JAR for embedded Maven meta,
+    // including those whose on-disk path is already claimed by a
+    // package-db reader (dpkg / apk / rpm). Fedora's `dnf install
+    // maven` drops JARs at `/usr/share/java/*.jar` — the RPM owns
+    // the bytes, but the JAR's `META-INF/maven/.../pom.properties`
+    // carries a semantically distinct Maven identity
+    // (ecosystem-independent GAV vs. distro-specific NEVRA) that
+    // downstream tools legitimately need.
+    //
+    // Claimed JARs get a third field in `jar_meta`: the ecosystem
+    // ("rpm" / "deb" / "apk") that co-owns the bytes. This
+    // eventually flows into `PackageDbEntry.co_owned_by` so the CDX
+    // emitter can tag the component with `mikebom:co-owned-by` for
+    // provenance.
+    //
+    // The original conformance-bug-2b concern about empty versions
+    // from unresolved `${project.version}` placeholders is already
+    // handled upstream in `parse_pom_properties` — placeholder
+    // versions return `None` and never surface as components.
+    let mut jar_meta: Vec<(String, Vec<EmbeddedMavenMeta>, Option<String>)> = Vec::new();
     for jar_path in &jar_files {
-        if crate::scan_fs::binary::is_path_claimed(
+        let co_owned_by = if crate::scan_fs::binary::is_path_claimed(
             jar_path,
             claimed,
             #[cfg(unix)]
             claimed_inodes,
         ) {
+            // Which ecosystem claimed it? We don't currently surface
+            // the owner identity from the claim set (it's a flat
+            // `HashSet<PathBuf>`), so we pick a heuristic from the
+            // on-disk path: paths under `/usr/share/java/` are
+            // almost always RPM-owned on Fedora-family images;
+            // anything else we tag generically. A future refinement
+            // would wire owner identity through the claim machinery
+            // (would need `HashMap<PathBuf, String>` from each
+            // package-db reader).
+            let path_str = jar_path.to_string_lossy();
+            let ecosystem = if path_str.contains("/usr/share/java/")
+                || path_str.contains("/usr/lib/java/")
+            {
+                "rpm"
+            } else {
+                "package-db"
+            };
             tracing::debug!(
                 path = %jar_path.display(),
-                "skipping claimed JAR (already owned by a package-db reader)"
+                co_owned_by = ecosystem,
+                "walking claimed JAR for embedded Maven meta (dual-identity)"
             );
-            continue;
-        }
+            Some(ecosystem.to_string())
+        } else {
+            None
+        };
         let meta = walk_jar_maven_meta(jar_path);
         if meta.is_empty() {
             continue;
@@ -1513,7 +1557,7 @@ pub fn read_with_claims(
                 pom_store.entry(key).or_insert_with(|| bytes.clone());
             }
         }
-        jar_meta.push((jar_path.to_string_lossy().into_owned(), meta));
+        jar_meta.push((jar_path.to_string_lossy().into_owned(), meta, co_owned_by));
     }
 
     // On-disk coord index: `(group, artifact)` is "on disk" when either a
@@ -1529,7 +1573,7 @@ pub fn read_with_claims(
     // See docs/design-notes.md, "Scope: artifact vs manifest SBOM" for
     // the principle; this is the enforcement point for Maven.
     let mut on_disk_coords: HashSet<(String, String)> = HashSet::new();
-    for (_src, meta_list) in &jar_meta {
+    for (_src, meta_list, _co_owned) in &jar_meta {
         for m in meta_list {
             on_disk_coords.insert((m.coord.group_id.clone(), m.coord.artifact_id.clone()));
         }
@@ -1718,14 +1762,14 @@ pub fn read_with_claims(
     // `jar_meta` was populated earlier (before the project pom loop)
     // so its embedded pom.xml bytes already feed `pom_store`.
     let mut coord_index: HashMap<(String, String), String> = HashMap::new();
-    for (_src, meta_list) in &jar_meta {
+    for (_src, meta_list, _co_owned) in &jar_meta {
         for m in meta_list {
             coord_index
                 .entry((m.coord.group_id.clone(), m.coord.artifact_id.clone()))
                 .or_insert_with(|| m.coord.version.clone());
         }
     }
-    for (source_path, meta_list) in jar_meta {
+    for (source_path, meta_list, co_owned_by) in jar_meta {
         // First, find the primary coord's PURL (if any) so vendored
         // children in the same JAR can point their `parent_purl` at it.
         // A shade-plugin fat-jar has exactly one primary (is_primary ==
@@ -1776,6 +1820,7 @@ pub fn read_with_claims(
                 meta.sidecar_hash.clone(),
                 meta.archive_sha256.clone(),
                 parent_purl,
+                co_owned_by.clone(),
             ) else {
                 continue;
             };
@@ -3083,10 +3128,13 @@ mod tests {
     }
 
     #[test]
-    fn read_with_claims_skips_jars_in_claim_set() {
+    fn read_with_claims_emits_claimed_jars_with_co_ownership_tag() {
         // Simulate Fedora's `dnf install maven` layout: a JAR in
-        // /usr/share/java is already emitted by the rpm reader, so its
-        // path is in the claim set. The Maven JAR walker must skip it.
+        // /usr/share/java is owned by an RPM package, so its path is
+        // in the claim set. The Maven JAR walker still extracts its
+        // embedded pom.properties (dual-identity: the same bytes are
+        // both `pkg:rpm/...` and `pkg:maven/...`), tagging the
+        // emitted entry with `co_owned_by = Some("rpm")`.
         let dir = tempfile::tempdir().unwrap();
         let share_java = dir.path().join("usr/share/java");
         std::fs::create_dir_all(&share_java).unwrap();
@@ -3099,7 +3147,8 @@ mod tests {
             )],
         );
 
-        // Without the claim, the walker emits the JAR.
+        // Without the claim, the walker emits the JAR with no
+        // co-ownership tag (standalone Maven artifact).
         let empty_claims: std::collections::HashSet<std::path::PathBuf> =
             std::collections::HashSet::new();
         #[cfg(unix)]
@@ -3115,8 +3164,14 @@ mod tests {
         );
         assert_eq!(no_claim.len(), 1, "baseline: expected 1 Maven entry");
         assert_eq!(no_claim[0].name, "commons-io");
+        assert_eq!(
+            no_claim[0].co_owned_by, None,
+            "standalone JAR must not carry co-ownership tag",
+        );
 
-        // With the JAR path claimed, the walker skips it.
+        // With the JAR path claimed, the walker still emits but tags
+        // `co_owned_by = Some("rpm")` (derived from /usr/share/java/
+        // path heuristic).
         let mut claimed: std::collections::HashSet<std::path::PathBuf> =
             std::collections::HashSet::new();
         claimed.insert(jar_path.clone());
@@ -3133,9 +3188,82 @@ mod tests {
         );
         assert_eq!(
             with_claim.len(),
-            0,
-            "claimed JAR must be skipped; got {with_claim:?}"
+            1,
+            "claimed JAR must still emit (dual-identity); got {with_claim:?}",
         );
+        assert_eq!(with_claim[0].name, "commons-io");
+        assert_eq!(
+            with_claim[0].co_owned_by.as_deref(),
+            Some("rpm"),
+            "claimed JAR under /usr/share/java must carry co_owned_by=rpm",
+        );
+        // archive_sha256 must be dropped on co-owned coords (the
+        // RPM component owns the archive identity).
+        let has_sha256 = with_claim[0].hashes.iter().any(|h| {
+            matches!(
+                h.algorithm,
+                mikebom_common::types::hash::HashAlgorithm::Sha256
+            )
+        });
+        assert!(
+            !has_sha256,
+            "co-owned coord must not carry archive_sha256; hashes = {:?}",
+            with_claim[0].hashes,
+        );
+    }
+
+    #[test]
+    fn read_with_claims_placeholder_version_filtered_even_when_claimed() {
+        // A JAR with two embedded pom.properties: one with a concrete
+        // version (emits) and one with `${project.version}` (must be
+        // filtered upstream in parse_pom_properties, regardless of
+        // claim status). Even when the JAR path is claimed — i.e.
+        // when the pre-fix claim-skip would have hidden everything —
+        // placeholder entries stay hidden via the parse-level filter.
+        let dir = tempfile::tempdir().unwrap();
+        let share_java = dir.path().join("usr/share/java");
+        std::fs::create_dir_all(&share_java).unwrap();
+        let jar_path = share_java.join("multi.jar");
+        write_jar(
+            &jar_path,
+            &[
+                (
+                    "META-INF/maven/com.google.guava/guava/pom.properties",
+                    b"groupId=com.google.guava\nartifactId=guava\nversion=32.1.3-jre\n",
+                ),
+                (
+                    "META-INF/maven/ex.placeholder/broken/pom.properties",
+                    b"groupId=ex.placeholder\nartifactId=broken\nversion=${project.version}\n",
+                ),
+            ],
+        );
+
+        let mut claimed: std::collections::HashSet<std::path::PathBuf> =
+            std::collections::HashSet::new();
+        claimed.insert(jar_path.clone());
+        #[cfg(unix)]
+        let claimed_inodes: std::collections::HashSet<(u64, u64)> =
+            std::collections::HashSet::new();
+        let out = read_with_claims(
+            dir.path(),
+            false,
+            true,
+            &claimed,
+            #[cfg(unix)]
+            &claimed_inodes,
+        );
+        let names: Vec<&str> = out.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.contains(&"guava"),
+            "concrete-version coord must emit: {names:?}",
+        );
+        assert!(
+            !names.contains(&"broken"),
+            "placeholder-version coord must be filtered: {names:?}",
+        );
+        // The emitted guava carries the co-ownership tag.
+        let guava = out.iter().find(|e| e.name == "guava").unwrap();
+        assert_eq!(guava.co_owned_by.as_deref(), Some("rpm"));
     }
 
     // --- Dual-SBOM gate (artifact vs manifest scope) --------------------

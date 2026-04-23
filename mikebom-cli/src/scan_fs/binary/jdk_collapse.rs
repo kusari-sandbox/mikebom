@@ -111,6 +111,7 @@ impl JdkCollapser {
                     raw_version: None,
                     parent_purl: None,
                     npm_role: None,
+                    co_owned_by: None,
                     hashes: Vec::new(),
                 })
             })

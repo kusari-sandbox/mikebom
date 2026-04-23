@@ -328,6 +328,21 @@ impl CycloneDxBuilder {
                     "value": src_type
                 }));
             }
+            // `mikebom:co-owned-by` — set by the Maven JAR walker on
+            // coords extracted from JARs whose bytes are ALSO claimed
+            // by an OS package-db reader (RPM/deb/apk). Value is the
+            // owner ecosystem. Downstream consumers can filter on this
+            // property to collapse dual-identity components to a
+            // single view (e.g. drop the Maven coord when they only
+            // want distro-level CVE tracking via the RPM component).
+            // See docs/design-notes.md "Dual-identity: JAR-embedded
+            // Maven coords in RPM-owned artifacts" for rationale.
+            if let Some(ref owner) = component.co_owned_by {
+                properties.push(json!({
+                    "name": "mikebom:co-owned-by",
+                    "value": owner
+                }));
+            }
             // Evidence-derived provenance properties. Replaces the
             // former `evidence.identity[].tools` entries — those fail
             // CDX 1.6 schema because `tools[]` must be bom-refs to
@@ -661,6 +676,7 @@ mod tests {
             npm_role: None,
             raw_version: None,
             parent_purl: None,
+            co_owned_by: None,
             external_references: Vec::new(),
         }
     }

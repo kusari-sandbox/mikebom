@@ -161,6 +161,18 @@ pub struct ResolvedComponent {
     /// collapsing to one. `None` on top-level components.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_purl: Option<String>,
+    /// Ecosystem (other than this component's own) that owns the
+    /// bytes from which this component's identity was extracted. Set
+    /// when the same on-disk artifact carries two valid package
+    /// identities — e.g. a JAR at `/usr/share/java/guava/guava.jar`
+    /// owned by a Fedora RPM AND carrying a Maven coord in its
+    /// embedded `META-INF/maven/.../pom.properties`. The Maven coord
+    /// emits with `co_owned_by = Some("rpm")`; the RPM coord emits
+    /// independently. Drives the CDX property `mikebom:co-owned-by`
+    /// so downstream consumers can filter to a single-identity view.
+    /// `None` on standalone artifacts (no cross-ecosystem overlap).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub co_owned_by: Option<String>,
     /// External references for this component — repository URLs,
     /// homepages, issue trackers. Maps to CycloneDX
     /// `components[].externalReferences[]`. Populated from PURL
@@ -343,6 +355,7 @@ mod tests {
             npm_role: None,
             raw_version: None,
             parent_purl: None,
+            co_owned_by: None,
             external_references: Vec::new(),
         };
 
@@ -395,6 +408,7 @@ mod tests {
             npm_role: None,
             raw_version: None,
             parent_purl: None,
+            co_owned_by: None,
             external_references: Vec::new(),
         };
 
