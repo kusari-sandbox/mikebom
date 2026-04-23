@@ -19,6 +19,7 @@ pub mod gem;
 pub mod go_binary;
 pub mod golang;
 pub mod maven;
+pub mod maven_sidecar;
 pub mod npm;
 pub mod pip;
 pub mod rpm;
