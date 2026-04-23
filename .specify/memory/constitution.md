@@ -2,22 +2,26 @@
   ============================================================
   SYNC IMPACT REPORT
   ============================================================
-  Version change: 1.1.0 → 1.2.0
-  Bump rationale: MINOR — new principle XII added, principle II
-  and strict boundary #1 amended to distinguish dependency
-  discovery (eBPF-only) from enrichment (external sources OK).
+  Version change: 1.2.0 → 1.2.1
+  Bump rationale: PATCH — codified the pre-PR verification
+  workflow that CI already enforces. No principle changes,
+  no new principles. Prompted by a PR that passed
+  `cargo test -p mikebom` locally but failed CI with 14
+  `clippy::unwrap_used` errors in test code.
 
-  Modified principles:
-    - II: eBPF-Only Observation → clarified that external data
-      sources MAY enrich traced deps but MUST NOT discover them
-    - Strict Boundary #1 → renamed from "No static lockfile
-      parsing" to "No lockfile-based dependency discovery";
-      allows lockfile reading for enrichment per XII
+  Modified sections:
+    - Development Workflow → new subsection "Pre-PR
+      Verification (MANDATORY)" naming the two exact commands
+      CI runs and the `#[cfg_attr(test, allow(clippy::unwrap_used))]`
+      guard required on test modules that use `.unwrap()`.
 
-  Added sections:
-    - Principle XII: External Data Source Enrichment
-
+  Added sections: none (new subsection under existing section)
   Removed sections: none
+
+  Previous SYNC IMPACT history:
+    - 1.1.0 → 1.2.0: MINOR — new principle XII (External Data
+      Source Enrichment); principle II + strict boundary #1
+      amended to distinguish discovery from enrichment.
 
   Templates requiring updates:
     - .specify/templates/plan-template.md        ✅ no update needed
@@ -324,6 +328,30 @@ optional modes:
 | Format check | `cargo fmt -- --check` |
 | Unit tests | `cargo test --workspace` |
 | Run (requires root) | `sudo RUST_LOG=info target/release/mikebom scan --target-pid <PID>` |
+
+### Pre-PR Verification (MANDATORY)
+
+Before opening or updating ANY pull request, the author MUST run both
+of the following commands locally and confirm each passes clean — not
+one, not a subset, BOTH:
+
+| Step | Command | Passing condition |
+|------|---------|-------------------|
+| 1 | `cargo +stable clippy --workspace --all-targets` | Zero errors |
+| 2 | `cargo +stable test --workspace` | Every suite reports `ok. N passed; 0 failed` |
+
+These are the exact commands CI executes (`.github/workflows/ci.yml`).
+`cargo test -p <crate>` alone is INSUFFICIENT because it skips clippy
+and skips cross-crate targets. Specifically, the `clippy::unwrap_used`
+deny at the `mikebom-cli` crate root (Principle IV) is enforced by
+clippy's `--all-targets` inside `#[cfg(test)]` modules too; any test
+module using `.unwrap()` MUST be guarded with
+`#[cfg_attr(test, allow(clippy::unwrap_used))]` on the `mod tests`
+item, matching the convention used throughout `mikebom-cli/src/trace/`.
+
+A PR that has not passed both commands locally MUST NOT be opened or
+pushed for review. A passing per-crate `cargo test` is not evidence of
+CI-readiness and MUST NOT be cited as such in the PR description.
 
 ### Async Runtime
 
