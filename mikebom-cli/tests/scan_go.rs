@@ -490,3 +490,179 @@ fn scan_go_source_only_preserves_full_go_sum() {
         "also-never-linked/other must survive in source-only scan: {golang:?}",
     );
 }
+
+// --- 007 US2: Go test-scope intersection filter (G4) ------------------
+
+#[test]
+fn scan_go_source_test_only_import_is_dropped() {
+    // FR-006 / FR-007a: when a module is imported only from a
+    // `_test.go` file, the G4 filter drops its source-tier emission.
+    // Modules imported from production `.go` files are retained.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = dir.path().join("app");
+    std::fs::create_dir_all(&app).unwrap();
+    std::fs::write(
+        app.join("go.mod"),
+        "module example.com/us2\n\
+         go 1.22\n\
+         require github.com/sirupsen/logrus v1.9.4\n\
+         require github.com/stretchr/testify v1.11.1\n",
+    )
+    .unwrap();
+    std::fs::write(
+        app.join("go.sum"),
+        concat!(
+            "github.com/sirupsen/logrus v1.9.4 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+            "github.com/stretchr/testify v1.11.1 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+        ),
+    )
+    .unwrap();
+    // main.go imports logrus from production code.
+    std::fs::write(
+        app.join("main.go"),
+        "package main\n\
+         import \"github.com/sirupsen/logrus\"\n\
+         func main() { logrus.Info(\"hi\") }\n",
+    )
+    .unwrap();
+    // main_test.go imports testify — test-scope only.
+    std::fs::write(
+        app.join("main_test.go"),
+        "package main\n\
+         import (\n\
+             \"testing\"\n\
+             \"github.com/stretchr/testify/assert\"\n\
+         )\n\
+         func TestMain(t *testing.T) { assert.Equal(t, 1, 1) }\n",
+    )
+    .unwrap();
+
+    let sbom = scan_path(dir.path());
+    let golang = golang_purls(&sbom);
+    assert!(
+        golang.iter().any(|p| p.contains("sirupsen/logrus")),
+        "logrus (production import) must be retained: {golang:?}",
+    );
+    assert!(
+        !golang.iter().any(|p| p.contains("stretchr/testify")),
+        "testify (test-only import) must be dropped: {golang:?}",
+    );
+}
+
+#[test]
+fn scan_go_source_production_and_test_import_dominates() {
+    // FR-008: when a module is imported from BOTH production and
+    // test files, production wins and the module is retained.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = dir.path().join("app");
+    std::fs::create_dir_all(&app).unwrap();
+    std::fs::write(
+        app.join("go.mod"),
+        "module example.com/us2b\n\
+         go 1.22\n\
+         require github.com/sirupsen/logrus v1.9.4\n",
+    )
+    .unwrap();
+    std::fs::write(
+        app.join("go.sum"),
+        "github.com/sirupsen/logrus v1.9.4 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+    )
+    .unwrap();
+    std::fs::write(
+        app.join("main.go"),
+        "package main\n\
+         import \"github.com/sirupsen/logrus\"\n\
+         func main() { logrus.Info(\"hi\") }\n",
+    )
+    .unwrap();
+    std::fs::write(
+        app.join("main_test.go"),
+        "package main\n\
+         import (\n\
+             \"testing\"\n\
+             \"github.com/sirupsen/logrus\"\n\
+         )\n\
+         func TestMain(t *testing.T) { logrus.Info(\"test\") }\n",
+    )
+    .unwrap();
+
+    let sbom = scan_path(dir.path());
+    let golang = golang_purls(&sbom);
+    assert!(
+        golang.iter().any(|p| p.contains("sirupsen/logrus")),
+        "logrus imported from both main.go and main_test.go must be retained: {golang:?}",
+    );
+}
+
+// --- 007 US3: Go main-module exclusion (G5) ---------------------------
+
+#[test]
+fn scan_go_main_module_from_gomod_is_suppressed() {
+    // FR-010 / FR-012: go.mod's `module` directive names the project
+    // itself. Even when go.sum somehow lists it, mikebom must drop
+    // the self-reference.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = dir.path().join("app");
+    std::fs::create_dir_all(&app).unwrap();
+    std::fs::write(
+        app.join("go.mod"),
+        "module example.com/polyglot-fixture\n\
+         go 1.22\n\
+         require github.com/sirupsen/logrus v1.9.4\n",
+    )
+    .unwrap();
+    std::fs::write(
+        app.join("go.sum"),
+        concat!(
+            "github.com/sirupsen/logrus v1.9.4 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+            // Simulated self-reference in go.sum — unusual but has
+            // happened in the wild (and it's the polyglot case):
+            "example.com/polyglot-fixture v0.0.0-000 h1:fakeSHA/k1PS7AGV8HAP9mRGQ==\n",
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        app.join("main.go"),
+        "package main\n\
+         import \"github.com/sirupsen/logrus\"\n\
+         func main() { logrus.Info(\"hi\") }\n",
+    )
+    .unwrap();
+
+    let sbom = scan_path(dir.path());
+    let golang = golang_purls(&sbom);
+    assert!(
+        !golang
+            .iter()
+            .any(|p| p.contains("example.com/polyglot-fixture")),
+        "main module self-reference must be dropped: {golang:?}",
+    );
+    // Real dep still there.
+    assert!(
+        golang.iter().any(|p| p.contains("sirupsen/logrus")),
+        "real dep must not be affected by main-module filter: {golang:?}",
+    );
+}
+
+#[test]
+fn scan_go_main_module_from_binary_buildinfo_is_suppressed() {
+    // FR-010 via BuildInfo: the hello-linux-amd64 fixture's BuildInfo
+    // declares `mod example.com/simple (devel)`. That should be
+    // dropped as a main-module self-reference.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let src = fixture("binaries").join("hello-linux-amd64");
+    let dst = dir.path().join("app");
+    std::fs::copy(&src, &dst).expect("copy binary");
+
+    let sbom = scan_path(dir.path());
+    let golang = golang_purls(&sbom);
+    assert!(
+        !golang.iter().any(|p| p.contains("example.com/simple")),
+        "binary's main module (example.com/simple) must be dropped: {golang:?}",
+    );
+    // Dependencies from BuildInfo must still be present.
+    assert!(
+        golang.iter().any(|p| p.contains("sirupsen/logrus")),
+        "BuildInfo dep logrus must be retained: {golang:?}",
+    );
+}

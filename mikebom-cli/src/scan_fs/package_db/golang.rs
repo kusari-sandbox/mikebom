@@ -586,9 +586,27 @@ fn cache_lookup_depends(cache: &GoModCache, module: &str, version: &str) -> Vec<
 /// walk is bounded by [`MAX_PROJECT_ROOT_DEPTH`] and skips descents into
 /// `vendor/`, `.git/`, `node_modules/`, `target/`, `dist/`, and
 /// `__pycache__/` — the same shape the npm + pip readers use.
-pub fn read(rootfs: &Path, _include_dev: bool) -> Vec<PackageDbEntry> {
+/// Cross-reader signals collected during Go source-tree scanning.
+/// Consumed by the aggregation filters in `package_db::read_all`:
+///
+/// * `main_modules` — Go module paths declared as the project's own
+///   `module` directive in any scanned go.mod. Feeds the G5 filter
+///   (feature 007 US3): a project is never its own dependency.
+/// * `production_imports` — Go module paths that are reachable from
+///   at least one non-`_test.go` import anywhere in the scanned
+///   source tree. Feeds the G4 filter (feature 007 US2): modules
+///   only imported from `_test.go` files are test-scope transitives
+///   and shouldn't surface as runtime dependencies.
+#[derive(Debug, Default)]
+pub struct GoScanSignals {
+    pub main_modules: HashSet<String>,
+    pub production_imports: HashSet<String>,
+}
+
+pub fn read(rootfs: &Path, _include_dev: bool) -> (Vec<PackageDbEntry>, GoScanSignals) {
     let mut out: Vec<PackageDbEntry> = Vec::new();
     let mut seen_purls: HashSet<String> = HashSet::new();
+    let mut signals = GoScanSignals::default();
     // Discover module cache roots once per scan — N module lookups
     // would otherwise stat the same non-existent paths repeatedly.
     let cache = GoModCache::discover(rootfs);
@@ -600,7 +618,14 @@ pub fn read(rootfs: &Path, _include_dev: bool) -> Vec<PackageDbEntry> {
         );
     }
 
-    for project_root in candidate_project_roots(rootfs) {
+    // First pass: collect every project root's (doc, sums) so we can
+    // build the union of known module paths BEFORE the import-scan
+    // pass. The production-import filter (G4) needs to longest-
+    // prefix-match import strings against this union.
+    let project_roots = candidate_project_roots(rootfs);
+    let mut parsed_roots: Vec<(PathBuf, GoModDocument, Vec<GoSumEntry>)> = Vec::new();
+    let mut known_modules: Vec<String> = Vec::new();
+    for project_root in &project_roots {
         let go_mod_path = project_root.join("go.mod");
         let go_sum_path = project_root.join("go.sum");
         if !go_mod_path.is_file() {
@@ -617,27 +642,197 @@ pub fn read(rootfs: &Path, _include_dev: bool) -> Vec<PackageDbEntry> {
         } else {
             Vec::new()
         };
+        if let Some(ref main_path) = doc.module_path {
+            signals.main_modules.insert(main_path.clone());
+        }
+        for req in &doc.requires {
+            known_modules.push(req.path.clone());
+        }
+        for sum in &sums {
+            if sum.kind == GoSumKind::Module {
+                known_modules.push(sum.module.clone());
+            }
+        }
+        parsed_roots.push((project_root.clone(), doc, sums));
+    }
+    // Longest-prefix match requires the longest path to be tried first.
+    known_modules.sort_by_key(|m| std::cmp::Reverse(m.len()));
+    known_modules.dedup();
 
-        let source_path = go_sum_path
-            .to_string_lossy()
-            .into_owned();
-        let entries = build_entries_from_go_module(&doc, &sums, &source_path, &cache);
+    // Second pass: emit entries AND walk .go files for production
+    // imports.
+    for (project_root, doc, sums) in &parsed_roots {
+        let go_sum_path = project_root.join("go.sum");
+        let source_path = go_sum_path.to_string_lossy().into_owned();
+        let entries = build_entries_from_go_module(doc, sums, &source_path, &cache);
         for entry in entries {
             let purl_key = entry.purl.as_str().to_string();
             if seen_purls.insert(purl_key) {
                 out.push(entry);
             }
         }
+        // Feature 007 US2: walk .go source files under this project
+        // root (excluding `_test.go` files and test-adjacent subtrees)
+        // and record every imported module path that matches a known
+        // module in `known_modules`. Imports of stdlib or unknown
+        // paths are silently ignored.
+        collect_production_imports(
+            project_root,
+            0,
+            &known_modules,
+            &mut signals.production_imports,
+        );
     }
 
     if !out.is_empty() {
         tracing::info!(
             rootfs = %rootfs.display(),
             modules = out.len(),
+            production_imports = signals.production_imports.len(),
+            main_modules = signals.main_modules.len(),
             "parsed Go source tree",
         );
     }
+    (out, signals)
+}
+
+/// Walk a Go project root collecting production-scope imports. Skips
+/// `_test.go` files (test-scope) and any directory `should_skip_descent`
+/// says to skip. For each remaining `.go` file, extracts import paths
+/// via [`extract_go_imports`] and longest-prefix-matches each one
+/// against `known_modules`. Matches are inserted into `out`.
+///
+/// The `known_modules` slice MUST be sorted by length descending so
+/// the first prefix match is the longest (e.g., import
+/// `github.com/foo/bar/baz` correctly attributes to module
+/// `github.com/foo/bar` when both `github.com/foo` and
+/// `github.com/foo/bar` are known modules).
+fn collect_production_imports(
+    dir: &Path,
+    depth: usize,
+    known_modules: &[String],
+    out: &mut HashSet<String>,
+) {
+    if depth >= MAX_PROJECT_ROOT_DEPTH {
+        return;
+    }
+    let Ok(read_dir) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in read_dir.flatten() {
+        let path = entry.path();
+        let Ok(meta) = entry.metadata() else {
+            continue;
+        };
+        if meta.is_dir() {
+            if should_skip_descent(&path) {
+                continue;
+            }
+            collect_production_imports(&path, depth + 1, known_modules, out);
+            continue;
+        }
+        if !meta.is_file() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if !name.ends_with(".go") {
+            continue;
+        }
+        if name.ends_with("_test.go") {
+            continue;
+        }
+        let Ok(bytes) = std::fs::read(&path) else {
+            continue;
+        };
+        for import_path in extract_go_imports(&bytes) {
+            for module in known_modules {
+                if import_path == *module
+                    || import_path.starts_with(&format!("{}/", module))
+                {
+                    out.insert(module.clone());
+                    break;
+                }
+            }
+        }
+    }
+}
+
+/// Extract every `import "…"` or grouped `import ( … )` path from a Go
+/// source file. Returns the raw import path strings (e.g.,
+/// `"github.com/sirupsen/logrus"`). Hand-rolled byte scanner — Go's
+/// import syntax is simple enough that we don't need a full parser
+/// and an external crate is overkill for "find import strings."
+pub(crate) fn extract_go_imports(bytes: &[u8]) -> Vec<String> {
+    let text = match std::str::from_utf8(bytes) {
+        Ok(s) => s,
+        Err(_) => return Vec::new(),
+    };
+    let mut out = Vec::new();
+    let mut remaining = text;
+    while let Some(idx) = remaining.find("import") {
+        let after = &remaining[idx + "import".len()..];
+        // "import" must be a keyword, not part of a longer identifier.
+        let before_is_boundary = idx == 0
+            || matches!(
+                remaining.as_bytes().get(idx.wrapping_sub(1)),
+                Some(c) if !c.is_ascii_alphanumeric() && *c != b'_'
+            );
+        let after_is_boundary = after
+            .as_bytes()
+            .first()
+            .map(|c| !c.is_ascii_alphanumeric() && *c != b'_')
+            .unwrap_or(false);
+        if !before_is_boundary || !after_is_boundary {
+            let Some(next) = remaining.get(idx + 1..) else {
+                break;
+            };
+            remaining = next;
+            continue;
+        }
+        let trimmed = after.trim_start();
+        if let Some(rest) = trimmed.strip_prefix('(') {
+            // Grouped block: consume up to matching ')'.
+            if let Some(end_rel) = rest.find(')') {
+                let block = &rest[..end_rel];
+                for line in block.lines() {
+                    if let Some(path) = parse_import_line(line) {
+                        out.push(path);
+                    }
+                }
+                remaining = &rest[end_rel + 1..];
+            } else {
+                break;
+            }
+        } else if let Some(path) = parse_import_line(trimmed) {
+            // Single-line import. Advance past the line.
+            out.push(path);
+            let Some(nl) = trimmed.find('\n') else {
+                break;
+            };
+            remaining = &trimmed[nl + 1..];
+        } else {
+            let Some(next) = remaining.get(idx + 1..) else {
+                break;
+            };
+            remaining = next;
+        }
+    }
     out
+}
+
+/// Parse a single import line. Handles optional alias (`foo "path"`,
+/// `. "path"`, `_ "path"`) and returns just the quoted path.
+fn parse_import_line(line: &str) -> Option<String> {
+    let line = line.trim();
+    if line.is_empty() || line.starts_with("//") {
+        return None;
+    }
+    let quote_start = line.find('"')?;
+    let after = &line[quote_start + 1..];
+    let quote_end = after.find('"')?;
+    Some(after[..quote_end].to_string())
 }
 
 fn candidate_project_roots(rootfs: &Path) -> Vec<PathBuf> {
@@ -1084,7 +1279,8 @@ replace github.com/old/lib v1.0.0 => github.com/new/lib v2.0.0
     #[test]
     fn read_empty_rootfs_returns_zero() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(read(dir.path(), false).is_empty());
+        let (entries, _signals) = read(dir.path(), false);
+        assert!(entries.is_empty());
     }
 
     #[test]
@@ -1099,7 +1295,7 @@ replace github.com/old/lib v1.0.0 => github.com/new/lib v2.0.0
         .unwrap();
         std::fs::write(svc.join("go.sum"), "github.com/x/y v1.0.0 h1:ok=\n")
             .unwrap();
-        let entries = read(dir.path(), false);
+        let (entries, _) = read(dir.path(), false);
         // Workspace root (`example.com/api`) is NOT emitted; only the
         // transitive dep surfaces as a component.
         assert!(!entries.iter().any(|e| e.name == "example.com/api"));
@@ -1137,7 +1333,7 @@ replace github.com/old/lib v1.0.0 => github.com/new/lib v2.0.0
         let cache =
             dir.path().join("root/go/pkg/mod/github.com/foo/bar@v1.0.0");
         write_go_project(&cache, "github.com/foo/bar", &[("github.com/x/y", "v2.0.0")]);
-        let entries = read(dir.path(), false);
+        let (entries, _) = read(dir.path(), false);
         assert!(
             entries.is_empty(),
             "walker must skip /root/go/pkg/mod cache tree: {entries:?}",
@@ -1150,7 +1346,7 @@ replace github.com/old/lib v1.0.0 => github.com/new/lib v2.0.0
         let cache =
             dir.path().join("home/alice/go/pkg/mod/github.com/foo/bar@v1.0.0");
         write_go_project(&cache, "github.com/foo/bar", &[("github.com/x/y", "v2.0.0")]);
-        let entries = read(dir.path(), false);
+        let (entries, _) = read(dir.path(), false);
         assert!(
             entries.is_empty(),
             "walker must skip $HOME/go/pkg/mod cache tree: {entries:?}",
@@ -1164,7 +1360,7 @@ replace github.com/old/lib v1.0.0 => github.com/new/lib v2.0.0
         let dir = tempfile::tempdir().unwrap();
         let app = dir.path().join("app");
         write_go_project(&app, "example.com/app", &[("github.com/real/dep", "v1.2.3")]);
-        let entries = read(dir.path(), false);
+        let (entries, _) = read(dir.path(), false);
         assert!(
             entries.iter().any(|e| e.name == "github.com/real/dep"),
             "legitimate project root must still emit: {entries:?}",
@@ -1180,7 +1376,7 @@ replace github.com/old/lib v1.0.0 => github.com/new/lib v2.0.0
             .path()
             .join("workspace/go/pkg/mod/github.com/foo/bar@v1.0.0");
         write_go_project(&cache, "github.com/foo/bar", &[("github.com/x/y", "v2.0.0")]);
-        let entries = read(dir.path(), false);
+        let (entries, _) = read(dir.path(), false);
         assert!(
             entries.is_empty(),
             "walker must skip /workspace/go/pkg/mod cache tree: {entries:?}",
