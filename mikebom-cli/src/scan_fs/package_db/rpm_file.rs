@@ -375,6 +375,7 @@ fn parse_rpm_file(
         raw_version: Some(version_tok),
         parent_purl: None,
         npm_role: None,
+        co_owned_by: None,
         hashes: Vec::new(),
     })
 }

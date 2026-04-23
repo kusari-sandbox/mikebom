@@ -472,6 +472,7 @@ impl PipDistInfoEntry {
             raw_version: None,
             parent_purl: None,
             npm_role: None,
+            co_owned_by: None,
             hashes: Vec::new(),
             sbom_tier: Some("deployed".to_string()),
         })
@@ -813,6 +814,7 @@ pub(crate) fn parse_poetry_lock(
             raw_version: None,
             parent_purl: None,
             npm_role: None,
+            co_owned_by: None,
             hashes: Vec::new(),
             sbom_tier: Some("source".to_string()),
         });
@@ -926,6 +928,7 @@ pub(crate) fn parse_pipfile_lock(
                 raw_version: None,
                 parent_purl: None,
                 npm_role: None,
+                co_owned_by: None,
                 hashes: Vec::new(),
                 sbom_tier: Some("source".to_string()),
             });
@@ -1035,6 +1038,7 @@ impl RequirementsTxtEntry {
             raw_version: None,
             parent_purl: None,
             npm_role: None,
+            co_owned_by: None,
             hashes: self.hashes,
             sbom_tier: Some(tier.to_string()),
         })

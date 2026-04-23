@@ -563,6 +563,7 @@ fn version_match_to_entry(
         raw_version: None,
         parent_purl: None,
         npm_role: None,
+        co_owned_by: None,
         hashes: Vec::new(),
     })
 }
@@ -949,6 +950,7 @@ fn make_file_level_component(
         raw_version: None,
         parent_purl: None,
         npm_role: None,
+        co_owned_by: None,
         hashes: Vec::new(),
     }
     .with_sha256_placeholder(hash)
@@ -1083,6 +1085,7 @@ fn note_package_to_entry(
         raw_version: None,
         parent_purl: None,
         npm_role: None,
+        co_owned_by: None,
         hashes: Vec::new(),
     })
 }

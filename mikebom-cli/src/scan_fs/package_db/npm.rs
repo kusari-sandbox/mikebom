@@ -431,6 +431,7 @@ pub(crate) fn parse_package_lock(
             raw_version: None,
             parent_purl: None,
             npm_role: None,
+            co_owned_by: None,
             hashes,
             sbom_tier: Some("source".to_string()),
         });
@@ -593,6 +594,7 @@ pub(crate) fn parse_pnpm_lock(
             raw_version: None,
             parent_purl: None,
             npm_role: None,
+            co_owned_by: None,
             hashes,
             sbom_tier: Some("source".to_string()),
         });
@@ -754,6 +756,7 @@ fn walk_node_modules(
             raw_version: None,
             parent_purl: None,
             npm_role,
+            co_owned_by: None,
             hashes: Vec::new(),
             sbom_tier: Some("deployed".to_string()),
         });
@@ -913,6 +916,7 @@ pub(crate) fn parse_root_package_json(
                 raw_version: None,
                 parent_purl: None,
                 npm_role: None,
+                co_owned_by: None,
                 hashes: Vec::new(),
                 sbom_tier: Some("design".to_string()),
             });

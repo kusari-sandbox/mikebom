@@ -377,6 +377,7 @@ mod tests {
             npm_role: None,
             raw_version: None,
             parent_purl: None,
+            co_owned_by: None,
             external_references: Vec::new(),
         };
 
@@ -449,6 +450,7 @@ mod tests {
             npm_role: None,
             raw_version: None,
             parent_purl: None,
+            co_owned_by: None,
             external_references: Vec::new(),
         };
 

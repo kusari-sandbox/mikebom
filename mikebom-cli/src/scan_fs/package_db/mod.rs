@@ -151,6 +151,19 @@ pub struct PackageDbEntry {
     /// reader on packages under the canonical `**/node_modules/npm/node_modules/**`
     /// glob. Drives the `mikebom:npm-role` CycloneDX component property.
     pub npm_role: Option<String>,
+    /// Ecosystem that claims the bytes this component's identity was
+    /// extracted from, when the same on-disk artifact is also owned
+    /// by a package-database reader. Currently set by the Maven JAR
+    /// walker to `Some("rpm")`, `Some("deb")`, or `Some("apk")` when
+    /// embedded `META-INF/maven/.../pom.properties` identifies a
+    /// Maven coord inside a JAR whose path is already claimed by an
+    /// OS package-db reader (e.g. `/usr/share/java/guava/guava.jar`
+    /// owned by a Fedora RPM). The Maven coord emits alongside the
+    /// RPM/deb/apk component — same bytes, two valid identities for
+    /// different downstream use cases. Drives the CDX property
+    /// `mikebom:co-owned-by` so consumers can filter to a single-
+    /// identity view if they prefer. `None` on free-standing JARs.
+    pub co_owned_by: Option<String>,
     /// Content hashes carried by the source manifest. npm
     /// `package-lock.json::integrity` (sha256 / sha384 / sha512) and
     /// Cargo.lock's `checksum` (sha256 hex) land here; dpkg / rpm /

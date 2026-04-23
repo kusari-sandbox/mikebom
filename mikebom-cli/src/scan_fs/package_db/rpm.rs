@@ -527,6 +527,7 @@ fn assemble_entry(
         raw_version: Some(full_version),
         parent_purl: None,
         npm_role: None,
+        co_owned_by: None,
         hashes: Vec::new(),
     }
 }
