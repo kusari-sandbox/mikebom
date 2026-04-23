@@ -326,6 +326,78 @@ pub(crate) fn insert_claim_with_canonical(
 /// preference in `resolve::deduplicator::deduplicate` (source wins
 /// over analyzed on same-coord collision) still applies to
 /// surviving entries.
+/// G4 (feature 007 US2): drop `pkg:golang` source-tier entries whose
+/// module path is NOT reachable from any non-`_test.go` import in the
+/// scanned source tree(s). Combined with G3 (BuildInfo intersection)
+/// this implements the FR-007a intersection semantics: a module is
+/// emitted iff it's in BuildInfo (when a binary is present) AND in a
+/// production import (when source is present).
+///
+/// The filter is a no-op when `production_imports` is empty — that
+/// happens on pure-binary scans (no .go source to parse), which G3
+/// alone already handles correctly.
+fn apply_go_production_set_filter(
+    entries: &mut Vec<PackageDbEntry>,
+    production_imports: &std::collections::HashSet<String>,
+) {
+    if production_imports.is_empty() {
+        return;
+    }
+    let before = entries.len();
+    entries.retain(|e| {
+        if e.purl.ecosystem() != "golang" {
+            return true;
+        }
+        if e.sbom_tier.as_deref() != Some("source") {
+            // Analyzed-tier (BuildInfo) entries pass through; G3 is
+            // their authority.
+            return true;
+        }
+        production_imports.contains(&e.name)
+    });
+    let dropped = before.saturating_sub(entries.len());
+    if dropped > 0 {
+        tracing::info!(
+            dropped,
+            production_imports = production_imports.len(),
+            "G4 filter: dropped go.sum entries not reachable from non-_test.go imports",
+        );
+    }
+}
+
+/// G5 (feature 007 US3): drop `pkg:golang` entries whose module path
+/// matches the project's own go.mod `module` directive or a Go
+/// binary's BuildInfo `mod` line. A project is never its own
+/// dependency (spec FR-010 through FR-012).
+///
+/// Applies to ALL tiers (source + analyzed) — unlike G3/G4 which only
+/// touch source-tier entries. BuildInfo emits the main module as an
+/// analyzed-tier entry; the project-self filter must strip it
+/// regardless of tier.
+fn apply_go_main_module_filter(
+    entries: &mut Vec<PackageDbEntry>,
+    main_modules: &std::collections::HashSet<String>,
+) {
+    if main_modules.is_empty() {
+        return;
+    }
+    let before = entries.len();
+    entries.retain(|e| {
+        if e.purl.ecosystem() != "golang" {
+            return true;
+        }
+        !main_modules.contains(&e.name)
+    });
+    let dropped = before.saturating_sub(entries.len());
+    if dropped > 0 {
+        tracing::info!(
+            dropped,
+            main_modules = main_modules.len(),
+            "G5 filter: dropped main-module self-references",
+        );
+    }
+}
+
 fn apply_go_linked_filter(entries: &mut Vec<PackageDbEntry>) {
     let linked: std::collections::HashSet<(String, String)> = entries
         .iter()
@@ -469,7 +541,8 @@ pub fn read_all(
     // Gem). The stubs below return empty vectors today so the dispatcher
     // compose-order is settled and future story work only needs to touch
     // the individual reader module — no revisit of `read_all`.
-    out.extend(golang::read(rootfs, include_dev));
+    let (golang_entries, go_signals) = golang::read(rootfs, include_dev);
+    out.extend(golang_entries);
     out.extend(rpm::read(rootfs, include_dev, distro_version.as_deref()));
     // v5 Phase B: rpm-owned file claim-skip — mirrors the dpkg / apk /
     // pip pattern. Real RHEL / Fedora rpmdbs store file paths inside
@@ -489,13 +562,14 @@ pub fn read_all(
     // the time go_binary iterates, and golang-owned `link`/`compile`/
     // `asm` tools (which ship with intentionally unreadable BuildInfo)
     // would leak as `pkg:generic/link` etc.
-    out.extend(go_binary::read(
+    let (go_binary_entries, go_binary_main_modules) = go_binary::read(
         rootfs,
         include_dev,
         &claimed,
         #[cfg(unix)]
         &claimed_inodes,
-    ));
+    );
+    out.extend(go_binary_entries);
     // Milestone 004 US1: standalone `.rpm` artefact reader (stub until
     // T015–T018 land). No-op today; wiring in place so the dispatcher
     // is settled and future story work only touches rpm_file.rs.
@@ -534,6 +608,25 @@ pub fn read_all(
     // the filter no-ops when the analyzed set is empty, and go.sum
     // remains the only signal.
     apply_go_linked_filter(&mut out);
+
+    // G4 (feature 007 US2): intersection with non-`_test.go` imports.
+    // Production-import signals come only from the source-tree scanner
+    // (`golang::read`). When no Go source is parsed, this no-ops and
+    // G3 alone drives the Go filtering.
+    apply_go_production_set_filter(&mut out, &go_signals.production_imports);
+
+    // G5 (feature 007 US3): drop the project's own main module from
+    // the dependency listing. Main modules come from BOTH go.mod
+    // `module` directives (via `golang::read`) AND binary BuildInfo
+    // `mod` lines (via `go_binary::read`); union for safety when a
+    // rootfs carries multiple projects.
+    let main_modules: std::collections::HashSet<String> = go_signals
+        .main_modules
+        .iter()
+        .chain(go_binary_main_modules.iter())
+        .cloned()
+        .collect();
+    apply_go_main_module_filter(&mut out, &main_modules);
 
     Ok(DbScanResult {
         entries: out,

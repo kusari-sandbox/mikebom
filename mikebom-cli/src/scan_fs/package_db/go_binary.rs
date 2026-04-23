@@ -414,14 +414,20 @@ pub fn read(
     _include_dev: bool,
     claimed_paths: &std::collections::HashSet<std::path::PathBuf>,
     #[cfg(unix)] claimed_inodes: &std::collections::HashSet<(u64, u64)>,
-) -> Vec<PackageDbEntry> {
+) -> (
+    Vec<PackageDbEntry>,
+    std::collections::HashSet<String>,
+) {
     let mut out: Vec<PackageDbEntry> = Vec::new();
     let mut seen_purls: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut main_modules: std::collections::HashSet<String> =
+        std::collections::HashSet::new();
     walk_for_binaries(
         rootfs,
         0,
         &mut out,
         &mut seen_purls,
+        &mut main_modules,
         claimed_paths,
         #[cfg(unix)]
         claimed_inodes,
@@ -430,12 +436,13 @@ pub fn read(
         tracing::info!(
             rootfs = %rootfs.display(),
             entries = out.len(),
+            main_modules = main_modules.len(),
             "extracted Go binary BuildInfo components",
         );
     } else {
         tracing::debug!(rootfs = %rootfs.display(), "no Go binaries found");
     }
-    out
+    (out, main_modules)
 }
 
 const MAX_BINARY_WALK_DEPTH: usize = 10;
@@ -445,6 +452,7 @@ fn walk_for_binaries(
     depth: usize,
     out: &mut Vec<PackageDbEntry>,
     seen_purls: &mut std::collections::HashSet<String>,
+    main_modules: &mut std::collections::HashSet<String>,
     claimed_paths: &std::collections::HashSet<std::path::PathBuf>,
     #[cfg(unix)] claimed_inodes: &std::collections::HashSet<(u64, u64)>,
 ) {
@@ -468,6 +476,7 @@ fn walk_for_binaries(
                 depth + 1,
                 out,
                 seen_purls,
+                main_modules,
                 claimed_paths,
                 #[cfg(unix)]
                 claimed_inodes,
@@ -485,6 +494,9 @@ fn walk_for_binaries(
                 // claim status, since real module information beats
                 // a package-db claim that lacks module granularity.
                 if let Some(info) = info {
+                    if let Some((ref main_path, _, _)) = info.main_module {
+                        main_modules.insert(main_path.clone());
+                    }
                     emit_entries_from_info(&info, out, seen_purls);
                 }
             }
@@ -874,7 +886,7 @@ mod tests {
         let noise = dir.path().join("README.txt");
         std::fs::write(&noise, vec![b'n'; 4096]).unwrap();
 
-        let entries = read(
+        let (entries, _) = read(
             dir.path(),
             false,
             &std::collections::HashSet::new(),
@@ -899,7 +911,7 @@ mod tests {
         blob.extend_from_slice(&[0u8; 30]);
         bin.extend_from_slice(&blob);
         std::fs::write(&p, &bin).unwrap();
-        let entries = read(
+        let (entries, _) = read(
             dir.path(),
             false,
             &std::collections::HashSet::new(),
@@ -933,7 +945,7 @@ mod tests {
         std::fs::write(&p, &bin).unwrap();
 
         // Unclaimed: diagnostic emits.
-        let unclaimed = read(
+        let (unclaimed, _) = read(
             dir.path(),
             false,
             &std::collections::HashSet::new(),
@@ -954,7 +966,7 @@ mod tests {
         #[cfg(unix)]
         let claimed_inodes: std::collections::HashSet<(u64, u64)> =
             std::collections::HashSet::new();
-        let claimed_entries = read(
+        let (claimed_entries, _) = read(
             dir.path(),
             false,
             &claimed,
