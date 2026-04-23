@@ -52,6 +52,29 @@ pub(crate) struct MavenRepoCache {
     host_roots: Vec<PathBuf>,
 }
 
+/// Provenance of fetched POM bytes.
+///
+/// `Rootfs` — the `.pom` came from the scanned rootfs's
+/// `.m2/repository/` (or was embedded in a scanned JAR via
+/// `PomStore`). Represents actual bytes present on the scanned
+/// filesystem — in scope under the artifact-SBOM principle.
+///
+/// `Host` — the `.pom` was satisfied from the operator's host
+/// caches (`$HOME/.m2`, `$M2_REPO`, `$MAVEN_HOME`). Used for
+/// parent-chain and BOM-import resolution so property interpolation
+/// and inherited `<dependencyManagement>` stay correct, but does
+/// NOT represent an artifact in the scanned image. Emission sites
+/// gate on `Rootfs` to avoid leaking host cache contents into the
+/// scanned-image SBOM.
+///
+/// See docs/design-notes.md "Scope: artifact vs manifest SBOM" for
+/// the broader on-disk-vs-declared framing this supports.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum PomSource {
+    Rootfs,
+    Host,
+}
+
 impl MavenRepoCache {
     /// Discover candidate `~/.m2/repository` style directories.
     /// Priority order (earlier entries win when multiple roots carry
@@ -144,6 +167,20 @@ impl MavenRepoCache {
         }
     }
 
+    /// Test-only helper: build a cache with explicit rootfs + host
+    /// root lists. Used by tests that exercise the host-vs-rootfs
+    /// provenance distinction ([`PomSource`]).
+    #[cfg(test)]
+    pub(crate) fn for_tests_with_host(
+        rootfs_roots: Vec<PathBuf>,
+        host_roots: Vec<PathBuf>,
+    ) -> Self {
+        Self {
+            rootfs_roots,
+            host_roots,
+        }
+    }
+
     /// Total number of discovered roots (rootfs + host). Useful for
     /// log messages.
     pub(crate) fn total_roots(&self) -> usize {
@@ -152,8 +189,9 @@ impl MavenRepoCache {
 
     /// Iterate every discovered root in priority order: host roots
     /// first (they win pom/hash lookups per the discover ordering),
-    /// then rootfs roots. Used by [`read_pom`] and
-    /// [`read_artifact_hash`].
+    /// then rootfs roots. Used by [`read_artifact_hash`]. POM reads
+    /// use [`read_pom`] directly so they can track provenance via
+    /// [`PomSource`].
     fn all_roots(&self) -> impl Iterator<Item = &Path> {
         self.host_roots
             .iter()
@@ -162,19 +200,41 @@ impl MavenRepoCache {
     }
 
     /// Read `<root>/<group-as-path>/<artifact>/<version>/<artifact>-<version>.pom`
-    /// from the first cache root that has it. Returns `None` when no
-    /// cache has the artefact or IO fails.
-    pub(crate) fn read_pom(&self, group: &str, artifact: &str, version: &str) -> Option<Vec<u8>> {
+    /// from the first cache root that has it. Walks `rootfs_roots`
+    /// first so scanned-image bytes win when the same coord is
+    /// cached in both places; falls back to `host_roots` for
+    /// parent-chain / BOM resolution.
+    ///
+    /// Returns `None` when no cache has the artefact or IO fails,
+    /// otherwise `Some((bytes, source))` where `source` identifies
+    /// whether the bytes came from the scanned rootfs or the
+    /// operator's host cache. Callers that only consume bytes for
+    /// resolution (parent-POM merging, `${...}` interpolation) can
+    /// ignore `source`; callers that EMIT components on the fetched
+    /// coord MUST gate emission on `source == PomSource::Rootfs` so
+    /// host-cache contents don't leak into the scanned-image SBOM.
+    pub(crate) fn read_pom(
+        &self,
+        group: &str,
+        artifact: &str,
+        version: &str,
+    ) -> Option<(Vec<u8>, PomSource)> {
         if self.total_roots() == 0 {
             return None;
         }
         let group_path = group.replace('.', "/");
         let relative =
             format!("{group_path}/{artifact}/{version}/{artifact}-{version}.pom");
-        for root in self.all_roots() {
+        for root in &self.rootfs_roots {
             let path = root.join(&relative);
             if let Ok(bytes) = std::fs::read(&path) {
-                return Some(bytes);
+                return Some((bytes, PomSource::Rootfs));
+            }
+        }
+        for root in &self.host_roots {
+            let path = root.join(&relative);
+            if let Ok(bytes) = std::fs::read(&path) {
+                return Some((bytes, PomSource::Host));
             }
         }
         None
@@ -640,15 +700,24 @@ fn coord_key(g: &str, a: &str, v: &str) -> String {
 
 /// Fetch POM bytes: prefer the in-memory store (JAR-embedded /
 /// previously-read), fall back to the on-disk M2 cache.
+/// Fetch POM bytes for `(g, a, v)` from the in-memory
+/// JAR-embedded-pom store, falling back to on-disk `.m2/repository/`
+/// caches. Returns `(bytes, source)` so emission sites can gate on
+/// [`PomSource::Rootfs`]; resolution-only callers ignore `source`.
+///
+/// `PomStore` hits are always `Rootfs` — the store is populated
+/// exclusively from JAR files discovered in the scanned rootfs
+/// (see `walk_jar_maven_meta` + the `jar_meta.pom_xml_bytes`
+/// population loop in `read_with_claims`).
 fn fetch_pom_bytes(
     store: &PomStore,
     cache: &MavenRepoCache,
     g: &str,
     a: &str,
     v: &str,
-) -> Option<Vec<u8>> {
+) -> Option<(Vec<u8>, PomSource)> {
     if let Some(bytes) = store.get(&coord_key(g, a, v)) {
-        return Some(bytes.clone());
+        return Some((bytes.clone(), PomSource::Rootfs));
     }
     cache.read_pom(g, a, v)
 }
@@ -740,7 +809,13 @@ pub(crate) fn build_effective_pom(
     if let Some((pg, pa, pv)) = doc.parent_coord.clone() {
         let parent_key = coord_key(&pg, &pa, &pv);
         if seen.insert(parent_key.clone()) {
-            if let Some(bytes) = fetch_pom_bytes(store, cache, &pg, &pa, &pv) {
+            // Parent-POM fetch is resolution-only (used to inherit
+            // `<properties>` and `<dependencyManagement>` for
+            // `${project.version}`-style interpolation); the parent
+            // coord itself is not emitted as a component from here,
+            // so we can consume parent bytes from either rootfs or
+            // host without violating the artifact-SBOM principle.
+            if let Some((bytes, _source)) = fetch_pom_bytes(store, cache, &pg, &pa, &pv) {
                 let parent_doc = parse_pom_xml(&bytes);
                 let parent_eff = build_effective_pom(parent_doc, cache, store, seen, memo);
                 for (k, v) in parent_eff.properties {
@@ -790,7 +865,13 @@ pub(crate) fn build_effective_pom(
         if !seen.insert(bom_key.clone()) {
             continue;
         }
-        if let Some(bytes) = fetch_pom_bytes(store, cache, &bom_g, &entry.artifact_id, &bom_v) {
+        // BOM-import fetch is resolution-only (imported POMs
+        // contribute `<dependencyManagement>` entries used to pin
+        // transitive versions); the imported coord is not emitted
+        // as a component from here, so host-sourced bytes are fine.
+        if let Some((bytes, _source)) =
+            fetch_pom_bytes(store, cache, &bom_g, &entry.artifact_id, &bom_v)
+        {
             let bom_doc = parse_pom_xml(&bytes);
             let bom_eff = build_effective_pom(bom_doc, cache, store, seen, memo);
             for (k, v) in bom_eff.dependency_management {
@@ -1232,8 +1313,10 @@ fn bfs_transitive_poms(
             continue;
         }
 
-        let Some(bytes) = fetch_pom_bytes(store, cache, &group, &artifact, &version) else {
-            // Cache miss — no .pom and no .jar on disk for this coord.
+        let Some((bytes, source)) = fetch_pom_bytes(store, cache, &group, &artifact, &version)
+        else {
+            // Cache miss — no .pom and no .jar on disk for this coord,
+            // either in the scanned rootfs or the host cache.
             // In artifact scope (default for image scans) this is a
             // declared-but-not-on-disk transitive and is dropped. In
             // manifest scope (path scans, or `--include-declared-deps`)
@@ -1262,7 +1345,10 @@ fn bfs_transitive_poms(
         // Build the effective POM: merges properties and
         // dependencyManagement up the full parent chain so deps
         // with no inline version or with `${...}` placeholders can
-        // resolve through inherited declarations.
+        // resolve through inherited declarations. Resolution
+        // consumes parent/BOM bytes regardless of their source
+        // (rootfs or host) — that fallback is required for
+        // correctness when parent POMs aren't shipped in the image.
         let mut parent_seen: HashSet<String> = HashSet::new();
         let effective = build_effective_pom(upstream, cache, store, &mut parent_seen, &mut memo);
 
@@ -1281,15 +1367,34 @@ fn bfs_transitive_poms(
             .map(|d| d.artifact_id.clone())
             .collect();
 
-        if let Some(entry) = build_transitive_entry(
-            &group,
-            &artifact,
-            &version,
-            edges,
-            source_path,
-            Some(cache),
-        ) {
-            out.push(entry);
+        // Emit a component for this coord ONLY when the POM bytes
+        // came from the scanned rootfs. Host-sourced POMs represent
+        // the operator's laptop cache — their bytes aren't in the
+        // scanned image, so the coord isn't an artifact in scope.
+        // BFS continues regardless so transitive edges still resolve
+        // through host-cached parent chains (correctness preserved).
+        //
+        // This is the decisive gate that stops host-cache coords
+        // from leaking into scanned-image SBOMs (the 141 Maven FPs
+        // on polyglot-builder-image were all host-resolved).
+        if matches!(source, PomSource::Rootfs) {
+            if let Some(entry) = build_transitive_entry(
+                &group,
+                &artifact,
+                &version,
+                edges,
+                source_path,
+                Some(cache),
+            ) {
+                out.push(entry);
+            }
+        } else {
+            tracing::trace!(
+                group = %group,
+                artifact = %artifact,
+                version = %version,
+                "BFS resolved coord via host cache; consulted for resolution but not emitted",
+            );
         }
 
         // Enqueue each resolvable upstream dep's concrete coord for
@@ -2449,10 +2554,11 @@ mod tests {
 </project>"#,
         );
         let cache = MavenRepoCache::for_tests(vec![repo_root.clone()]);
-        let bytes = cache
+        let (bytes, source) = cache
             .read_pom("com.google.guava", "guava", "32.1.3-jre")
             .expect("cached pom readable");
         assert!(std::str::from_utf8(&bytes).unwrap().contains("failureaccess"));
+        assert_eq!(source, PomSource::Rootfs);
     }
 
     #[test]
@@ -2518,6 +2624,154 @@ mod tests {
             assert_eq!(e.source_type.as_deref(), Some("transitive"));
             assert_eq!(e.sbom_tier.as_deref(), Some("source"));
         }
+    }
+
+    // --- PomSource emission gate (Phase 1) ------------------------------
+
+    #[test]
+    fn bfs_emits_only_rootfs_sourced_transitives() {
+        // Rootfs has alpha's POM declaring a dep on beta.
+        // Host has beta's POM (no deps).
+        // Seed BFS from alpha.
+        // Expected: alpha emits (rootfs-sourced), beta does NOT
+        // emit (host-only sourced) — matches the artifact-SBOM
+        // principle that only bytes present in the scanned rootfs
+        // surface as components.
+        let dir = tempfile::tempdir().unwrap();
+        let rootfs_repo = dir.path().join("rootfs/.m2/repository");
+        let host_repo = dir.path().join("host/.m2/repository");
+        write_cached_pom(
+            &rootfs_repo,
+            "ex.a",
+            "alpha",
+            "1.0",
+            r#"<project><groupId>ex.a</groupId><artifactId>alpha</artifactId><version>1.0</version>
+<dependencies><dependency><groupId>ex.b</groupId><artifactId>beta</artifactId><version>1.0</version></dependency></dependencies>
+</project>"#,
+        );
+        write_cached_pom(
+            &host_repo,
+            "ex.b",
+            "beta",
+            "1.0",
+            r#"<project><groupId>ex.b</groupId><artifactId>beta</artifactId><version>1.0</version></project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests_with_host(vec![rootfs_repo], vec![host_repo]);
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[("ex.a".into(), "alpha".into(), "1.0".into())],
+            false,
+            true,
+            "/p/pom.xml",
+        );
+        let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.contains(&"alpha"),
+            "rootfs-sourced alpha must emit: {names:?}",
+        );
+        assert!(
+            !names.contains(&"beta"),
+            "host-only beta must NOT emit: {names:?}",
+        );
+    }
+
+    #[test]
+    fn bfs_resolution_uses_host_parent_pom_but_doesnt_emit_it() {
+        // Rootfs has child's POM which inherits from a parent POM
+        // that's only in the host cache. The parent POM carries a
+        // property definition (`ext.version = 2.0`) that the child
+        // uses to pin its own dep on `ex.external:ext:${ext.version}`.
+        //
+        // Without the host fallback for resolution, `ext.version`
+        // would fail to resolve and the child's edge on `ext` would
+        // drop. With the fallback (but gated emission), resolution
+        // works AND the parent coord doesn't leak as a component.
+        let dir = tempfile::tempdir().unwrap();
+        let rootfs_repo = dir.path().join("rootfs/.m2/repository");
+        let host_repo = dir.path().join("host/.m2/repository");
+        write_cached_pom(
+            &rootfs_repo,
+            "ex.child",
+            "foo",
+            "1.0",
+            r#"<project>
+<parent><groupId>ex.parent</groupId><artifactId>parent</artifactId><version>1.0</version></parent>
+<groupId>ex.child</groupId><artifactId>foo</artifactId><version>1.0</version>
+<dependencies>
+  <dependency><groupId>ex.external</groupId><artifactId>ext</artifactId><version>${ext.version}</version></dependency>
+</dependencies>
+</project>"#,
+        );
+        write_cached_pom(
+            &host_repo,
+            "ex.parent",
+            "parent",
+            "1.0",
+            r#"<project><groupId>ex.parent</groupId><artifactId>parent</artifactId><version>1.0</version>
+<properties><ext.version>2.0</ext.version></properties>
+</project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests_with_host(vec![rootfs_repo], vec![host_repo]);
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[("ex.child".into(), "foo".into(), "1.0".into())],
+            false,
+            true,
+            "/p/pom.xml",
+        );
+        let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
+        // foo is rootfs-sourced → emits.
+        assert!(names.contains(&"foo"), "rootfs foo must emit: {names:?}");
+        // Parent coord must NOT leak as a component — resolution-only.
+        assert!(
+            !names.contains(&"parent"),
+            "host parent must not emit: {names:?}",
+        );
+        // foo's declared edge on `ext` must resolve via host parent —
+        // the `depends` list carries the edge as proof the host-
+        // sourced parent POM was consulted for property resolution.
+        let foo = entries.iter().find(|e| e.name == "foo").unwrap();
+        assert!(
+            foo.depends.iter().any(|d| d == "ext"),
+            "ext edge must resolve via host parent: depends = {:?}",
+            foo.depends,
+        );
+    }
+
+    #[test]
+    fn bfs_host_only_coords_dont_leak_when_seeded_from_host() {
+        // Degenerate case: rootfs empty, host populated. Nothing
+        // should emit — even if we seed BFS with a coord whose POM
+        // sits in the host cache (this shouldn't happen in practice
+        // because `walk_rootfs_poms` is rootfs-scoped, but the gate
+        // must hold regardless).
+        let dir = tempfile::tempdir().unwrap();
+        let host_repo = dir.path().join("host/.m2/repository");
+        write_cached_pom(
+            &host_repo,
+            "ex.only",
+            "hosted",
+            "1.0",
+            r#"<project><groupId>ex.only</groupId><artifactId>hosted</artifactId><version>1.0</version></project>"#,
+        );
+
+        let cache = MavenRepoCache::for_tests_with_host(Vec::new(), vec![host_repo]);
+        let entries = bfs_transitive_poms(
+            &cache,
+            &HashMap::new(),
+            &[("ex.only".into(), "hosted".into(), "1.0".into())],
+            false,
+            true,
+            "/p/pom.xml",
+        );
+        assert!(
+            entries.is_empty(),
+            "host-only coords must never emit even when BFS-seeded: {entries:?}",
+        );
     }
 
     #[test]
