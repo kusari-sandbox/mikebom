@@ -1111,6 +1111,38 @@ pub(crate) struct EmbeddedMavenMeta {
 /// the embedded `pom.xml`'s `<dependencies>` list when that file is
 /// present alongside. Refuses zip-slip attempts by rejecting any
 /// entry whose normalised path contains `..`.
+/// Feature 008 US3: true when `jar_path` lives directly inside a
+/// directory named `target/`. This is the canonical Maven build
+/// output location (`<project>/target/<artifactId>-<version>.jar`).
+/// Used alongside `jar_stem_matches_coord` to distinguish an
+/// unclaimed build-output JAR (scan subject) from any other unclaimed
+/// JAR (which may legitimately be a dependency).
+pub(crate) fn jar_is_under_maven_target_dir(jar_path: &Path) -> bool {
+    jar_path
+        .parent()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+        .map(|n| n == "target")
+        .unwrap_or(false)
+}
+
+/// Feature 008 US3: true when `jar_path`'s filename stem (minus the
+/// `.jar` suffix) equals `<artifact_id>-<version>`. Maven's default
+/// packaging convention produces exactly this naming. A dependency
+/// JAR placed into a `target/` directory wouldn't match both
+/// predicates at once unless it was literally rebuilt there — which
+/// would make it a legitimate scan subject anyway.
+pub(crate) fn jar_stem_matches_coord(jar_path: &Path, coord: &PomProperties) -> bool {
+    let Some(name) = jar_path.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    let Some(stem) = name.strip_suffix(".jar") else {
+        return false;
+    };
+    let expected = format!("{}-{}", coord.artifact_id, coord.version);
+    stem == expected
+}
+
 /// Feature 007 US4: check whether a JAR's manifest declares an
 /// executable entry point (`Main-Class: …`). Executable JARs are
 /// almost always build outputs (shade-plugin / spring-boot-plugin /
@@ -2226,16 +2258,43 @@ pub fn read_with_claims(
                 let is_executable_unclaimed_jar = meta.is_primary
                     && co_owned_by.is_none()
                     && jar_has_main_class_manifest(std::path::Path::new(&source_path));
+                // Feature 008 US3: Maven `target/`-dir path heuristic.
+                // Canonical Maven build output: `<project>/target/
+                // <artifactId>-<version>.jar`. When an unclaimed JAR
+                // lives directly inside a directory named `target/`
+                // AND its filename stem exactly matches its primary
+                // coord's `<artifactId>-<version>`, it is — by
+                // convention — the scan subject, not a dependency.
+                //
+                // The combination is very high-specificity: a
+                // dependency JAR at `/usr/share/java/<name>.jar` has
+                // no `target/` parent dir, so no over-suppression.
+                // Closes the sbom-fixture@1.0.0 polyglot FP that
+                // escapes both the `meta_list.len() >= 2` fat-jar
+                // gate (single coord) and the US4 Main-Class gate
+                // (ordinary Maven JAR Plugin output, no Main-Class).
+                let is_maven_target_dir_jar = meta.is_primary
+                    && co_owned_by.is_none()
+                    && jar_is_under_maven_target_dir(
+                        std::path::Path::new(&source_path),
+                    )
+                    && jar_stem_matches_coord(
+                        std::path::Path::new(&source_path),
+                        &meta.coord,
+                    );
                 if target_name_matches
                     || is_unclaimed_fat_jar
                     || is_executable_unclaimed_jar
+                    || is_maven_target_dir_jar
                 {
                     let reason = if target_name_matches {
                         "target-name-match"
                     } else if is_unclaimed_fat_jar {
                         "unclaimed-fat-jar-heuristic"
-                    } else {
+                    } else if is_executable_unclaimed_jar {
                         "executable-jar-heuristic"
+                    } else {
+                        "maven-target-dir-heuristic"
                     };
                     tracing::debug!(
                         artifact_id = %meta.coord.artifact_id,
@@ -2431,6 +2490,73 @@ mod tests {
     fn main_class_manifest_returns_false_when_no_manifest() {
         let tmp = write_jar_with_entries(&[("SomeClass.class", b"not-a-manifest")]);
         assert!(!jar_has_main_class_manifest(tmp.path()));
+    }
+
+    #[test]
+    fn target_dir_detected_for_canonical_maven_path() {
+        assert!(jar_is_under_maven_target_dir(std::path::Path::new(
+            "/opt/javaapp/target/sbom-fixture-1.0.0.jar"
+        )));
+        assert!(jar_is_under_maven_target_dir(std::path::Path::new(
+            "/home/dev/myproj/target/foo-2.0.jar"
+        )));
+    }
+
+    #[test]
+    fn target_dir_rejects_other_paths() {
+        assert!(!jar_is_under_maven_target_dir(std::path::Path::new(
+            "/usr/share/java/guava.jar"
+        )));
+        assert!(!jar_is_under_maven_target_dir(std::path::Path::new(
+            "/usr/lib/java/target-bundle.jar"
+        )));
+        // A JAR nested deeper than the immediate target/ parent
+        // (target/subfolder/X.jar) should NOT trigger — Maven
+        // doesn't produce that layout.
+        assert!(!jar_is_under_maven_target_dir(std::path::Path::new(
+            "/opt/app/target/classes/extra/x.jar"
+        )));
+    }
+
+    #[test]
+    fn stem_matches_coord_canonical() {
+        let coord = PomProperties {
+            group_id: "com.example".to_string(),
+            artifact_id: "sbom-fixture".to_string(),
+            version: "1.0.0".to_string(),
+        };
+        assert!(jar_stem_matches_coord(
+            std::path::Path::new("/opt/javaapp/target/sbom-fixture-1.0.0.jar"),
+            &coord,
+        ));
+    }
+
+    #[test]
+    fn stem_matches_coord_rejects_mismatched_names() {
+        let coord = PomProperties {
+            group_id: "com.example".to_string(),
+            artifact_id: "sbom-fixture".to_string(),
+            version: "1.0.0".to_string(),
+        };
+        // Different artifactId.
+        assert!(!jar_stem_matches_coord(
+            std::path::Path::new("/opt/app/target/other-library-1.0.0.jar"),
+            &coord,
+        ));
+        // Different version.
+        assert!(!jar_stem_matches_coord(
+            std::path::Path::new("/opt/app/target/sbom-fixture-2.0.0.jar"),
+            &coord,
+        ));
+        // Trailing classifier (e.g. `-jar-with-dependencies`) —
+        // intentionally does NOT match. The broader fat-jar
+        // heuristic handles those.
+        assert!(!jar_stem_matches_coord(
+            std::path::Path::new(
+                "/opt/app/target/sbom-fixture-1.0.0-jar-with-dependencies.jar"
+            ),
+            &coord,
+        ));
     }
 
     #[test]
