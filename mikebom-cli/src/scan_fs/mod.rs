@@ -129,8 +129,26 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
             continue;
         };
         let path_string = path_str.into_owned();
+        // G2: the `name` field must match the convention
+        // installed-package-db readers use, or dedup misses coords
+        // emitted by both paths. For Go, readers set
+        // `name = "<namespace>/<last>"` (the full module path —
+        // e.g. `github.com/davecgh/go-spew`); `purl.name()` alone
+        // returns just the last segment (`go-spew`), which would
+        // group differently in the deduplicator's
+        // `(ecosystem, name, version, parent_purl)` key. For other
+        // ecosystems (Maven, npm, pypi, cargo, etc.) `purl.name()`
+        // is the canonical name the reader uses. Only Go needs the
+        // namespace prefix here.
+        let name = match purl.ecosystem() {
+            "golang" => match purl.namespace() {
+                Some(ns) => format!("{}/{}", ns, purl.name()),
+                None => purl.name().to_string(),
+            },
+            _ => purl.name().to_string(),
+        };
         components.push(ResolvedComponent {
-            name: purl.name().to_string(),
+            name,
             version: purl.version().unwrap_or("").to_string(),
             purl,
             evidence: ResolutionEvidence {
