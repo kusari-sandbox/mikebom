@@ -1,5 +1,7 @@
 # mikebom
 
+**NOTE: This tool is in no way production ready. This requires a lot more hardening**
+
 An SBOM generator that reads source trees, package caches, and container
 images with lockfile-aware dep-graph extraction, emits **CycloneDX 1.6
 JSON** with SHA-256 hashes + evidence + real dependency relationships,
