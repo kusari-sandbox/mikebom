@@ -221,6 +221,16 @@ fn assert_or_update_golden(label: &str, normalized: &str) {
         let actual = path.with_extension("actual.json");
         std::fs::write(&actual, normalized.as_bytes())
             .expect("write actual.json for diff");
+
+        // Line-level diff dump to stderr so CI logs show exactly
+        // what changed without needing to download an artifact or
+        // re-run locally. First 100 differing lines is enough for
+        // any realistic drift; silently capped so we don't flood
+        // the log if the entire document shape changed.
+        eprintln!("\n--- GOLDEN/ACTUAL DIFF for ecosystem {label} ---");
+        diff_to_stderr(&golden, normalized);
+        eprintln!("--- end diff ---\n");
+
         panic!(
             "CDX regression for ecosystem {label}: output differs from \
              pinned golden.\n  golden: {}\n  actual: {}\nTo accept the \
@@ -229,6 +239,35 @@ fn assert_or_update_golden(label: &str, normalized: &str) {
             path.display(),
             actual.display()
         );
+    }
+}
+
+/// Plain line-diff between `golden` and `actual`, printed to stderr.
+/// Each line that appears in `golden` but not `actual` is prefixed
+/// with `-`; each line in `actual` but not `golden` is prefixed with
+/// `+`. Context is implied by line number — we print the first
+/// differing line-index and a few surrounding lines, up to a cap, so
+/// the CI log shows the full picture without drowning in
+/// same-on-both-sides lines.
+fn diff_to_stderr(golden: &str, actual: &str) {
+    let g: Vec<&str> = golden.lines().collect();
+    let a: Vec<&str> = actual.lines().collect();
+    let max_lines = g.len().max(a.len());
+    let mut printed = 0usize;
+    const CAP: usize = 100;
+    for i in 0..max_lines {
+        let gl = g.get(i).copied().unwrap_or("<absent>");
+        let al = a.get(i).copied().unwrap_or("<absent>");
+        if gl != al {
+            if printed >= CAP {
+                eprintln!("... (diff capped at {CAP} lines)");
+                break;
+            }
+            eprintln!("  line {:4}:", i + 1);
+            eprintln!("    - {gl}");
+            eprintln!("    + {al}");
+            printed += 1;
+        }
     }
 }
 
