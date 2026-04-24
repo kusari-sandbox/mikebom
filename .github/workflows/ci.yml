@@ -66,7 +66,9 @@ jobs:
       # version so the sbomqs JSON output shape (feature keys in
       # particular) stays stable across CI runs.
       - name: Install sbomqs
-        run: go install github.com/interlynk-io/sbomqs@v2.0.6
+        # v2.x requires the `/v2` suffix in the module path per Go's
+        # post-v1 module versioning convention.
+        run: go install github.com/interlynk-io/sbomqs/v2@v2.0.6
       - name: Add Go bin to PATH
         run: echo "${HOME}/go/bin" >> "$GITHUB_PATH"
 
