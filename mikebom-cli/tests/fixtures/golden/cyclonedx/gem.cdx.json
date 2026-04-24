@@ -1,0 +1,787 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:gem/activesupport@7.1.3",
+      "cpe": "cpe:2.3:a:activesupport:activesupport:7.1.3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "activesupport",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/activesupport@7.1.3",
+      "type": "library",
+      "version": "7.1.3"
+    },
+    {
+      "bom-ref": "pkg:gem/base64@0.2.0",
+      "cpe": "cpe:2.3:a:base64:base64:0.2.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "base64",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/base64@0.2.0",
+      "type": "library",
+      "version": "0.2.0"
+    },
+    {
+      "bom-ref": "pkg:gem/bigdecimal@3.1.5",
+      "cpe": "cpe:2.3:a:bigdecimal:bigdecimal:3.1.5:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "bigdecimal",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/bigdecimal@3.1.5",
+      "type": "library",
+      "version": "3.1.5"
+    },
+    {
+      "bom-ref": "pkg:gem/concurrent-ruby@1.2.3",
+      "cpe": "cpe:2.3:a:concurrent-ruby:concurrent-ruby:1.2.3:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "concurrent-ruby",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/concurrent-ruby@1.2.3",
+      "type": "library",
+      "version": "1.2.3"
+    },
+    {
+      "bom-ref": "pkg:gem/connection_pool@2.4.1",
+      "cpe": "cpe:2.3:a:connection_pool:connection_pool:2.4.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "connection_pool",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/connection_pool@2.4.1",
+      "type": "library",
+      "version": "2.4.1"
+    },
+    {
+      "bom-ref": "pkg:gem/drb@2.2.0",
+      "cpe": "cpe:2.3:a:drb:drb:2.2.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "drb",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/drb@2.2.0",
+      "type": "library",
+      "version": "2.2.0"
+    },
+    {
+      "bom-ref": "pkg:gem/i18n@1.14.1",
+      "cpe": "cpe:2.3:a:i18n:i18n:1.14.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "i18n",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/i18n@1.14.1",
+      "type": "library",
+      "version": "1.14.1"
+    },
+    {
+      "bom-ref": "pkg:gem/minitest@5.22.2",
+      "cpe": "cpe:2.3:a:minitest:minitest:5.22.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "minitest",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/minitest@5.22.2",
+      "type": "library",
+      "version": "5.22.2"
+    },
+    {
+      "bom-ref": "pkg:gem/mutex_m@0.2.0",
+      "cpe": "cpe:2.3:a:mutex_m:mutex_m:0.2.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "mutex_m",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/mutex_m@0.2.0",
+      "type": "library",
+      "version": "0.2.0"
+    },
+    {
+      "bom-ref": "pkg:gem/my-gem@0.1.0",
+      "cpe": "cpe:2.3:a:my-gem:my-gem:0.1.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "my-gem",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:source-type",
+          "value": "path"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/my-gem@0.1.0",
+      "type": "library",
+      "version": "0.1.0"
+    },
+    {
+      "bom-ref": "pkg:gem/rails@7.2.0.alpha1",
+      "cpe": "cpe:2.3:a:rails:rails:7.2.0.alpha1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "rails",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:source-type",
+          "value": "git"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/rails@7.2.0.alpha1",
+      "type": "library",
+      "version": "7.2.0.alpha1"
+    },
+    {
+      "bom-ref": "pkg:gem/rspec-core@3.13.0",
+      "cpe": "cpe:2.3:a:rspec-core:rspec-core:3.13.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "rspec-core",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/rspec-core@3.13.0",
+      "type": "library",
+      "version": "3.13.0"
+    },
+    {
+      "bom-ref": "pkg:gem/rspec-expectations@3.13.0",
+      "cpe": "cpe:2.3:a:rspec-expectations:rspec-expectations:3.13.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "rspec-expectations",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/rspec-expectations@3.13.0",
+      "type": "library",
+      "version": "3.13.0"
+    },
+    {
+      "bom-ref": "pkg:gem/rspec-mocks@3.13.0",
+      "cpe": "cpe:2.3:a:rspec-mocks:rspec-mocks:3.13.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "rspec-mocks",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/rspec-mocks@3.13.0",
+      "type": "library",
+      "version": "3.13.0"
+    },
+    {
+      "bom-ref": "pkg:gem/rspec-support@3.13.0",
+      "cpe": "cpe:2.3:a:rspec-support:rspec-support:3.13.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "rspec-support",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/rspec-support@3.13.0",
+      "type": "library",
+      "version": "3.13.0"
+    },
+    {
+      "bom-ref": "pkg:gem/rspec@3.13.0",
+      "cpe": "cpe:2.3:a:rspec:rspec:3.13.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "rspec",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/rspec@3.13.0",
+      "type": "library",
+      "version": "3.13.0"
+    },
+    {
+      "bom-ref": "pkg:gem/tzinfo@2.0.6",
+      "cpe": "cpe:2.3:a:tzinfo:tzinfo:2.0.6:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "tzinfo",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/gem/simple-bundle/Gemfile.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:gem/tzinfo@2.0.6",
+      "type": "library",
+      "version": "2.0.6"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "pkg:gem/activesupport@7.1.3",
+        "pkg:gem/base64@0.2.0",
+        "pkg:gem/bigdecimal@3.1.5",
+        "pkg:gem/concurrent-ruby@1.2.3",
+        "pkg:gem/connection_pool@2.4.1",
+        "pkg:gem/drb@2.2.0",
+        "pkg:gem/i18n@1.14.1",
+        "pkg:gem/minitest@5.22.2",
+        "pkg:gem/mutex_m@0.2.0",
+        "pkg:gem/my-gem@0.1.0",
+        "pkg:gem/rails@7.2.0.alpha1",
+        "pkg:gem/rspec-core@3.13.0",
+        "pkg:gem/rspec-expectations@3.13.0",
+        "pkg:gem/rspec-mocks@3.13.0",
+        "pkg:gem/rspec-support@3.13.0",
+        "pkg:gem/rspec@3.13.0",
+        "pkg:gem/tzinfo@2.0.6"
+      ],
+      "dependencies": [
+        "pkg:gem/activesupport@7.1.3",
+        "pkg:gem/base64@0.2.0",
+        "pkg:gem/bigdecimal@3.1.5",
+        "pkg:gem/concurrent-ruby@1.2.3",
+        "pkg:gem/connection_pool@2.4.1",
+        "pkg:gem/drb@2.2.0",
+        "pkg:gem/i18n@1.14.1",
+        "pkg:gem/minitest@5.22.2",
+        "pkg:gem/mutex_m@0.2.0",
+        "pkg:gem/my-gem@0.1.0",
+        "pkg:gem/rails@7.2.0.alpha1",
+        "pkg:gem/rspec-core@3.13.0",
+        "pkg:gem/rspec-expectations@3.13.0",
+        "pkg:gem/rspec-mocks@3.13.0",
+        "pkg:gem/rspec-support@3.13.0",
+        "pkg:gem/rspec@3.13.0",
+        "pkg:gem/tzinfo@2.0.6"
+      ]
+    },
+    {
+      "aggregate": "incomplete_first_party_only",
+      "assemblies": [
+        "simple-bundle@0.0.0"
+      ]
+    },
+    {
+      "aggregate": "complete",
+      "dependencies": [
+        "simple-bundle@0.0.0"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [
+        "pkg:gem/base64@0.2.0",
+        "pkg:gem/bigdecimal@3.1.5",
+        "pkg:gem/concurrent-ruby@1.2.3",
+        "pkg:gem/connection_pool@2.4.1",
+        "pkg:gem/drb@2.2.0",
+        "pkg:gem/i18n@1.14.1",
+        "pkg:gem/minitest@5.22.2",
+        "pkg:gem/mutex_m@0.2.0",
+        "pkg:gem/tzinfo@2.0.6"
+      ],
+      "ref": "pkg:gem/activesupport@7.1.3"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:gem/base64@0.2.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:gem/bigdecimal@3.1.5"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:gem/concurrent-ruby@1.2.3"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:gem/connection_pool@2.4.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:gem/drb@2.2.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:gem/concurrent-ruby@1.2.3"
+      ],
+      "ref": "pkg:gem/i18n@1.14.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:gem/minitest@5.22.2"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:gem/mutex_m@0.2.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:gem/my-gem@0.1.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:gem/activesupport@7.1.3"
+      ],
+      "ref": "pkg:gem/rails@7.2.0.alpha1"
+    },
+    {
+      "dependsOn": [
+        "pkg:gem/rspec-support@3.13.0"
+      ],
+      "ref": "pkg:gem/rspec-core@3.13.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:gem/rspec-support@3.13.0"
+      ],
+      "ref": "pkg:gem/rspec-expectations@3.13.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:gem/rspec-support@3.13.0"
+      ],
+      "ref": "pkg:gem/rspec-mocks@3.13.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:gem/rspec-support@3.13.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:gem/rspec-core@3.13.0",
+        "pkg:gem/rspec-expectations@3.13.0",
+        "pkg:gem/rspec-mocks@3.13.0"
+      ],
+      "ref": "pkg:gem/rspec@3.13.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:gem/concurrent-ruby@1.2.3"
+      ],
+      "ref": "pkg:gem/tzinfo@2.0.6"
+    },
+    {
+      "dependsOn": [
+        "pkg:gem/my-gem@0.1.0",
+        "pkg:gem/rails@7.2.0.alpha1",
+        "pkg:gem/rspec@3.13.0"
+      ],
+      "ref": "simple-bundle@0.0.0"
+    }
+  ],
+  "metadata": {
+    "authors": [
+      {
+        "name": "mikebom"
+      }
+    ],
+    "component": {
+      "bom-ref": "simple-bundle@0.0.0",
+      "cpe": "cpe:2.3:a:mikebom:simple-bundle:0.0.0:*:*:*:*:*:*:*",
+      "name": "simple-bundle",
+      "purl": "pkg:generic/simple-bundle@0.0.0",
+      "type": "application",
+      "version": "0.0.0"
+    },
+    "licenses": [
+      {
+        "license": {
+          "id": "CC0-1.0"
+        }
+      }
+    ],
+    "lifecycles": [
+      {
+        "phase": "pre-build"
+      }
+    ],
+    "properties": [
+      {
+        "name": "mikebom:generation-context",
+        "value": "filesystem-scan"
+      },
+      {
+        "name": "mikebom:os-release-missing-fields",
+        "value": "ID,VERSION_ID"
+      },
+      {
+        "name": "mikebom:trace-integrity-ring-buffer-overflows",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-events-dropped",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-uprobe-attach-failures",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-kprobe-attach-failures",
+        "value": "0"
+      }
+    ],
+    "supplier": {
+      "name": "mikebom contributors"
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "name": "mikebom",
+          "publisher": "mikebom contributors",
+          "type": "application",
+          "version": "0.1.0-alpha.3"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:00000000-0000-0000-0000-000000000000",
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": []
+}

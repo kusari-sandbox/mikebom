@@ -1,0 +1,658 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+      "cpe": "cpe:2.3:a:github.com\\/davecgh\\/go-spew:github.com\\/davecgh\\/go-spew:v1.1.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/davecgh/go-spew"
+        }
+      ],
+      "name": "github.com/davecgh/go-spew",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:github.com\\/davecgh\\/go-spew:github.com\\/davecgh\\/go-spew:v1.1.1:*:*:*:*:*:*:* | cpe:2.3:a:github.com\\/davecgh:github.com\\/davecgh\\/go-spew:v1.1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+      "supplier": {
+        "name": "github.com/davecgh"
+      },
+      "type": "library",
+      "version": "v1.1.1"
+    },
+    {
+      "bom-ref": "pkg:golang/github.com/inconshreveable/mousetrap@v1.1.0",
+      "cpe": "cpe:2.3:a:github.com\\/inconshreveable\\/mousetrap:github.com\\/inconshreveable\\/mousetrap:v1.1.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/inconshreveable/mousetrap"
+        }
+      ],
+      "name": "github.com/inconshreveable/mousetrap",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:github.com\\/inconshreveable\\/mousetrap:github.com\\/inconshreveable\\/mousetrap:v1.1.0:*:*:*:*:*:*:* | cpe:2.3:a:github.com\\/inconshreveable:github.com\\/inconshreveable\\/mousetrap:v1.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/github.com/inconshreveable/mousetrap@v1.1.0",
+      "supplier": {
+        "name": "github.com/inconshreveable"
+      },
+      "type": "library",
+      "version": "v1.1.0"
+    },
+    {
+      "bom-ref": "pkg:golang/github.com/mattn/go-isatty@v0.0.21",
+      "cpe": "cpe:2.3:a:github.com\\/mattn\\/go-isatty:github.com\\/mattn\\/go-isatty:v0.0.21:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/mattn/go-isatty"
+        }
+      ],
+      "name": "github.com/mattn/go-isatty",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:github.com\\/mattn\\/go-isatty:github.com\\/mattn\\/go-isatty:v0.0.21:*:*:*:*:*:*:* | cpe:2.3:a:github.com\\/mattn:github.com\\/mattn\\/go-isatty:v0.0.21:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/github.com/mattn/go-isatty@v0.0.21",
+      "supplier": {
+        "name": "github.com/mattn"
+      },
+      "type": "library",
+      "version": "v0.0.21"
+    },
+    {
+      "bom-ref": "pkg:golang/github.com/pmezard/go-difflib@v1.0.0",
+      "cpe": "cpe:2.3:a:github.com\\/pmezard\\/go-difflib:github.com\\/pmezard\\/go-difflib:v1.0.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/pmezard/go-difflib"
+        }
+      ],
+      "name": "github.com/pmezard/go-difflib",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:github.com\\/pmezard\\/go-difflib:github.com\\/pmezard\\/go-difflib:v1.0.0:*:*:*:*:*:*:* | cpe:2.3:a:github.com\\/pmezard:github.com\\/pmezard\\/go-difflib:v1.0.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/github.com/pmezard/go-difflib@v1.0.0",
+      "supplier": {
+        "name": "github.com/pmezard"
+      },
+      "type": "library",
+      "version": "v1.0.0"
+    },
+    {
+      "bom-ref": "pkg:golang/github.com/sirupsen/logrus@v1.9.4",
+      "cpe": "cpe:2.3:a:github.com\\/sirupsen\\/logrus:github.com\\/sirupsen\\/logrus:v1.9.4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/sirupsen/logrus"
+        }
+      ],
+      "name": "github.com/sirupsen/logrus",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:github.com\\/sirupsen\\/logrus:github.com\\/sirupsen\\/logrus:v1.9.4:*:*:*:*:*:*:* | cpe:2.3:a:github.com\\/sirupsen:github.com\\/sirupsen\\/logrus:v1.9.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/github.com/sirupsen/logrus@v1.9.4",
+      "supplier": {
+        "name": "github.com/sirupsen"
+      },
+      "type": "library",
+      "version": "v1.9.4"
+    },
+    {
+      "bom-ref": "pkg:golang/github.com/spf13/cobra@v1.10.2",
+      "cpe": "cpe:2.3:a:github.com\\/spf13\\/cobra:github.com\\/spf13\\/cobra:v1.10.2:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/spf13/cobra"
+        }
+      ],
+      "name": "github.com/spf13/cobra",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:github.com\\/spf13\\/cobra:github.com\\/spf13\\/cobra:v1.10.2:*:*:*:*:*:*:* | cpe:2.3:a:github.com\\/spf13:github.com\\/spf13\\/cobra:v1.10.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/github.com/spf13/cobra@v1.10.2",
+      "supplier": {
+        "name": "github.com/spf13"
+      },
+      "type": "library",
+      "version": "v1.10.2"
+    },
+    {
+      "bom-ref": "pkg:golang/github.com/spf13/pflag@v1.0.9",
+      "cpe": "cpe:2.3:a:github.com\\/spf13\\/pflag:github.com\\/spf13\\/pflag:v1.0.9:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/spf13/pflag"
+        }
+      ],
+      "name": "github.com/spf13/pflag",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:github.com\\/spf13\\/pflag:github.com\\/spf13\\/pflag:v1.0.9:*:*:*:*:*:*:* | cpe:2.3:a:github.com\\/spf13:github.com\\/spf13\\/pflag:v1.0.9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/github.com/spf13/pflag@v1.0.9",
+      "supplier": {
+        "name": "github.com/spf13"
+      },
+      "type": "library",
+      "version": "v1.0.9"
+    },
+    {
+      "bom-ref": "pkg:golang/github.com/stretchr/testify@v1.11.1",
+      "cpe": "cpe:2.3:a:github.com\\/stretchr\\/testify:github.com\\/stretchr\\/testify:v1.11.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/stretchr/testify"
+        }
+      ],
+      "name": "github.com/stretchr/testify",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:github.com\\/stretchr\\/testify:github.com\\/stretchr\\/testify:v1.11.1:*:*:*:*:*:*:* | cpe:2.3:a:github.com\\/stretchr:github.com\\/stretchr\\/testify:v1.11.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/github.com/stretchr/testify@v1.11.1",
+      "supplier": {
+        "name": "github.com/stretchr"
+      },
+      "type": "library",
+      "version": "v1.11.1"
+    },
+    {
+      "bom-ref": "pkg:golang/golang.org/x/sys@v0.28.0",
+      "cpe": "cpe:2.3:a:golang.org\\/x\\/sys:golang.org\\/x\\/sys:v0.28.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "golang.org/x/sys",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:golang.org\\/x\\/sys:golang.org\\/x\\/sys:v0.28.0:*:*:*:*:*:*:* | cpe:2.3:a:golang.org\\/x:golang.org\\/x\\/sys:v0.28.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/sys@v0.28.0",
+      "supplier": {
+        "name": "golang.org/x"
+      },
+      "type": "library",
+      "version": "v0.28.0"
+    },
+    {
+      "bom-ref": "pkg:golang/gopkg.in/check.v1@v0.0.0-20161208181325-20d25e280405",
+      "cpe": "cpe:2.3:a:gopkg.in\\/check.v1:gopkg.in\\/check.v1:v0.0.0-20161208181325-20d25e280405:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "gopkg.in/check.v1",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:gopkg.in\\/check.v1:gopkg.in\\/check.v1:v0.0.0-20161208181325-20d25e280405:*:*:*:*:*:*:* | cpe:2.3:a:gopkg.in:gopkg.in\\/check.v1:v0.0.0-20161208181325-20d25e280405:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/gopkg.in/check.v1@v0.0.0-20161208181325-20d25e280405",
+      "supplier": {
+        "name": "gopkg.in"
+      },
+      "type": "library",
+      "version": "v0.0.0-20161208181325-20d25e280405"
+    },
+    {
+      "bom-ref": "pkg:golang/gopkg.in/yaml.v3@v3.0.1",
+      "cpe": "cpe:2.3:a:gopkg.in\\/yaml.v3:gopkg.in\\/yaml.v3:v3.0.1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "gopkg.in/yaml.v3",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:gopkg.in\\/yaml.v3:gopkg.in\\/yaml.v3:v3.0.1:*:*:*:*:*:*:* | cpe:2.3:a:gopkg.in:gopkg.in\\/yaml.v3:v3.0.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:golang/gopkg.in/yaml.v3@v3.0.1",
+      "supplier": {
+        "name": "gopkg.in"
+      },
+      "type": "library",
+      "version": "v3.0.1"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+        "pkg:golang/github.com/inconshreveable/mousetrap@v1.1.0",
+        "pkg:golang/github.com/mattn/go-isatty@v0.0.21",
+        "pkg:golang/github.com/pmezard/go-difflib@v1.0.0",
+        "pkg:golang/github.com/sirupsen/logrus@v1.9.4",
+        "pkg:golang/github.com/spf13/cobra@v1.10.2",
+        "pkg:golang/github.com/spf13/pflag@v1.0.9",
+        "pkg:golang/github.com/stretchr/testify@v1.11.1",
+        "pkg:golang/golang.org/x/sys@v0.28.0",
+        "pkg:golang/gopkg.in/check.v1@v0.0.0-20161208181325-20d25e280405",
+        "pkg:golang/gopkg.in/yaml.v3@v3.0.1"
+      ],
+      "dependencies": [
+        "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+        "pkg:golang/github.com/inconshreveable/mousetrap@v1.1.0",
+        "pkg:golang/github.com/mattn/go-isatty@v0.0.21",
+        "pkg:golang/github.com/pmezard/go-difflib@v1.0.0",
+        "pkg:golang/github.com/sirupsen/logrus@v1.9.4",
+        "pkg:golang/github.com/spf13/cobra@v1.10.2",
+        "pkg:golang/github.com/spf13/pflag@v1.0.9",
+        "pkg:golang/github.com/stretchr/testify@v1.11.1",
+        "pkg:golang/golang.org/x/sys@v0.28.0",
+        "pkg:golang/gopkg.in/check.v1@v0.0.0-20161208181325-20d25e280405",
+        "pkg:golang/gopkg.in/yaml.v3@v3.0.1"
+      ]
+    },
+    {
+      "aggregate": "incomplete_first_party_only",
+      "assemblies": [
+        "simple-module@0.0.0"
+      ]
+    },
+    {
+      "aggregate": "complete",
+      "dependencies": [
+        "simple-module@0.0.0"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/github.com/davecgh/go-spew@v1.1.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/github.com/inconshreveable/mousetrap@v1.1.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/github.com/mattn/go-isatty@v0.0.21"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/github.com/pmezard/go-difflib@v1.0.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/github.com/sirupsen/logrus@v1.9.4"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/github.com/spf13/cobra@v1.10.2"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/github.com/spf13/pflag@v1.0.9"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/github.com/stretchr/testify@v1.11.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/golang.org/x/sys@v0.28.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/gopkg.in/check.v1@v0.0.0-20161208181325-20d25e280405"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:golang/gopkg.in/yaml.v3@v3.0.1"
+    },
+    {
+      "dependsOn": [
+        "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+        "pkg:golang/github.com/inconshreveable/mousetrap@v1.1.0",
+        "pkg:golang/github.com/mattn/go-isatty@v0.0.21",
+        "pkg:golang/github.com/pmezard/go-difflib@v1.0.0",
+        "pkg:golang/github.com/sirupsen/logrus@v1.9.4",
+        "pkg:golang/github.com/spf13/cobra@v1.10.2",
+        "pkg:golang/github.com/spf13/pflag@v1.0.9",
+        "pkg:golang/github.com/stretchr/testify@v1.11.1",
+        "pkg:golang/golang.org/x/sys@v0.28.0",
+        "pkg:golang/gopkg.in/check.v1@v0.0.0-20161208181325-20d25e280405",
+        "pkg:golang/gopkg.in/yaml.v3@v3.0.1"
+      ],
+      "ref": "simple-module@0.0.0"
+    }
+  ],
+  "metadata": {
+    "authors": [
+      {
+        "name": "mikebom"
+      }
+    ],
+    "component": {
+      "bom-ref": "simple-module@0.0.0",
+      "cpe": "cpe:2.3:a:mikebom:simple-module:0.0.0:*:*:*:*:*:*:*",
+      "name": "simple-module",
+      "purl": "pkg:generic/simple-module@0.0.0",
+      "type": "application",
+      "version": "0.0.0"
+    },
+    "licenses": [
+      {
+        "license": {
+          "id": "CC0-1.0"
+        }
+      }
+    ],
+    "lifecycles": [
+      {
+        "phase": "pre-build"
+      }
+    ],
+    "properties": [
+      {
+        "name": "mikebom:generation-context",
+        "value": "filesystem-scan"
+      },
+      {
+        "name": "mikebom:os-release-missing-fields",
+        "value": "ID,VERSION_ID"
+      },
+      {
+        "name": "mikebom:trace-integrity-ring-buffer-overflows",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-events-dropped",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-uprobe-attach-failures",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-kprobe-attach-failures",
+        "value": "0"
+      }
+    ],
+    "supplier": {
+      "name": "mikebom contributors"
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "name": "mikebom",
+          "publisher": "mikebom contributors",
+          "type": "application",
+          "version": "0.1.0-alpha.3"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:00000000-0000-0000-0000-000000000000",
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": []
+}

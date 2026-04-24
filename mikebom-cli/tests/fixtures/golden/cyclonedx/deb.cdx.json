@@ -1,0 +1,192 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:deb/debian/libc6@2.36-9?arch=amd64&distro=debian-12",
+      "cpe": "cpe:2.3:a:debian:libc6:2.36-9:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "libc6",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:libc6:2.36-9:*:*:*:*:*:*:* | cpe:2.3:a:libc6:libc6:2.36-9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/deb/synthetic/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/libc6@2.36-9?arch=amd64&distro=debian-12",
+      "supplier": {
+        "name": "Debian <debian@example.org>"
+      },
+      "type": "library",
+      "version": "2.36-9"
+    },
+    {
+      "bom-ref": "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=amd64&distro=debian-12",
+      "cpe": "cpe:2.3:a:debian:zlib1g:1\\:1.2.13.dfsg-1:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "zlib1g",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:debian:zlib1g:1\\:1.2.13.dfsg-1:*:*:*:*:*:*:* | cpe:2.3:a:zlib1g:zlib1g:1\\:1.2.13.dfsg-1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "<WORKSPACE>/tests/fixtures/deb/synthetic/var/lib/dpkg/status"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=amd64&distro=debian-12",
+      "supplier": {
+        "name": "Debian <debian@example.org>"
+      },
+      "type": "library",
+      "version": "1:1.2.13.dfsg-1"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "pkg:deb/debian/libc6@2.36-9?arch=amd64&distro=debian-12",
+        "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=amd64&distro=debian-12"
+      ],
+      "dependencies": [
+        "pkg:deb/debian/libc6@2.36-9?arch=amd64&distro=debian-12",
+        "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=amd64&distro=debian-12"
+      ]
+    },
+    {
+      "aggregate": "incomplete_first_party_only",
+      "assemblies": [
+        "synthetic@0.0.0"
+      ]
+    },
+    {
+      "aggregate": "complete",
+      "dependencies": [
+        "synthetic@0.0.0"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/libc6@2.36-9?arch=amd64&distro=debian-12"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=amd64&distro=debian-12"
+    },
+    {
+      "dependsOn": [
+        "pkg:deb/debian/libc6@2.36-9?arch=amd64&distro=debian-12",
+        "pkg:deb/debian/zlib1g@1:1.2.13.dfsg-1?arch=amd64&distro=debian-12"
+      ],
+      "ref": "synthetic@0.0.0"
+    }
+  ],
+  "metadata": {
+    "authors": [
+      {
+        "name": "mikebom"
+      }
+    ],
+    "component": {
+      "bom-ref": "synthetic@0.0.0",
+      "cpe": "cpe:2.3:a:mikebom:synthetic:0.0.0:*:*:*:*:*:*:*",
+      "name": "synthetic",
+      "purl": "pkg:generic/synthetic@0.0.0",
+      "type": "application",
+      "version": "0.0.0"
+    },
+    "licenses": [
+      {
+        "license": {
+          "id": "CC0-1.0"
+        }
+      }
+    ],
+    "lifecycles": [
+      {
+        "phase": "operations"
+      }
+    ],
+    "properties": [
+      {
+        "name": "mikebom:generation-context",
+        "value": "filesystem-scan"
+      },
+      {
+        "name": "mikebom:trace-integrity-ring-buffer-overflows",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-events-dropped",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-uprobe-attach-failures",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-kprobe-attach-failures",
+        "value": "0"
+      }
+    ],
+    "supplier": {
+      "name": "mikebom contributors"
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "name": "mikebom",
+          "publisher": "mikebom contributors",
+          "type": "application",
+          "version": "0.1.0-alpha.3"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:00000000-0000-0000-0000-000000000000",
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": []
+}
