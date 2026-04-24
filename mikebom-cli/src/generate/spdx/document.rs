@@ -104,12 +104,13 @@ pub struct SpdxAnnotation {
     pub comment: String,
 }
 
-/// SPDX 2.3 external document reference. Used by the OpenVEX
-/// sidecar cross-reference in US2 — declared here so the
-/// [`SpdxDocument`] struct can reference it across phases without a
-/// follow-up struct move.
+/// SPDX 2.3 external document reference. Populated by the
+/// OpenVEX-sidecar co-emission path in
+/// [`super::Spdx2_3JsonSerializer::serialize`] per FR-016a — the
+/// entry names the sidecar's relative path and a SHA-256 of its
+/// bytes so a consumer reading only the SPDX file can locate and
+/// integrity-check the sidecar.
 #[derive(Debug, Clone, serde::Serialize)]
-#[allow(dead_code)]
 pub struct SpdxExternalDocumentRef {
     #[serde(rename = "externalDocumentId")]
     pub id: String,
@@ -184,7 +185,19 @@ pub fn build_document(
 ) -> SpdxDocument {
     let namespace = SpdxDocumentNamespace::derive(artifacts, cfg.mikebom_version);
 
-    let packages = super::packages::build_packages(artifacts);
+    // Single annotator + date pair used across every annotation
+    // emitted from this scan: Package-level (from `build_packages`)
+    // and Document-level (from `annotate_document`). Both mirror
+    // the first `CreationInfo.creators` entry + `created` value so
+    // a consumer can see that annotations were produced in the
+    // same run as the document.
+    let annotator = format!("Tool: mikebom-{}", cfg.mikebom_version);
+    let date = cfg
+        .created
+        .to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+
+    let packages =
+        super::packages::build_packages(artifacts, &annotator, &date);
 
     // Root selection: deterministic single-root algorithm.
     //   1. If a top-level component (no parent_purl) carries a PURL
@@ -235,12 +248,14 @@ pub fn build_document(
         super::relationships::build_relationships(artifacts, &root_id);
 
     let creation_info = CreationInfo {
-        created: cfg
-            .created
-            .to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
-        creators: vec![format!("Tool: mikebom-{}", cfg.mikebom_version)],
+        created: date.clone(),
+        creators: vec![annotator.clone()],
         license_list_version: None,
     };
+
+    // Document-level mikebom annotations (Sections C21–C23 + E1).
+    let annotations =
+        super::annotations::annotate_document(&annotator, &date, artifacts);
 
     SpdxDocument {
         spdx_version: "SPDX-2.3",
@@ -251,7 +266,7 @@ pub fn build_document(
         creation_info,
         packages,
         relationships,
-        annotations: Vec::new(),
+        annotations,
         external_document_refs: Vec::new(),
         document_describes: vec![root_id],
     }

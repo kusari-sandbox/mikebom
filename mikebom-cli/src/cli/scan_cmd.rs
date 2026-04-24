@@ -19,6 +19,22 @@ use crate::scan_fs;
 /// as before (FR-004b).
 const DEFAULT_FORMAT: &str = "cyclonedx-json";
 
+/// Pseudo-format override key for the OpenVEX sidecar.
+///
+/// `openvex` is NOT a real `SbomSerializer` — it's a sidecar the
+/// SPDX 2.3 serializer co-emits when a scan produces VEX statements
+/// (FR-016a). The user cannot request it via `--format`; they can
+/// only retarget its output path via `--output openvex=<path>` when
+/// an SPDX format is also requested. Using it without SPDX, or
+/// naming it in `--format`, is rejected in `resolve_dispatch` with
+/// a clear error.
+const OPENVEX_PSEUDO_FORMAT: &str = "openvex";
+
+/// Format ids that trigger OpenVEX sidecar emission. Today only
+/// the stable SPDX 2.3 serializer does so; SPDX 3.0.1-experimental
+/// may opt in in a future milestone, at which point this list grows.
+const OPENVEX_EMITTING_FORMATS: &[&str] = &["spdx-2.3-json"];
+
 #[derive(Args, Debug)]
 pub struct ScanArgs {
     /// Directory to walk for package artifacts.
@@ -150,7 +166,18 @@ fn resolve_dispatch(
 
     // Reject unknown format ids with a clear enumeration of what IS
     // registered, so the user can see what changed between versions.
+    // OpenVEX is explicitly NOT a registered format; calling it out
+    // separately gives a more useful error than "unknown".
     for f in &formats {
+        if f == OPENVEX_PSEUDO_FORMAT {
+            anyhow::bail!(
+                "{OPENVEX_PSEUDO_FORMAT:?} is not a selectable --format — \
+                 it is emitted as a sidecar alongside SPDX when a scan \
+                 produces VEX. Retarget its output path with \
+                 `--output {OPENVEX_PSEUDO_FORMAT}=<path>` alongside \
+                 an SPDX `--format`.",
+            );
+        }
         if registry.get(f).is_none() {
             let known: Vec<&'static str> = registry.ids().collect();
             anyhow::bail!(
@@ -174,6 +201,36 @@ fn resolve_dispatch(
                 anyhow::bail!(
                     "--output expects <fmt>=<path> with non-empty parts, got {raw:?}",
                 );
+            }
+            // Special case: `openvex` isn't a format, but is a
+            // legal override key when the scan is going to produce
+            // the sidecar (i.e., at least one SPDX format was
+            // requested). Reject `--output openvex=...` without an
+            // SPDX format so typos don't silently no-op.
+            if fmt == OPENVEX_PSEUDO_FORMAT {
+                let has_spdx = formats
+                    .iter()
+                    .any(|f| OPENVEX_EMITTING_FORMATS.contains(&f.as_str()));
+                if !has_spdx {
+                    anyhow::bail!(
+                        "`--output {OPENVEX_PSEUDO_FORMAT}=<path>` is only \
+                         valid when an SPDX format is also requested \
+                         (e.g., --format spdx-2.3-json); it retargets \
+                         the OpenVEX sidecar that SPDX emission produces \
+                         when a scan has VEX statements. Requested \
+                         formats: {}",
+                        formats.join(", "),
+                    );
+                }
+                if overrides
+                    .insert(fmt.to_string(), PathBuf::from(path))
+                    .is_some()
+                {
+                    anyhow::bail!(
+                        "--output for {OPENVEX_PSEUDO_FORMAT:?} specified more than once"
+                    );
+                }
+                continue;
             }
             if !formats.iter().any(|f| f == fmt) {
                 anyhow::bail!(
@@ -232,6 +289,22 @@ fn resolve_dispatch(
             anyhow::bail!(
                 "output path collision: format {prev:?} and format {fmt:?} both \
                  resolve to {}",
+                canonical.display(),
+            );
+        }
+    }
+    // Also check the OpenVEX override against format outputs, since
+    // the sidecar lands beside the SPDX file. No default path to
+    // check when the override isn't set — the sidecar's default is
+    // `mikebom.openvex.json`, which can't collide with any
+    // registered format's default (cdx / spdx filenames are
+    // distinct from openvex's).
+    if let Some(openvex_path) = overrides.get(OPENVEX_PSEUDO_FORMAT) {
+        let canonical = canonicalize_for_collision(openvex_path);
+        if let Some(prev) = resolved_paths.insert(canonical.clone(), OPENVEX_PSEUDO_FORMAT.to_string()) {
+            anyhow::bail!(
+                "output path collision: format {prev:?} and \
+                 {OPENVEX_PSEUDO_FORMAT:?} both resolve to {}",
                 canonical.display(),
             );
         }
@@ -525,11 +598,29 @@ pub async fn execute(
             // honors the per-format --output override; side artifacts
             // (e.g. the OpenVEX sidecar in US2) always use their
             // relative_path relative to the primary's directory.
+            // Three cases:
+            //   (1) The primary artifact (filename == the
+            //       serializer's default) → honor a per-format
+            //       --output override for this `fmt`.
+            //   (2) The OpenVEX sidecar (relative_path matches the
+            //       sidecar's default filename) → honor the
+            //       `--output openvex=<path>` pseudo-format override.
+            //   (3) Any other side artifact (none today; future
+            //       formats may add more) → keep its relative_path.
             let target = if artifact.relative_path
                 == Path::new(serializer.default_filename())
             {
                 plan.overrides
                     .get(fmt)
+                    .cloned()
+                    .unwrap_or_else(|| artifact.relative_path.clone())
+            } else if artifact.relative_path
+                == Path::new(
+                    crate::generate::openvex::OPENVEX_DEFAULT_FILENAME,
+                )
+            {
+                plan.overrides
+                    .get(OPENVEX_PSEUDO_FORMAT)
                     .cloned()
                     .unwrap_or_else(|| artifact.relative_path.clone())
             } else {
@@ -659,6 +750,73 @@ mod tests {
         assert_eq!(
             plan.overrides.get("cyclonedx-json"),
             Some(&PathBuf::from("custom.cdx.json"))
+        );
+    }
+
+    #[test]
+    fn openvex_cannot_be_requested_via_format_flag() {
+        let err = resolve_dispatch(&reg(), &["openvex".into()], &[])
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("not a selectable --format")
+                && err.contains("sidecar alongside SPDX"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn openvex_override_without_spdx_format_rejects() {
+        let err = resolve_dispatch(
+            &reg(),
+            &["cyclonedx-json".into()],
+            &["openvex=/tmp/vex.json".into()],
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            err.contains("`--output openvex=<path>` is only valid when an SPDX format"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn openvex_override_with_spdx_format_is_accepted() {
+        let plan = resolve_dispatch(
+            &reg(),
+            &["cyclonedx-json".into(), "spdx-2.3-json".into()],
+            &[
+                "cyclonedx-json=out.cdx.json".into(),
+                "spdx-2.3-json=out.spdx.json".into(),
+                "openvex=out.vex.json".into(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            plan.overrides.get("openvex"),
+            Some(&PathBuf::from("out.vex.json"))
+        );
+        // openvex is NOT in the formats list — it's a sidecar key
+        // only, never dispatched as a serializer.
+        assert!(!plan.formats.iter().any(|f| f == "openvex"));
+    }
+
+    #[test]
+    fn openvex_override_collides_with_cdx_path() {
+        let err = resolve_dispatch(
+            &reg(),
+            &["cyclonedx-json".into(), "spdx-2.3-json".into()],
+            &[
+                "spdx-2.3-json=out.spdx.json".into(),
+                "openvex=mikebom.cdx.json".into(),
+            ],
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            err.contains("output path collision")
+                && err.contains("openvex"),
+            "got: {err}"
         );
     }
 

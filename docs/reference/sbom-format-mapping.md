@@ -1,6 +1,6 @@
 # Dual-Format SBOM Data-Placement Map (CycloneDX 1.6 ↔ SPDX 2.3 ↔ SPDX 3.0.1)
 
-**Version**: v1 | **Owner**: milestone 010 | **Canonical home**: `docs/reference/sbom-format-mapping.md` (this `contracts/` copy is a mirror retained for plan-review purposes; when the two disagree, the `docs/reference/` version wins)
+**Version**: v1 | **Owner**: milestone 010 | **Canonical home**: this file (`docs/reference/sbom-format-mapping.md`). A mirror copy lives at `specs/010-spdx-output-support/contracts/sbom-format-mapping.md` for plan-review purposes; when the two disagree, *this file wins*.
 
 This document is the contract that the SPDX 2.3 serializer (and the SPDX 3 stub) MUST honor. Per FR-013, FR-014, FR-015, every data element mikebom emits in CycloneDX has a row here naming its target location in each format and a one-line justification.
 
