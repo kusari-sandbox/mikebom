@@ -1,5 +1,10 @@
 //! SPDX 3.0.1 minimal stub emitter — opt-in experimental (milestone
-//! 010, T044).
+//! 010, T044). **Superseded** by `v3_document.rs` in milestone 011;
+//! this file is kept as historical reference until US3 T032 deletes
+//! it.
+
+#![allow(dead_code)]
+
 //!
 //! **Coverage**: npm only (research.md R3). Non-npm scans return a
 //! document with zero Packages — the stub's job is to exercise the
