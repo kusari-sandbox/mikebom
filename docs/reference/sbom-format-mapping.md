@@ -8,7 +8,7 @@ This document is the contract that the SPDX 2.3 serializer (and the SPDX 3 stub)
 
 - **CycloneDX location**: JSON Pointer-style path into the CycloneDX 1.6 document (`/components/{i}/<field>` etc.).
 - **SPDX 2.3 location**: Either a JSON path into the SPDX 2.3 document (`/packages/{i}/<field>`), an SPDX `Relationship` description, an SPDX `Annotation` with the named `field` envelope (per `mikebom-annotation.schema.json`), or `omitted — <reason>`.
-- **SPDX 3.0.1 location**: Either a JSON-LD path into a 3.0.1 element graph (`{Element}/<property>`), an `Annotation` element pointer, or `defer — <reason>` for entries the stub does not yet honor.
+- **SPDX 3.0.1 location**: Either a JSON-LD path into a 3.0.1 element graph (`{Element}/<property>`), an `Annotation` element pointer, an `ExternalRef` / `ExternalIdentifier` entry shape, or `omitted — <reason>` for entries mikebom intentionally does not emit.
 - "**Annotation** ⟨field⟩" is shorthand for: emit one `SpdxAnnotation` whose `comment` is the JSON-encoded `MikebomAnnotationCommentV1` envelope with the named `field` value.
 
 ## Section A — Core identity (native fields in all three formats)
@@ -43,48 +43,48 @@ These rows have no native SPDX 2.3 home. Per clarification Q2 (Option A) and FR-
 
 | # | mikebom property | CycloneDX 1.6 location | SPDX 2.3 location | SPDX 3.0.1 location | Justification |
 |---|------------------|------------------------|-------------------|---------------------|---------------|
-| C1 | `mikebom:source-type` | `/components/{i}/properties[name="mikebom:source-type"]` | Annotation `mikebom:source-type` on Package | Same as 2.3 (annotation), pending native SPDX 3 profile property | No SPDX 2.3 field. |
-| C2 | `mikebom:source-connection-ids` | property | Annotation `mikebom:source-connection-ids` on Package | Annotation (defer until SPDX 3 build/provenance profile stabilizes) | No SPDX 2.3 field. |
-| C3 | `mikebom:deps-dev-match` | property | Annotation `mikebom:deps-dev-match` on Package | Annotation | No SPDX 2.3 field. |
-| C4 | `mikebom:evidence-kind` | property | Annotation `mikebom:evidence-kind` on Package | Annotation (defer until SPDX 3 evidence profile stabilizes) | No SPDX 2.3 field. |
-| C5 | `mikebom:sbom-tier` | property | Annotation `mikebom:sbom-tier` on Package | Annotation | No SPDX 2.3 field. |
-| C6 | `mikebom:dev-dependency` | property | (also reflected as `DEV_DEPENDENCY_OF` per B2) + Annotation `mikebom:dev-dependency` on Package | (relationship per B2) + Annotation | Relationship is the primary signal; annotation preserves the boolean. |
-| C7 | `mikebom:co-owned-by` | property | Annotation `mikebom:co-owned-by` on Package | Annotation | No SPDX 2.3 field. |
-| C8 | `mikebom:shade-relocation` | property | Annotation `mikebom:shade-relocation` on Package | Annotation | No SPDX 2.3 field. |
-| C9 | `mikebom:npm-role` | property | Annotation `mikebom:npm-role` on Package | Annotation | No SPDX 2.3 field. |
-| C10 | `mikebom:binary-class` | property | Annotation `mikebom:binary-class` on Package | Annotation | No SPDX 2.3 field. |
-| C11 | `mikebom:binary-stripped` | property | Annotation `mikebom:binary-stripped` on Package | Annotation | No SPDX 2.3 field. |
-| C12 | `mikebom:linkage-kind` | property | Annotation `mikebom:linkage-kind` on Package | Annotation | No SPDX 2.3 field. |
-| C13 | `mikebom:buildinfo-status` | property | Annotation `mikebom:buildinfo-status` on Package | Annotation | No SPDX 2.3 field. |
-| C14 | `mikebom:detected-go` | property | Annotation `mikebom:detected-go` on Package | Annotation | No SPDX 2.3 field. |
-| C15 | `mikebom:binary-packed` | property | Annotation `mikebom:binary-packed` on Package | Annotation | No SPDX 2.3 field. |
-| C16 | `mikebom:confidence` | property | Annotation `mikebom:confidence` on Package | Annotation (defer until SPDX 3 evidence profile lands `confidence`) | No SPDX 2.3 field; confidence is a Constitution Principle X transparency signal. |
-| C17 | `mikebom:raw-version` (RPM) | property | Annotation `mikebom:raw-version` on Package | Annotation | No SPDX 2.3 field. |
-| C18 | `mikebom:source-files` | property | Annotation `mikebom:source-files` on Package | `Package/contentBy` element (SPDX 3 build profile) — defer | No SPDX 2.3 field. |
-| C19 | `mikebom:cpe-candidates` | property | Annotation `mikebom:cpe-candidates` on Package (and `externalRefs[]` `SECURITY/cpe23Type` for any candidate that is fully resolved) | Annotation + `externalRef` `cpe23Type` for resolved candidates | Multiple-candidate set has no native home; resolved CPE goes into native externalRefs. |
-| C20 | `mikebom:requirement-range` | property | Annotation `mikebom:requirement-range` on Package | Annotation | No SPDX 2.3 field. |
-| C21 | `mikebom:generation-context` (document-level) | `/metadata/properties[name="mikebom:generation-context"]` | Document-level Annotation `mikebom:generation-context` | `CreationInfo/comment` if short, otherwise document-level Annotation | Constitution Principle V requires "Generation Context"; document-level annotation honors it. |
-| C22 | `mikebom:os-release-missing-fields` (document-level) | metadata property | Document-level Annotation `mikebom:os-release-missing-fields` | Document-level Annotation | No SPDX 2.3 field. |
-| C23 | `mikebom:trace-integrity-*` (document-level: ring-buffer-overflows, events-dropped, uprobe/kprobe-attach-failures) | metadata properties | Document-level Annotations `mikebom:trace-integrity-<subkey>` | Document-level Annotations (defer until SPDX 3 build/provenance profile stabilizes) | Constitution Principle X transparency; preserve verbatim. |
+| C1 | `mikebom:source-type` | `/components/{i}/properties[name="mikebom:source-type"]` | Annotation `mikebom:source-type` on Package | Annotation `mikebom:source-type` on Package (SPDX 3 `Annotation` element carrying `MikebomAnnotationCommentV1`) | No SPDX 2.3 field; no SPDX 3.0.1 native property — annotation-envelope preserves losslessly across both formats per Q2 strict-match. |
+| C2 | `mikebom:source-connection-ids` | property | Annotation `mikebom:source-connection-ids` on Package | Annotation `mikebom:source-connection-ids` on Package | No typed SPDX 3 home; a future SPDX 3 build/provenance profile may define one, at which point this row upgrades. |
+| C3 | `mikebom:deps-dev-match` | property | Annotation `mikebom:deps-dev-match` on Package | Annotation `mikebom:deps-dev-match` on Package | No SPDX 2.3 / 3.0.1 native field. |
+| C4 | `mikebom:evidence-kind` | property | Annotation `mikebom:evidence-kind` on Package | Annotation `mikebom:evidence-kind` on Package | SPDX 3 evidence profile is not yet stabilized in 3.0.1; annotation is the permanent home in 3.0.1 and may upgrade in a follow-up profile revision. |
+| C5 | `mikebom:sbom-tier` | property | Annotation `mikebom:sbom-tier` on Package | Annotation `mikebom:sbom-tier` on Package | No native field in either SPDX version. |
+| C6 | `mikebom:dev-dependency` | property | (also reflected as `DEV_DEPENDENCY_OF` per B2) + Annotation `mikebom:dev-dependency` on Package | Annotation `mikebom:dev-dependency` on Package (primary signal: SPDX 3.0.1's `prop_Relationship_relationshipType` enum has no `devDependencyOf`, so the annotation IS the dev/runtime distinction; plain `dependsOn` Relationship per B2) | SPDX 3.0.1 dropped the SPDX 2.3 `DEV_DEPENDENCY_OF` relationship-type; annotation becomes the sole signal until a future SPDX 3 revision reintroduces it. |
+| C7 | `mikebom:co-owned-by` | property | Annotation `mikebom:co-owned-by` on Package | Annotation `mikebom:co-owned-by` on Package | No native field. |
+| C8 | `mikebom:shade-relocation` | property | Annotation `mikebom:shade-relocation` on Package | Annotation `mikebom:shade-relocation` on Package | Per research.md §R5: SPDX 3.0.1 has no typed property for "this artifact contains relocated symbols from another artifact"; `software_Package/contentBy` is a build-profile property whose semantics don't match. Annotation stays the home. |
+| C9 | `mikebom:npm-role` | property | Annotation `mikebom:npm-role` on Package | Annotation `mikebom:npm-role` on Package | No native field. |
+| C10 | `mikebom:binary-class` | property | Annotation `mikebom:binary-class` on Package | Annotation `mikebom:binary-class` on Package | No native field. |
+| C11 | `mikebom:binary-stripped` | property | Annotation `mikebom:binary-stripped` on Package | Annotation `mikebom:binary-stripped` on Package | No native field. |
+| C12 | `mikebom:linkage-kind` | property | Annotation `mikebom:linkage-kind` on Package | Annotation `mikebom:linkage-kind` on Package | No native field. |
+| C13 | `mikebom:buildinfo-status` | property | Annotation `mikebom:buildinfo-status` on Package | Annotation `mikebom:buildinfo-status` on Package | No native field. |
+| C14 | `mikebom:detected-go` | property | Annotation `mikebom:detected-go` on Package | Annotation `mikebom:detected-go` on Package | No native field. |
+| C15 | `mikebom:binary-packed` | property | Annotation `mikebom:binary-packed` on Package | Annotation `mikebom:binary-packed` on Package | No native field. |
+| C16 | `mikebom:confidence` | property | Annotation `mikebom:confidence` on Package | Annotation `mikebom:confidence` on Package | Per research.md §R5: SPDX 3 evidence profile (where confidence naturally lives) is not in 3.0.1 stable; annotation remains the home. Constitution Principle X transparency preserved. |
+| C17 | `mikebom:raw-version` (RPM) | property | Annotation `mikebom:raw-version` on Package | Annotation `mikebom:raw-version` on Package | No native field. |
+| C18 | `mikebom:source-files` | property | Annotation `mikebom:source-files` on Package | Annotation `mikebom:source-files` on Package | Per research.md §R5: `software_Package/contentBy` exists but its shape ("the Element this Package's contents came from") doesn't match mikebom's list-of-source-file-paths signal; annotation preserves losslessly. |
+| C19 | `mikebom:cpe-candidates` | property | Annotation `mikebom:cpe-candidates` on Package (and `externalRefs[]` `SECURITY/cpe23Type` for any candidate that is fully resolved) | Split: **native** `ExternalIdentifier[cpe23]` entry per fully-resolved candidate (see A12) + `Annotation mikebom:cpe-candidates` carrying the full candidate list when more than one candidate exists | Multi-candidate set has no native home as a collection; resolved candidates are typed, residual set stays in annotation per Q2 strict-match. |
+| C20 | `mikebom:requirement-range` | property | Annotation `mikebom:requirement-range` on Package | Annotation `mikebom:requirement-range` on Package | No native field. |
+| C21 | `mikebom:generation-context` (document-level) | `/metadata/properties[name="mikebom:generation-context"]` | Document-level Annotation `mikebom:generation-context` | Document-level `Annotation` element on the SpdxDocument carrying `mikebom:generation-context` | Constitution Principle V requires "Generation Context"; annotation honors it in both SPDX versions. |
+| C22 | `mikebom:os-release-missing-fields` (document-level) | metadata property | Document-level Annotation `mikebom:os-release-missing-fields` | Document-level `Annotation` element on the SpdxDocument carrying `mikebom:os-release-missing-fields` | No native field in either SPDX version. |
+| C23 | `mikebom:trace-integrity-*` (document-level: ring-buffer-overflows, events-dropped, uprobe/kprobe-attach-failures) | metadata properties | Document-level Annotations `mikebom:trace-integrity-<subkey>` | Document-level `Annotation` elements on the SpdxDocument, one per subkey | Constitution Principle X transparency; preserved verbatim in both SPDX versions. |
 
 ## Section D — Evidence (CycloneDX 1.6 has native model; SPDX 2.3 does not)
 
 | # | mikebom data | CycloneDX 1.6 location | SPDX 2.3 location | SPDX 3.0.1 location | Justification |
 |---|--------------|------------------------|-------------------|---------------------|---------------|
-| D1 | evidence — identity (technique + confidence) | `/components/{i}/evidence/identity[0]` | Annotation `evidence.identity` on Package, payload preserves `technique` + `confidence` | `Package/evidence` (SPDX 3 evidence profile) — defer to follow-up | SPDX 2.3 has no evidence model; annotation preserves it losslessly. |
-| D2 | evidence — occurrences | `/components/{i}/evidence/occurrences[]` (location + SHA-256 + legacy MD5) | Annotation `evidence.occurrences` on Package, payload is the original CDX array | `Package/evidence/occurrences` (SPDX 3 evidence profile) — defer | Same rationale as D1; deb deep-hash output relies on this. |
+| D1 | evidence — identity (technique + confidence) | `/components/{i}/evidence/identity[0]` | Annotation `evidence.identity` on Package, payload preserves `technique` + `confidence` | Annotation `evidence.identity` on Package, same payload shape | SPDX 2.3 has no evidence model; SPDX 3.0.1 has a typed evidence model sketched only in the evidence profile (not in 3.0.1 stable) — annotation preserves losslessly in both formats. |
+| D2 | evidence — occurrences | `/components/{i}/evidence/occurrences[]` (location + SHA-256 + legacy MD5) | Annotation `evidence.occurrences` on Package, payload is the original CDX array | Annotation `evidence.occurrences` on Package, same payload shape | Same rationale as D1; deb deep-hash output relies on this. |
 
 ## Section E — Compositions / completeness markers
 
 | # | mikebom data | CycloneDX 1.6 location | SPDX 2.3 location | SPDX 3.0.1 location | Justification |
 |---|--------------|------------------------|-------------------|---------------------|---------------|
-| E1 | ecosystem completeness claim | `/compositions[]` with `aggregate` + `assemblies/dependencies` | Document-level Annotation `compositions`, payload is the original CDX array | `SpdxDocument/profileConformance` (when applicable) + Annotation for residual claims — defer | SPDX 2.3 has no `compositions` analogue. |
+| E1 | ecosystem completeness claim | `/compositions[]` with `aggregate` + `assemblies/dependencies` | Document-level Annotation `compositions`, payload is the original CDX array | Document-level `Annotation` element on the SpdxDocument carrying `compositions`, payload shape `{complete_ecosystems: [...]}` | SPDX 2.3 has no `compositions` analogue; SPDX 3's `profileConformance` is a closely-related typed concept but doesn't carry the ecosystem-completeness claim shape — annotation preserves the CDX fidelity. |
 
 ## Section F — VEX (CycloneDX 1.6 has native section; SPDX 2.3 does not)
 
 | # | mikebom data | CycloneDX 1.6 location | SPDX 2.3 location | SPDX 3.0.1 location | Justification |
 |---|--------------|------------------------|-------------------|---------------------|---------------|
-| F1 | vulnerabilities (VEX statements) | `/vulnerabilities[]` | **Sidecar OpenVEX 0.2.0 file** at `mikebom.openvex.json` (next to the SPDX file). Referenced from the SPDX document via `externalDocumentRefs[]` (`externalDocumentId: "DocumentRef-OpenVEX"`, `spdxDocument: <relative path>`, `checksum: SHA-256 of sidecar bytes`). When no VEX statements exist, no sidecar file is created. | SPDX 3 security profile is the long-term home — defer until profile stabilizes. Same OpenVEX sidecar approach for the stub. | Per clarification Q2 (Option A): annotations would balloon for vulnerable images; OpenVEX is the purpose-built spec; CSAF VEX is overkill. |
+| F1 | vulnerabilities (VEX statements) | `/vulnerabilities[]` | **Sidecar OpenVEX 0.2.0 file** at `mikebom.openvex.json` (next to the SPDX file). Referenced from the SPDX document via `externalDocumentRefs[]` (`externalDocumentId: "DocumentRef-OpenVEX"`, `spdxDocument: <relative path>`, `checksum: SHA-256 of sidecar bytes`). When no VEX statements exist, no sidecar file is created. | **Same sidecar file** at `mikebom.openvex.json`. Cross-referenced from the SpdxDocument element via `externalRef[]` with `externalRefType: "vulnerabilityExploitabilityAssessment"` (the SPDX-3-vocabulary-canonical VEX type from `prop_ExternalRef_externalRefType`), `contentType: "application/openvex+json"`, `locator: [<relative path>]`, `comment: "OpenVEX 0.2.0 sidecar produced by mikebom"`. When no VEX statements exist, no sidecar file is created and no externalRef entry is emitted. Per spec clarification Q1 / FR-014. | Per clarification Q2 (Option A): annotations would balloon for vulnerable images; OpenVEX is the purpose-built spec; CSAF VEX is overkill. SPDX 3 lacks a SHA-256 slot on ExternalRef so content-integrity is the consumer's responsibility (matches SPDX 3 vocabulary intent). |
 
 ## Section G — Document envelope
 

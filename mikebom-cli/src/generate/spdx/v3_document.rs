@@ -25,15 +25,21 @@ const CREATION_INFO_ID: &str = "_:creation-info";
 /// `@graph` ordering (data-model.md §"Deterministic ordering rules"):
 /// 1. CreationInfo (single)
 /// 2. Tool
-/// 3. SpdxDocument
+/// 3. SpdxDocument (+ optional `externalRef` to the OpenVEX sidecar)
 /// 4. software_Package elements (sorted by spdxId)
 /// 5. Organization / Person elements (sorted by spdxId)
 /// 6. simplelicensing_LicenseExpression elements (sorted by spdxId)
 /// 7. Relationship elements (sorted by spdxId)
-/// 8. Annotation elements (sorted by spdxId) — milestone 011 US2
+/// 8. Annotation elements (sorted by spdxId)
+///
+/// `openvex_locator`: relative path the OpenVEX sidecar will land
+/// at on disk, when the scan produced at least one advisory. When
+/// `None`, no ExternalRef is injected. The sidecar itself is built
+/// + emitted by the serializer wrapper in `mod.rs`, not here.
 pub fn build_document(
     scan: &ScanArtifacts<'_>,
     cfg: &OutputConfig,
+    openvex_locator: Option<&str>,
 ) -> anyhow::Result<Value> {
     let fingerprint = scan_fingerprint(scan, cfg);
     let doc_iri = format!("{IRI_BASE}doc-{fingerprint}");
@@ -96,15 +102,34 @@ pub fn build_document(
 
     // 3. SpdxDocument (placed in the graph before the per-element
     // sections so a JSON-walker reading top-down hits the document
-    // shape early).
-    graph.push(json!({
+    // shape early). When the scan produced OpenVEX advisories, an
+    // ExternalRef pointing at the sidecar is attached here —
+    // clarification Q1 / FR-014: SPDX 3 cross-references the
+    // OpenVEX sidecar via an `externalRef` on the document element,
+    // using the VEX-precise enum value `vulnerabilityExploitability
+    // Assessment` (the most specific match in SPDX 3.0.1's
+    // `prop_ExternalRef_externalRefType` enum for an OpenVEX
+    // payload).
+    let mut spdx_document = json!({
         "type": "SpdxDocument",
         "spdxId": doc_iri,
         "creationInfo": CREATION_INFO_ID,
         "name": scan.target_name,
         "dataLicense": "https://spdx.org/licenses/CC0-1.0",
-        "rootElement": [root_iri],
-    }));
+        "rootElement": [root_iri.clone()],
+    });
+    if let Some(locator) = openvex_locator {
+        spdx_document["externalRef"] = json!([
+            {
+                "type": "ExternalRef",
+                "externalRefType": "vulnerabilityExploitabilityAssessment",
+                "contentType": "application/openvex+json",
+                "locator": [locator],
+                "comment": "OpenVEX 0.2.0 sidecar produced by mikebom",
+            }
+        ]);
+    }
+    graph.push(spdx_document);
 
     // 4 (cont). Append the Package elements.
     for pkg in packages {
@@ -166,7 +191,29 @@ pub fn build_document(
         graph.push(rel);
     }
 
-    // 8. Annotation elements — milestone 011 US2 (T020-T024).
+    // 8. Annotation elements — component-level (C1–C20 + D1/D2)
+    //    + document-level (C21–C23 + E1).
+    let mut annotations: Vec<Value> =
+        super::v3_annotations::build_component_annotations(
+            scan.components,
+            &package_iri_by_purl,
+            &doc_iri,
+            CREATION_INFO_ID,
+            scan.include_dev,
+            scan.include_source_files,
+        );
+    annotations.extend(super::v3_annotations::build_document_annotations(
+        scan,
+        &doc_iri,
+        CREATION_INFO_ID,
+    ));
+    annotations.sort_by(|a, b| {
+        let key = |v: &Value| v["spdxId"].as_str().unwrap_or("").to_string();
+        key(a).cmp(&key(b))
+    });
+    for anno in annotations {
+        graph.push(anno);
+    }
 
     Ok(json!({
         "@context": SPDX_3_CONTEXT,
