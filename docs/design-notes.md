@@ -239,11 +239,37 @@ Tracked separately because each item has its own design depth. Current source-sc
 
 ---
 
+## Output formats (milestone 010)
+
+SPDX 2.3 is a peer of CycloneDX 1.6 — not a second-class alternative:
+the two formats share a single scan pass, produce byte-identical content
+from identical input (modulo each spec's mandatory-volatile fields), and
+every piece of CDX-emitted data has a documented target in SPDX 2.3
+(native field or `annotations[]` envelope), cross-referenced via
+`docs/reference/sbom-format-mapping.md`. A third format —
+`spdx-3-json-experimental` — opts into a minimal SPDX 3.0.1 JSON-LD
+stub for npm components; it exists so adding full SPDX 3 emission in a
+future milestone is incremental rather than a rewrite. CVE/advisory data
+that the scanner discovers (currently no scanner populates
+`AdvisoryRef`, but the plumbing is live) rides alongside SPDX 2.3 as an
+OpenVEX 0.2.0 sidecar, referenced from the SPDX document via
+`externalDocumentRefs` with a SHA-256 of the sidecar bytes. The CLI
+surface: `--format` accepts a comma-separated list, `--output` accepts
+either bare `<path>` (legacy single-format) or repeated `<fmt>=<path>`
+(per-format); `openvex` is a reserved pseudo-format key for the
+sidecar's path override (cannot be requested via `--format`). The
+canonical cross-format contract is
+`docs/reference/sbom-format-mapping.md`; CI guards it against drift
+(`sbom_format_mapping_coverage.rs`) so any new `mikebom:*` property
+added anywhere in the scan pipeline breaks the build until it's
+mapped.
+
 ## Relevant specs
 
 - `specs/001-build-trace-pipeline/` — original eBPF build-trace mode
 - `specs/002-python-npm-ecosystem/` — Python + npm ecosystem expansion
 - `specs/003-multi-ecosystem-expansion/` — Go / RPM / Maven / Cargo / Gem + foundational work
+- `specs/010-spdx-output-support/` — SPDX 2.3 + SPDX 3.0.1-experimental + OpenVEX sidecar + dual-format data-placement map
 - `.specify/memory/constitution.md` — 12-principle constitution; notable constraints: no C dependencies, no `.unwrap()` in production, generation context always stamped, packageurl-python conformance
 
 ---
