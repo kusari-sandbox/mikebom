@@ -231,14 +231,26 @@ fn assert_parity(case: &EcosystemCase) {
 
     // (1, reverse): every SPDX package that is NOT the synthetic
     // document root should correspond to exactly one CDX component.
-    // The synthetic root has SPDXID starting with `SPDXRef-DocumentRoot-`
-    // (build_document synthesize_root path) and no purl externalRef,
-    // so it naturally drops out of the map above.
+    // The synthetic root now carries a synthesized
+    // `pkg:generic/<target>@0.0.0` PURL + a synthesized
+    // `cpe:2.3:a:mikebom:<target>:0.0.0:*` CPE externalRef (so
+    // sbomqs's comp_with_purl / comp_with_cpe features don't dock
+    // the document for a missing-identity component). That PURL is
+    // SPDX-only — CDX emits the scan subject as
+    // `metadata.component`, not as a `components[]` entry — so skip
+    // synthetic-root SPDXIDs when walking the SPDX → CDX direction.
     let cdx_purls: BTreeSet<String> = cdx_components
         .iter()
         .filter_map(|c| c.get("purl").and_then(|v| v.as_str()).map(String::from))
         .collect();
     for (purl, pkg) in &spdx_by_purl {
+        let is_synthetic_root = pkg
+            .get("SPDXID")
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| s.starts_with("SPDXRef-DocumentRoot-"));
+        if is_synthetic_root {
+            continue;
+        }
         assert!(
             cdx_purls.contains(purl),
             "{}: SPDX package {} has PURL {purl} with no matching CDX component",

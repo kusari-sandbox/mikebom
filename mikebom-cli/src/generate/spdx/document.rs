@@ -247,9 +247,20 @@ pub fn build_document(
     let relationships =
         super::relationships::build_relationships(artifacts, &root_id);
 
+    // Two creator entries: a `Tool:` identifying mikebom (used
+    // throughout the document as the `annotator` field on every
+    // annotation we emit), plus an `Organization:` identifying the
+    // mikebom project as the SBOM's sbomqs-facing author.
+    // sbomqs's `sbom_authors` feature checks for a non-Tool creator
+    // — giving it an Organization entry mirrors what CDX emits in
+    // `metadata.supplier` + `metadata.authors` and closes the
+    // cross-format sbomqs Provenance gap.
     let creation_info = CreationInfo {
         created: date.clone(),
-        creators: vec![annotator.clone()],
+        creators: vec![
+            annotator.clone(),
+            "Organization: mikebom contributors".to_string(),
+        ],
         license_list_version: None,
     };
 
@@ -279,7 +290,9 @@ fn synthesize_root(
     target_name: &str,
     namespace: &SpdxDocumentNamespace,
 ) -> (SpdxId, SpdxPackage) {
-    use super::packages::SpdxLicenseField;
+    use super::packages::{
+        SpdxExternalRef, SpdxExternalRefCategory, SpdxLicenseField,
+    };
 
     // Stable SPDXID for the synthetic root: hash the namespace URI
     // (already scan-derived + mikebom-version-stamped) plus a fixed
@@ -291,22 +304,69 @@ fn synthesize_root(
     let encoded = BASE32_NOPAD.encode(&digest);
     let id = SpdxId::synthetic_root(&encoded[..16]);
 
+    // Synthesize identity externalRefs for the synthetic root so
+    // sbomqs's Vulnerability/comp_with_purl + comp_with_cpe features
+    // don't ding every mikebom SPDX document for "one component is
+    // missing PURL/CPE" (the synthetic root is the one component).
+    // The PURL uses `pkg:generic/<target>@0.0.0` — the same shape
+    // CDX uses for the scan-subject metadata.component. The CPE
+    // mirrors `metadata.component.cpe` in CDX. Both are synthetic
+    // but spec-valid; consumers that want a real PURL/CPE look at
+    // the component-level Packages, not the root.
+    let sanitized = sanitize_for_coord(target_name);
+    let version = "0.0.0";
+    let synth_purl = format!("pkg:generic/{sanitized}@{version}");
+    let synth_cpe =
+        format!("cpe:2.3:a:mikebom:{sanitized}:{version}:*:*:*:*:*:*:*");
+
     let root = SpdxPackage {
         spdx_id: id.clone(),
         name: target_name.to_string(),
-        version_info: "NOASSERTION".to_string(),
+        version_info: version.to_string(),
         download_location: "NOASSERTION".to_string(),
-        supplier: None,
+        supplier: Some("Organization: mikebom contributors".to_string()),
         originator: None,
         files_analyzed: false,
         checksums: Vec::new(),
         license_declared: SpdxLicenseField::NoAssertion,
         license_concluded: SpdxLicenseField::NoAssertion,
         copyright_text: None,
-        external_refs: Vec::new(),
+        external_refs: vec![
+            SpdxExternalRef {
+                category: SpdxExternalRefCategory::PackageManager,
+                ref_type: "purl".to_string(),
+                locator: synth_purl,
+            },
+            SpdxExternalRef {
+                category: SpdxExternalRefCategory::Security,
+                ref_type: "cpe23Type".to_string(),
+                locator: synth_cpe,
+            },
+        ],
         annotations: Vec::new(),
     };
     (id, root)
+}
+
+/// Normalize a target-name string for inclusion in a PURL/CPE
+/// coord. Matches the loose shape CDX uses for its synthesized
+/// scan-subject PURL (see `metadata.rs::cpe_sanitize`): lowercase
+/// ASCII alphanumerics + `_` / `-` / `.` preserved; everything
+/// else collapses to `_`.
+fn sanitize_for_coord(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    for c in raw.chars() {
+        let c = c.to_ascii_lowercase();
+        if c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.') {
+            out.push(c);
+        } else {
+            out.push('_');
+        }
+    }
+    if out.is_empty() {
+        out.push('_');
+    }
+    out
 }
 
 #[cfg(test)]

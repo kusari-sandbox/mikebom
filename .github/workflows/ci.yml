@@ -56,6 +56,20 @@ jobs:
       - name: Build eBPF object
         run: cargo run --package xtask -- ebpf
 
+      # sbomqs is the cross-format SBOM-quality scorer that
+      # enforces spec SC-001: mikebom's SPDX output must meet or
+      # beat its CDX output on NTIA-minimum native features.
+      # `tests/sbomqs_parity.rs` reads `$PATH` for the binary; it
+      # exits with a visible skip if sbomqs isn't available, so
+      # dropping this step doesn't break the build — it just
+      # silently stops enforcing SC-001. Pinned to a specific
+      # version so the sbomqs JSON output shape (feature keys in
+      # particular) stays stable across CI runs.
+      - name: Install sbomqs
+        run: go install github.com/interlynk-io/sbomqs@v2.0.6
+      - name: Add Go bin to PATH
+        run: echo "${HOME}/go/bin" >> "$GITHUB_PATH"
+
       # Pin `+stable` explicitly on clippy/test so these never fall through
       # to nightly even if something earlier changes the default.
       #
