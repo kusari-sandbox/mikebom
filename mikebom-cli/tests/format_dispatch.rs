@@ -53,9 +53,11 @@ fn run_scan_in(
 
 /// Normalize CDX volatile fields (serialNumber + metadata.timestamp)
 /// so two runs of the same scan are byte-comparable. Mirrors the
-/// helper in `cdx_regression.rs` — including the workspace-absolute-
-/// path rewrite that makes goldens portable between macOS dev and
-/// Linux CI (see `cdx_regression.rs::normalize` for the full story).
+/// helper in `cdx_regression.rs` — workspace-absolute-path rewrite
+/// AND per-component `hashes[]` stripping, both needed for
+/// cross-host byte identity (local package caches on dev vs empty
+/// caches on CI change which components the scanner can hash).
+/// See `cdx_regression.rs::normalize` for the full story.
 fn normalize_cdx(raw: &str) -> String {
     let ws = workspace_root();
     let ws_str = ws.to_string_lossy().to_string();
@@ -82,8 +84,24 @@ fn normalize_cdx(raw: &str) -> String {
                 );
             }
         }
+        if let Some(comps) = obj.get_mut("components").and_then(|v| v.as_array_mut())
+        {
+            for c in comps {
+                strip_hashes(c);
+            }
+        }
     }
     serde_json::to_string_pretty(&json).expect("re-serialize")
+}
+
+fn strip_hashes(c: &mut serde_json::Value) {
+    let Some(obj) = c.as_object_mut() else { return };
+    obj.remove("hashes");
+    if let Some(nested) = obj.get_mut("components").and_then(|v| v.as_array_mut()) {
+        for nc in nested {
+            strip_hashes(nc);
+        }
+    }
 }
 
 fn pinned_cargo_golden() -> String {

@@ -108,7 +108,7 @@ fn run_scan(case: &EcosystemCase) -> String {
     std::fs::read_to_string(&out_path).expect("read produced sbom")
 }
 
-/// Replace the three inherently volatile things in CDX output:
+/// Replace the four inherently volatile things in CDX output:
 ///
 /// 1. `serialNumber` v4 UUID — regenerated per invocation by the CDX
 ///    builder (`Uuid::new_v4()`).
@@ -122,16 +122,31 @@ fn run_scan(case: &EcosystemCase) -> String {
 ///    deterministic, so we rewrite the prefix to the literal
 ///    `<WORKSPACE>` placeholder in both golden and produced output
 ///    before byte-comparing.
+/// 4. Per-component `hashes[]` arrays — for several ecosystems the
+///    scanner derives hashes from local package caches:
+///      - Maven JARs from `~/.m2/repository/<coord>/<ver>/<jar>`,
+///      - Go module zips from `~/go/pkg/mod/cache/download/...`.
+///    That state varies by host: on my dev machine I happen to have
+///    some JARs cached (so `commons-lang3` gets `{SHA-1, SHA-256}`
+///    while `guava` gets nothing); on CI the cache starts empty so
+///    no component gets hashes. This isn't an emitter bug — it's
+///    "what do we actually know about the bytes on *this* host?" —
+///    so we strip `hashes[]` from every component (top-level and
+///    nested) before byte-comparing. Hash-set parity between CDX
+///    and SPDX within a single scan is still guarded by
+///    `spdx_cdx_parity.rs` (in-memory, same host, same moment), so
+///    this doesn't lose the cross-format invariant.
 ///
 /// Any OTHER difference (component order, property keys, license
 /// shape, added/removed fields) surfaces as a regression — those are
 /// the invariants this test guards.
 fn normalize(raw: &str) -> String {
-    // Do the workspace-root rewrite at string-level so it hits every
-    // path that happens to contain it, regardless of which field
-    // carries it (source-files property, evidence.source_file_paths,
-    // evidence.occurrences[].location, …). `workspace_root()` is
-    // the same canonical path the scan was invoked with.
+    // (3) Do the workspace-root rewrite at string-level so it hits
+    // every path that happens to contain it, regardless of which
+    // field carries it (source-files property,
+    // evidence.source_file_paths, evidence.occurrences[].location,
+    // …). `workspace_root()` is the same canonical path the scan
+    // was invoked with.
     let ws = workspace_root();
     let ws_str = ws.to_string_lossy().to_string();
     let replaced = raw.replace(ws_str.as_str(), WORKSPACE_PLACEHOLDER);
@@ -139,12 +154,14 @@ fn normalize(raw: &str) -> String {
     let mut json: serde_json::Value = serde_json::from_str(&replaced)
         .expect("produced SBOM is valid JSON after workspace-path rewrite");
     if let Some(obj) = json.as_object_mut() {
+        // (1) serialNumber
         if obj.contains_key("serialNumber") {
             obj.insert(
                 "serialNumber".to_string(),
                 serde_json::Value::String(SERIAL_PLACEHOLDER.to_string()),
             );
         }
+        // (2) metadata.timestamp
         if let Some(md) = obj.get_mut("metadata").and_then(|v| v.as_object_mut()) {
             if md.contains_key("timestamp") {
                 md.insert(
@@ -153,8 +170,26 @@ fn normalize(raw: &str) -> String {
                 );
             }
         }
+        // (4) strip per-component hashes[] (recurses into nested
+        // components, which CDX 1.6 uses for shade-jar children and
+        // image-layer-owned bundles).
+        if let Some(comps) = obj.get_mut("components").and_then(|v| v.as_array_mut()) {
+            for c in comps {
+                strip_component_hashes(c);
+            }
+        }
     }
     serde_json::to_string_pretty(&json).expect("re-serialize")
+}
+
+fn strip_component_hashes(c: &mut serde_json::Value) {
+    let Some(obj) = c.as_object_mut() else { return };
+    obj.remove("hashes");
+    if let Some(nested) = obj.get_mut("components").and_then(|v| v.as_array_mut()) {
+        for nc in nested {
+            strip_component_hashes(nc);
+        }
+    }
 }
 
 /// Write or compare a golden file. Accepts a test-time toggle via

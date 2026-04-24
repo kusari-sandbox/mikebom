@@ -18,12 +18,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "5ad32ce52e4161730f7098c077cd2ed6229b5804ccf99e5366be1ab72a98b4e1"
-        }
-      ],
       "name": "anyhow",
       "properties": [
         {
@@ -92,12 +86,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "95fc56cda0b5c3325f5fbbd7ff9fda9e02bb00bb3dac51252d2f1bfa1cb8cc8c"
-        }
-      ],
       "name": "proc-macro2",
       "properties": [
         {
@@ -130,12 +118,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "291ec9ab5efd934aaf503a6466c5d5251535d108ee747472c3977cc5acc868ef"
-        }
-      ],
       "name": "quote",
       "properties": [
         {
@@ -168,12 +150,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "3fb1c753d2daa1c9a31c65b0c2e1b8b3f6eafbbaa32a9c0b48da3b0b4e2b92d7"
-        }
-      ],
       "name": "serde",
       "properties": [
         {
@@ -206,12 +182,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "7eb0b34b42edc17f6b7cac84a52a1c5f0e1bb2227e997ca9011ea3dd34e8610b"
-        }
-      ],
       "name": "serde_derive",
       "properties": [
         {
@@ -244,12 +214,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "0f3531638e407dfc0814761abb7c00a5b54992b849452a0646b7f65c9f9aefaa"
-        }
-      ],
       "name": "syn",
       "properties": [
         {
@@ -282,12 +246,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
-        }
-      ],
       "name": "unicode-ident",
       "properties": [
         {

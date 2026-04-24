@@ -24,12 +24,6 @@
           "url": "https://github.com/davecgh/go-spew"
         }
       ],
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "be3f63feed5baa7bc211f24ec1486d94e011aacdfeae41d8635de36164d4f7b7"
-        }
-      ],
       "name": "github.com/davecgh/go-spew",
       "properties": [
         {
@@ -73,12 +67,6 @@
         {
           "type": "vcs",
           "url": "https://github.com/inconshreveable/mousetrap"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "c0dfb1e0d546a4cb0eec4ad49ff994237bc4a04e89b75dd7dacd1bab0a7db5cf"
         }
       ],
       "name": "github.com/inconshreveable/mousetrap",
@@ -126,12 +114,6 @@
           "url": "https://github.com/mattn/go-isatty"
         }
       ],
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "c5869efa508d04fed0b96e0f527346eb57df33885521f9becd4cc3b92cd82c6b"
-        }
-      ],
       "name": "github.com/mattn/go-isatty",
       "properties": [
         {
@@ -175,12 +157,6 @@
         {
           "type": "vcs",
           "url": "https://github.com/pmezard/go-difflib"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "e030700c4d0d1b24280476cb4183f04943e808c591e41133224fdfd6565b0103"
         }
       ],
       "name": "github.com/pmezard/go-difflib",
@@ -228,12 +204,6 @@
           "url": "https://github.com/sirupsen/logrus"
         }
       ],
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "4ec644ee5d75cc508b66767eb5e1f8526a2ae4184421f2337d10d9d54cea976c"
-        }
-      ],
       "name": "github.com/sirupsen/logrus",
       "properties": [
         {
@@ -277,12 +247,6 @@
         {
           "type": "vcs",
           "url": "https://github.com/spf13/cobra"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "0cc4d3a27c799bae4873418ea11636735e9609b1f138ec3ac717b3b8b681a5c5"
         }
       ],
       "name": "github.com/spf13/cobra",
@@ -330,12 +294,6 @@
           "url": "https://github.com/spf13/pflag"
         }
       ],
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "f5ec5a41a30e0b07df2a28a2624ebf06775406ffa245588d5bee2510c8b43ef6"
-        }
-      ],
       "name": "github.com/spf13/pflag",
       "properties": [
         {
@@ -381,12 +339,6 @@
           "url": "https://github.com/stretchr/testify"
         }
       ],
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "eecda2181ce9e44c11eff68866bf1aa39f9dadadf0890c8a8e316ebe054abbb5"
-        }
-      ],
       "name": "github.com/stretchr/testify",
       "properties": [
         {
@@ -426,12 +378,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "164b28bbb5044145a52af21db2acc99949825f7719b83dbe3f75f2cb3c0c8650"
-        }
-      ],
       "name": "golang.org/x/sys",
       "properties": [
         {
@@ -471,12 +417,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "ca10958320b8a3579509adad665ede4b4afe483a3af776c9955765946b4478a3"
-        }
-      ],
       "name": "gopkg.in/check.v1",
       "properties": [
         {
@@ -516,12 +456,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "7f1566fc6cc0cc45aa2c7baf72d23dd4a4bd8613669963a85aed174d8252ec20"
-        }
-      ],
       "name": "gopkg.in/yaml.v3",
       "properties": [
         {

@@ -61,16 +61,6 @@
           }
         ]
       },
-      "hashes": [
-        {
-          "alg": "SHA-1",
-          "content": "1ed471194b02f2c6cb734a0cd6f6f107c673afae"
-        },
-        {
-          "alg": "SHA-256",
-          "content": "7b96bf3ee68949abb5bc465559ac270e0551596fa34523fddf890ec418dde13c"
-        }
-      ],
       "name": "commons-lang3",
       "properties": [
         {
