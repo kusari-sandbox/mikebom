@@ -36,6 +36,45 @@ use super::{EmittedArtifact, OutputConfig, SbomSerializer, ScanArtifacts};
 /// `Utc::now()` / `Uuid::new_v4()` inside the serialization path.
 pub struct Spdx2_3JsonSerializer;
 
+/// SPDX 3.0.1 experimental stub serializer (T045, milestone 010 US3).
+///
+/// Coverage: npm only (research.md R3). Non-npm components are
+/// silently filtered out of the emitted `@graph`. The format
+/// identifier includes the `-experimental` suffix so consumers
+/// cannot mistake the stub for production-grade SPDX 3 emission
+/// (FR-019b). `experimental()` returns true so the CLI's `--help`
+/// surface can label the format.
+pub struct Spdx3JsonExperimentalSerializer;
+
+impl SbomSerializer for Spdx3JsonExperimentalSerializer {
+    fn id(&self) -> &'static str {
+        "spdx-3-json-experimental"
+    }
+
+    fn default_filename(&self) -> &'static str {
+        "mikebom.spdx3-experimental.json"
+    }
+
+    fn experimental(&self) -> bool {
+        true
+    }
+
+    fn serialize(
+        &self,
+        scan: &ScanArtifacts<'_>,
+        cfg: &OutputConfig,
+    ) -> anyhow::Result<Vec<EmittedArtifact>> {
+        let doc = v3_stub::serialize_v3_stub(scan, cfg)?;
+        let bytes = serde_json::to_string_pretty(&doc)
+            .context("serializing SPDX 3.0.1 stub document to JSON")?
+            .into_bytes();
+        Ok(vec![EmittedArtifact {
+            relative_path: PathBuf::from(self.default_filename()),
+            bytes,
+        }])
+    }
+}
+
 impl SbomSerializer for Spdx2_3JsonSerializer {
     fn id(&self) -> &'static str {
         "spdx-2.3-json"

@@ -36,3 +36,4 @@ mikebom.openvex.json
 
 # Local release-test staging (downloaded tarballs, per-alpha extracts)
 .release-test/
+.claude/scheduled_tasks.lock

@@ -77,6 +77,11 @@ pub struct ScanArgs {
     ///   `mikebom.cdx.json`).
     /// - `spdx-2.3-json` — SPDX 2.3 JSON (default filename
     ///   `mikebom.spdx.json`).
+    /// - `spdx-3-json-experimental` [EXPERIMENTAL] — SPDX 3.0.1
+    ///   JSON-LD stub. npm ecosystem only; non-npm scans produce
+    ///   a document with zero Packages. Opt-in; labeled
+    ///   experimental until full multi-ecosystem coverage lands.
+    ///   Default filename: `mikebom.spdx3-experimental.json`.
     #[arg(
         long,
         action = clap::ArgAction::Append,
@@ -168,6 +173,9 @@ fn resolve_dispatch(
     // registered, so the user can see what changed between versions.
     // OpenVEX is explicitly NOT a registered format; calling it out
     // separately gives a more useful error than "unknown".
+    // `spdx-3-json` (no suffix) is a very-common typo for the
+    // experimental stub; intercept it with a "did you mean" hint
+    // rather than bury it in the generic unknown-format error (FR-019b).
     for f in &formats {
         if f == OPENVEX_PSEUDO_FORMAT {
             anyhow::bail!(
@@ -178,8 +186,17 @@ fn resolve_dispatch(
                  an SPDX `--format`.",
             );
         }
+        if f == "spdx-3-json" {
+            anyhow::bail!(
+                "unknown format identifier {:?} (did you mean \
+                 'spdx-3-json-experimental'? — SPDX 3 support is \
+                 opt-in and labeled experimental until full \
+                 multi-ecosystem coverage lands)",
+                f,
+            );
+        }
         if registry.get(f).is_none() {
-            let known: Vec<&'static str> = registry.ids().collect();
+            let known = format_help_list(registry);
             anyhow::bail!(
                 "unknown format identifier {:?}; accepted: {}",
                 f,
@@ -311,6 +328,26 @@ fn resolve_dispatch(
     }
 
     Ok(DispatchPlan { formats, overrides })
+}
+
+/// Format the registered-id list for user-facing text, appending
+/// ` [EXPERIMENTAL]` to any serializer where
+/// [`SbomSerializer::experimental`] is true (FR-019b). Used by the
+/// unknown-format error path — surfaces the experimental status at
+/// the exact moment a user encounters the set of accepted format
+/// identifiers.
+fn format_help_list(registry: &SerializerRegistry) -> Vec<String> {
+    registry
+        .ids()
+        .map(|id| {
+            let ser = registry.get(id).expect("id from registry.ids()");
+            if ser.experimental() {
+                format!("{id} [EXPERIMENTAL]")
+            } else {
+                id.to_string()
+            }
+        })
+        .collect()
 }
 
 /// Normalize a path for collision detection without touching the
