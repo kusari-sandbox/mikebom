@@ -171,8 +171,6 @@ On macOS, run trace-mode inside the `mikebom-dev` container (see
 ## What's next
 
 - **Find a flag you need?** See the [CLI reference](cli-reference.md).
-- **Want to compare SBOM quality to other tools?** See
-  [`mikebom sbom compare`](cli-reference.md#mikebom-sbom-compare).
 - **Curious why the SBOM looks the way it does?** See the
   [architecture overview](../architecture/overview.md).
 - **Running into an unfamiliar ecosystem?** See the

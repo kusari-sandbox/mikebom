@@ -5,11 +5,10 @@ mikebom has two modes with different runtime requirements.
 | Mode | Subcommands | Needs |
 |---|---|---|
 | **Tracing** | `mikebom trace capture`, `mikebom trace run` | Linux kernel ≥ 5.8, eBPF privilege (`--privileged` container or root) |
-| **Scanning** | `mikebom sbom scan`, `mikebom sbom generate`, `mikebom sbom compare` | Any OS Rust runs on. No privilege. No eBPF. |
+| **Scanning** | `mikebom sbom scan`, `mikebom sbom generate`, `mikebom sbom enrich`, `mikebom sbom verify` | Any OS Rust runs on. No privilege. No eBPF. |
 
-If you only need `sbom scan` / `sbom generate` / `sbom compare`, you can build
-and run mikebom natively on macOS, Windows (WSL2), or Linux. `trace` requires
-Linux with eBPF.
+If you only need the scanning surface, you can build and run mikebom natively
+on macOS, Windows (WSL2), or Linux. `trace` requires Linux with eBPF.
 
 ## Build from source
 
@@ -34,22 +33,18 @@ produces the CLI binary.
 
 The tracing subcommands need a privileged Linux host. On macOS, Windows, or
 when you don't want to build toolchain dependencies locally, use the provided
-dev container — it ships a compatible kernel, the BPF toolchain, and `syft` +
-`trivy` so you can run the comparison demos.
+dev container — it ships a compatible kernel and the BPF toolchain.
 
 ```bash
 docker build -t mikebom-dev -f Dockerfile.dev .
 docker run --rm --privileged \
   -v "$PWD:/mikebom-src:ro" \
   mikebom-dev \
-  bash /mikebom-src/demos/debian/run.sh
+  bash -c "cd /mikebom-src && cargo build --release"
 ```
 
 `--privileged` is required: eBPF probe attachment uses capabilities that
 rootless Docker and unprivileged containers don't expose.
-
-See [`demos/README.md`](../../demos/README.md) for full build and run
-instructions for the Debian and Rust demos.
 
 ## Lima VM (macOS)
 

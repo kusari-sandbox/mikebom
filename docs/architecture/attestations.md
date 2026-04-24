@@ -171,8 +171,8 @@ align.
   `0.0.0.0:0`. Hostname via SNI/Host header is preserved so this is
   cosmetic. BTF CO-RE resolution is the proper fix.
 - **HTTP/2 HPACK-encoded headers**: our plaintext hostname scanner relies
-  on uncompressed substrings. The demos force HTTP/1.1
-  (`curl --http1.1`); a real HPACK decoder is the proper fix.
+  on uncompressed substrings. Workaround: force HTTP/1.1 at the client
+  (`curl --http1.1`). A real HPACK decoder is the proper fix.
 - **curl `-O` / cargo `.crate` writes**: `vfs_open` kprobes don't fire for
   these `openat(AT_FDCWD, ..., O_CREAT|O_WRONLY)` paths (BPF verifier
   rejects `bpf_d_path` from the relevant kprobe). Worked around via the
@@ -180,9 +180,10 @@ align.
   complete path coverage without per-open timing provenance.
 - **GnuTLS / rustls clients don't hit our libssl uprobes.** apt's `https`
   method uses GnuTLS; cargo uses rustls. Neither links against libssl.
-  The demos drive curl (which does link libssl) around this for apt;
-  cargo's rustls downloads are covered via the artifact-dir scan since the
-  URL is already knowable from the `.crate` filename.
+  Workaround for apt-driven traces: drive the install through curl
+  (which does link libssl). Cargo's rustls downloads are covered via the
+  artifact-dir scan since the URL is already knowable from the `.crate`
+  filename.
 - **Attestation signing** is landing now under feature 006 (v006 in
   progress). DSSE envelope signing via local PEM key or keyless (OIDC →
   Fulcio → Rekor) using `sigstore-rs`. Verification exposed through

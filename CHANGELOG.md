@@ -19,6 +19,13 @@ adheres to [Semantic Versioning](https://semver.org/) once it exits
   was never relocated there. New unit + integration tests exercise
   every disposition. See `specs/009-maven-shade-deps/spec.md` FR-002b.
 
+### Removed
+- **`mikebom sbom compare` subcommand** and the `demos/` directory.
+  The head-to-head comparison story is now owned by a separate test
+  suite outside this repo; keeping the in-tree version invited drift
+  between the two. Any workflow that depended on `sbom compare`
+  should move to the external suite.
+
 ## [0.1.0-alpha.3] — 2026-04-23
 
 ### Added
@@ -78,9 +85,6 @@ adheres to [Semantic Versioning](https://semver.org/) once it exits
 - **`metadata.component` carries synthetic `purl` + `cpe`** for sbomqs
   schema validity (`pkg:generic/<name>@<version>` +
   `cpe:2.3:a:mikebom:<name>:<version>:...`).
-- **`sbom compare` subcommand** for diffing mikebom's output against
-  syft / trivy + ground truth; emits a Markdown report plus an optional
-  JSON summary.
 - **`--include-legacy-rpmdb` flag** (feature 004 US4) enables reading
   legacy Berkeley-DB `/var/lib/rpm/Packages` on pre-RHEL-8 /
   CentOS-7 / Amazon-Linux-2 rootfs. Off by default; also configurable

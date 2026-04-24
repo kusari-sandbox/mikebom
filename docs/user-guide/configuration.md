@@ -63,7 +63,7 @@ network behavior and filter state are per-invocation, not per-environment.
 
 - **`trace capture` / `trace run`** require Linux kernel ≥ 5.8 and eBPF
   privilege — in practice, either root or a `--privileged` container.
-- **`sbom scan` / `sbom generate` / `sbom compare`** run unprivileged on any
-  platform Rust compiles on.
+- **`sbom scan` / `sbom generate` / `sbom verify` / `sbom enrich`** run
+  unprivileged on any platform Rust compiles on.
 - mikebom never writes outside its explicitly specified output paths (default:
   CWD). It does not modify the directories it scans.
