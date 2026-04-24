@@ -2012,6 +2012,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "clap",
+ "data-encoding",
  "flate2",
  "json-patch",
  "jsonschema",

@@ -127,15 +127,18 @@ pub struct SerializerRegistry {
 impl SerializerRegistry {
     /// Register every stable, built-in serializer.
     ///
-    /// Initially only CycloneDX is registered; the SPDX 2.3 and
-    /// SPDX 3.0.1-experimental serializers land in later phases of
-    /// milestone 010 and extend this list.
+    /// Phase 3 of milestone 010 adds SPDX 2.3; the SPDX 3.0.1
+    /// experimental stub lands in Phase 5 (US3) and extends this
+    /// list.
     pub fn with_defaults() -> Self {
         let mut by_id: BTreeMap<&'static str, Arc<dyn SbomSerializer>> =
             BTreeMap::new();
         let cdx: Arc<dyn SbomSerializer> =
             Arc::new(cyclonedx::CycloneDxJsonSerializer);
         by_id.insert(cdx.id(), cdx);
+        let spdx23: Arc<dyn SbomSerializer> =
+            Arc::new(spdx::Spdx2_3JsonSerializer);
+        by_id.insert(spdx23.id(), spdx23);
         Self { by_id }
     }
 

@@ -51,10 +51,16 @@ pub struct ScanArgs {
     #[arg(long, action = clap::ArgAction::Append, value_name = "[FMT=]PATH")]
     pub output: Vec<String>,
 
-    /// Output format(s). Comma-separated list, and the flag itself is
-    /// repeatable: `--format cyclonedx-json,spdx-2.3-json` is
+    /// Output format(s). Comma-separated list, and the flag itself
+    /// is repeatable: `--format cyclonedx-json,spdx-2.3-json` is
     /// equivalent to `--format cyclonedx-json --format spdx-2.3-json`.
     /// Duplicates are ignored silently. Default: `cyclonedx-json`.
+    ///
+    /// Registered formats:
+    /// - `cyclonedx-json` — CycloneDX 1.6 JSON (default filename
+    ///   `mikebom.cdx.json`).
+    /// - `spdx-2.3-json` — SPDX 2.3 JSON (default filename
+    ///   `mikebom.spdx.json`).
     #[arg(
         long,
         action = clap::ArgAction::Append,
@@ -623,7 +629,7 @@ mod tests {
 
     #[test]
     fn unknown_format_rejects_with_known_list() {
-        let err = resolve_dispatch(&reg(), &["spdx-2.3-json".into()], &[])
+        let err = resolve_dispatch(&reg(), &["totally-fake-format".into()], &[])
             .unwrap_err()
             .to_string();
         assert!(
