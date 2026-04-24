@@ -26,6 +26,7 @@ This document is the contract that the SPDX 2.3 serializer (and the SPDX 3 stub)
 | A9 | external reference — homepage | `/components/{i}/externalReferences[]` with `type: "website"` | `/packages/{i}/externalRefs[]` with category `OTHER`, type `homepage` (or `homepage` field on Package if present in our data) | `Package/homePage` | Native in 1.6/2.3; 3.0.1 has dedicated `homePage`. |
 | A10 | external reference — VCS | `/components/{i}/externalReferences[]` with `type: "vcs"` | `/packages/{i}/externalRefs[]` with category `OTHER`, type `vcs` | `Package/sourceInfo` | Native homes available in all. |
 | A11 | external reference — deps.dev / registry | `/components/{i}/externalReferences[]` with `type: "distribution"` | `/packages/{i}/downloadLocation` (when distribution URL is canonical) and/or `externalRefs[]` | `Package/downloadLocation` | Use `downloadLocation` when authoritative; `NOASSERTION` otherwise. |
+| A12 | CPE — primary (single-valued) | `/components/{i}/cpe` | `/packages/{i}/externalRefs[]` with `referenceCategory: "SECURITY"`, `referenceType: "cpe23Type"`, `referenceLocator: <CPE string>` | `Package/externalRef` with `externalRefType: "cpe23"`, `locator: <CPE>` | Native in all. CDX's single `cpe` field is the highest-signal synthesized candidate; the remaining candidates land in `mikebom:cpe-candidates` per C19. |
 
 ## Section B — Graph structure (relationships)
 
