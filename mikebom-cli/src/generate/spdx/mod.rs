@@ -19,6 +19,13 @@ pub mod document;
 pub mod ids;
 pub mod packages;
 pub mod relationships;
+pub mod v3_agents;
+pub mod v3_annotations;
+pub mod v3_document;
+pub mod v3_external_ids;
+pub mod v3_licenses;
+pub mod v3_packages;
+pub mod v3_relationships;
 pub mod v3_stub;
 
 use std::path::PathBuf;
@@ -36,26 +43,34 @@ use super::{EmittedArtifact, OutputConfig, SbomSerializer, ScanArtifacts};
 /// `Utc::now()` / `Uuid::new_v4()` inside the serialization path.
 pub struct Spdx2_3JsonSerializer;
 
-/// SPDX 3.0.1 experimental stub serializer (T045, milestone 010 US3).
+/// SPDX 3.0.1 stable serializer (milestone 011 US1+US2).
 ///
-/// Coverage: npm only (research.md R3). Non-npm components are
-/// silently filtered out of the emitted `@graph`. The format
-/// identifier includes the `-experimental` suffix so consumers
-/// cannot mistake the stub for production-grade SPDX 3 emission
-/// (FR-019b). `experimental()` returns true so the CLI's `--help`
-/// surface can label the format.
-pub struct Spdx3JsonExperimentalSerializer;
+/// Full coverage across all 9 ecosystems mikebom supports
+/// (apk, cargo, deb, gem, go, maven, npm, pip, rpm); produces a
+/// schema-valid SPDX 3.0.1 JSON-LD document with native-field
+/// parity vs. the CycloneDX serializer (PURL, name, version,
+/// license, hash, supplier/originator) plus mikebom-specific
+/// signal fidelity vs. the SPDX 2.3 serializer (every `mikebom:*`
+/// field reaches SPDX 3 either as a typed native property or as
+/// an `Annotation` element under the Q2 strict-match rule).
+///
+/// During milestone-011 Phase 2 (foundational), `experimental()`
+/// returns `true` so CLI help still labels the format experimental
+/// — the flag flips to `false` in US3 (T029) once US1+US2's
+/// acceptance tests pass and the emitter is at parity with SPDX 2.3.
+pub struct Spdx3JsonSerializer;
 
-impl SbomSerializer for Spdx3JsonExperimentalSerializer {
+impl SbomSerializer for Spdx3JsonSerializer {
     fn id(&self) -> &'static str {
-        "spdx-3-json-experimental"
+        "spdx-3-json"
     }
 
     fn default_filename(&self) -> &'static str {
-        "mikebom.spdx3-experimental.json"
+        "mikebom.spdx3.json"
     }
 
     fn experimental(&self) -> bool {
+        // Flips to `false` in US3 (T029) once full parity lands.
         true
     }
 
@@ -64,14 +79,66 @@ impl SbomSerializer for Spdx3JsonExperimentalSerializer {
         scan: &ScanArtifacts<'_>,
         cfg: &OutputConfig,
     ) -> anyhow::Result<Vec<EmittedArtifact>> {
-        let doc = v3_stub::serialize_v3_stub(scan, cfg)?;
+        let doc = v3_document::build_document(scan, cfg)?;
         let bytes = serde_json::to_string_pretty(&doc)
-            .context("serializing SPDX 3.0.1 stub document to JSON")?
+            .context("serializing SPDX 3.0.1 document to JSON")?
             .into_bytes();
         Ok(vec![EmittedArtifact {
             relative_path: PathBuf::from(self.default_filename()),
             bytes,
         }])
+    }
+}
+
+/// SPDX 3.0.1 deprecation-track alias (milestone 010 stub →
+/// milestone 011 alias).
+///
+/// Per spec FR-002 + research.md §R6: this identifier was the
+/// milestone-010 experimental stub (`spdx-3-json-experimental`).
+/// Milestone 011 retains the identifier as a deprecation alias
+/// that delegates to [`Spdx3JsonSerializer::serialize`] verbatim
+/// — byte-identical output, same `mikebom.spdx3.json` default
+/// filename, no comment-marker injection. The deprecation signal
+/// is carried by the stderr notice (emitted by the CLI dispatch
+/// layer in `cli/scan_cmd.rs`) plus the help-text "(deprecated)"
+/// annotation, **not** by a per-document marker.
+///
+/// Lifecycle: alias accepted through milestone 012; removed in
+/// milestone 013 unless usage signals say otherwise (research.md
+/// §R2). `experimental()` returns `true` during Phase 2 so help
+/// text still flags it; flips to `false` in T030 once the
+/// Phase-3/4 implementation work lands and the alias becomes a
+/// pure deprecation track to a stable emitter.
+pub struct Spdx3JsonExperimentalSerializer;
+
+impl SbomSerializer for Spdx3JsonExperimentalSerializer {
+    fn id(&self) -> &'static str {
+        "spdx-3-json-experimental"
+    }
+
+    fn default_filename(&self) -> &'static str {
+        // Deliberately the same as `Spdx3JsonSerializer` per
+        // research.md §R6 — alias produces byte-identical output
+        // including the on-disk filename when no `--output`
+        // override is set.
+        "mikebom.spdx3.json"
+    }
+
+    fn experimental(&self) -> bool {
+        // Flips to `false` in US3 (T030) — alias becomes a pure
+        // deprecation track to the stable emitter, no longer
+        // experimental quality.
+        true
+    }
+
+    fn serialize(
+        &self,
+        scan: &ScanArtifacts<'_>,
+        cfg: &OutputConfig,
+    ) -> anyhow::Result<Vec<EmittedArtifact>> {
+        // Delegate verbatim to the stable serializer — byte-for-byte
+        // identity is the FR-002 + research.md §R6 contract.
+        Spdx3JsonSerializer.serialize(scan, cfg)
     }
 }
 

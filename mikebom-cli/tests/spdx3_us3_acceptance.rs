@@ -253,12 +253,16 @@ fn scenario_4_npm_fixture_has_purl_parity_between_cdx_and_spdx3() {
         .collect();
 
     // SPDX 3 carries PURLs on software_Package.software_packageUrl.
+    // Filter to npm-only to match the CDX filter — milestone 011 emits
+    // a synthesized-root Package (pkg:generic/<target>@0.0.0) for
+    // sbomqs parity which has no CDX counterpart.
     let spdx3_purls: BTreeSet<String> = spdx3["@graph"]
         .as_array()
         .unwrap()
         .iter()
         .filter(|e| e["type"] == "software_Package")
         .filter_map(|e| e["software_packageUrl"].as_str().map(String::from))
+        .filter(|p| p.starts_with("pkg:npm/"))
         .collect();
 
     assert_eq!(

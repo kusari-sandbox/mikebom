@@ -125,11 +125,16 @@ pub struct SerializerRegistry {
 }
 
 impl SerializerRegistry {
-    /// Register every built-in serializer: two stable formats
-    /// (`cyclonedx-json`, `spdx-2.3-json`) plus one experimental
-    /// (`spdx-3-json-experimental`). The experimental flag is
-    /// surfaced in the CLI's `--help` text via
-    /// `SbomSerializer::experimental()`.
+    /// Register every built-in serializer: three stable formats
+    /// (`cyclonedx-json`, `spdx-2.3-json`, `spdx-3-json`) plus the
+    /// deprecation alias `spdx-3-json-experimental` that delegates
+    /// verbatim to the stable SPDX 3 serializer (research.md §R6).
+    ///
+    /// The `experimental()` flag is surfaced in the CLI's `--help`
+    /// text via `SbomSerializer::experimental()`. During milestone
+    /// 011 Phase 2 (foundational) both SPDX 3 entries return
+    /// `experimental() = true`; the flag flips to `false` in US3
+    /// (T029 stable / T030 alias) once full parity is achieved.
     pub fn with_defaults() -> Self {
         let mut by_id: BTreeMap<&'static str, Arc<dyn SbomSerializer>> =
             BTreeMap::new();
@@ -139,9 +144,11 @@ impl SerializerRegistry {
         let spdx23: Arc<dyn SbomSerializer> =
             Arc::new(spdx::Spdx2_3JsonSerializer);
         by_id.insert(spdx23.id(), spdx23);
-        let spdx3: Arc<dyn SbomSerializer> =
-            Arc::new(spdx::Spdx3JsonExperimentalSerializer);
+        let spdx3: Arc<dyn SbomSerializer> = Arc::new(spdx::Spdx3JsonSerializer);
         by_id.insert(spdx3.id(), spdx3);
+        let spdx3_alias: Arc<dyn SbomSerializer> =
+            Arc::new(spdx::Spdx3JsonExperimentalSerializer);
+        by_id.insert(spdx3_alias.id(), spdx3_alias);
         Self { by_id }
     }
 

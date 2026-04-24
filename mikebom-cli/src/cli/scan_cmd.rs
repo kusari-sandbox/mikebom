@@ -77,11 +77,13 @@ pub struct ScanArgs {
     ///   `mikebom.cdx.json`).
     /// - `spdx-2.3-json` — SPDX 2.3 JSON (default filename
     ///   `mikebom.spdx.json`).
-    /// - `spdx-3-json-experimental` [EXPERIMENTAL] — SPDX 3.0.1
-    ///   JSON-LD stub. npm ecosystem only; non-npm scans produce
-    ///   a document with zero Packages. Opt-in; labeled
-    ///   experimental until full multi-ecosystem coverage lands.
-    ///   Default filename: `mikebom.spdx3-experimental.json`.
+    /// - `spdx-3-json` [EXPERIMENTAL until milestone-011 US3 flips
+    ///   it stable] — SPDX 3.0.1 JSON-LD. Default filename:
+    ///   `mikebom.spdx3.json`. Full ecosystem coverage.
+    /// - `spdx-3-json-experimental` [EXPERIMENTAL, deprecated
+    ///   alias] — routes through the same emitter as
+    ///   `spdx-3-json`. Retained for one release cycle so existing
+    ///   pipelines keep working; use `spdx-3-json` for new ones.
     #[arg(
         long,
         action = clap::ArgAction::Append,
@@ -173,9 +175,9 @@ fn resolve_dispatch(
     // registered, so the user can see what changed between versions.
     // OpenVEX is explicitly NOT a registered format; calling it out
     // separately gives a more useful error than "unknown".
-    // `spdx-3-json` (no suffix) is a very-common typo for the
-    // experimental stub; intercept it with a "did you mean" hint
-    // rather than bury it in the generic unknown-format error (FR-019b).
+    //
+    // The milestone-010 typo-guard for `spdx-3-json` was removed —
+    // that identifier is now first-class (milestone 011 US1).
     for f in &formats {
         if f == OPENVEX_PSEUDO_FORMAT {
             anyhow::bail!(
@@ -184,15 +186,6 @@ fn resolve_dispatch(
                  produces VEX. Retarget its output path with \
                  `--output {OPENVEX_PSEUDO_FORMAT}=<path>` alongside \
                  an SPDX `--format`.",
-            );
-        }
-        if f == "spdx-3-json" {
-            anyhow::bail!(
-                "unknown format identifier {:?} (did you mean \
-                 'spdx-3-json-experimental'? — SPDX 3 support is \
-                 opt-in and labeled experimental until full \
-                 multi-ecosystem coverage lands)",
-                f,
             );
         }
         if registry.get(f).is_none() {

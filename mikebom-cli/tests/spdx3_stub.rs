@@ -100,19 +100,20 @@ fn spdx3_stub_on_npm_fixture_validates_clean() {
 }
 
 #[test]
-fn spdx3_stub_carries_experimental_marker_in_creation_info_comment() {
-    let (_guard, out) = run_scan("spdx-3-json-experimental");
-    let raw = std::fs::read_to_string(&out).expect("read produced SPDX 3");
-    let doc: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    let graph = doc["@graph"].as_array().expect("@graph array");
-    let ci = graph
-        .iter()
-        .find(|e| e["type"] == "CreationInfo")
-        .expect("CreationInfo element");
-    let comment = ci["comment"].as_str().expect("CreationInfo.comment");
-    assert!(
-        comment.to_lowercase().contains("experimental"),
-        "CreationInfo.comment must advertise experimental status, got: {comment}"
+fn spdx3_alias_bytes_are_byte_identical_to_stable_identifier() {
+    // Per research.md §R6 / contract §4: milestone-011 drops the
+    // experimental marker injection; the alias delegates verbatim
+    // to the stable emitter. Verifies the byte-identity contract
+    // at the document level (full bytes are tested in
+    // spdx3_us3_acceptance.rs).
+    let (_guard_a, out_a) = run_scan("spdx-3-json-experimental");
+    let (_guard_b, out_b) = run_scan("spdx-3-json");
+    let bytes_a = std::fs::read_to_string(&out_a).expect("alias output");
+    let bytes_b = std::fs::read_to_string(&out_b).expect("stable output");
+    assert_eq!(
+        bytes_a, bytes_b,
+        "alias `spdx-3-json-experimental` and stable `spdx-3-json` \
+         must emit byte-identical output per research.md §R6"
     );
 }
 
@@ -144,9 +145,19 @@ fn cdx_only_scan_produces_no_spdx3_file() {
         .expect("mikebom runs");
     assert!(output.status.success());
     // No SPDX 3 file, and no SPDX 2.3 either (user asked for CDX only).
+    // The milestone-010 default filename was
+    // `mikebom.spdx3-experimental.json`; milestone 011 changed it to
+    // `mikebom.spdx3.json`. Check both so a future user on an older
+    // tag sees a clean assertion either way.
     assert!(
         !tmp.path().join("mikebom.spdx3-experimental.json").exists(),
-        "no SPDX 3 file should exist when the format wasn't requested"
+        "no SPDX 3 experimental-default-named file should exist when \
+         the format wasn't requested"
+    );
+    assert!(
+        !tmp.path().join("mikebom.spdx3.json").exists(),
+        "no SPDX 3 stable-default-named file should exist when the \
+         format wasn't requested"
     );
     assert!(
         !tmp.path().join("mikebom.spdx.json").exists(),
