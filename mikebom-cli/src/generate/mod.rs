@@ -125,11 +125,11 @@ pub struct SerializerRegistry {
 }
 
 impl SerializerRegistry {
-    /// Register every stable, built-in serializer.
-    ///
-    /// Phase 3 of milestone 010 adds SPDX 2.3; the SPDX 3.0.1
-    /// experimental stub lands in Phase 5 (US3) and extends this
-    /// list.
+    /// Register every built-in serializer: two stable formats
+    /// (`cyclonedx-json`, `spdx-2.3-json`) plus one experimental
+    /// (`spdx-3-json-experimental`). The experimental flag is
+    /// surfaced in the CLI's `--help` text via
+    /// `SbomSerializer::experimental()`.
     pub fn with_defaults() -> Self {
         let mut by_id: BTreeMap<&'static str, Arc<dyn SbomSerializer>> =
             BTreeMap::new();
@@ -139,6 +139,9 @@ impl SerializerRegistry {
         let spdx23: Arc<dyn SbomSerializer> =
             Arc::new(spdx::Spdx2_3JsonSerializer);
         by_id.insert(spdx23.id(), spdx23);
+        let spdx3: Arc<dyn SbomSerializer> =
+            Arc::new(spdx::Spdx3JsonExperimentalSerializer);
+        by_id.insert(spdx3.id(), spdx3);
         Self { by_id }
     }
 

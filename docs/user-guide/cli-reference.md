@@ -128,8 +128,8 @@ Exactly one of **`--path <DIR>`** or **`--image <TAR>`** is required.
 |---|---|---|
 | `--path <dir>` | — | Directory to walk recursively. Stream-hashes files with recognised package-artifact suffixes (`.deb`, `.crate`, `.whl`, `.tar.gz`, `.jar`, `.gem`, `.apk`, …). |
 | `--image <tar>` | — | `docker save` tarball. Extracted to a tempdir (OCI whiteouts honoured), then scanned like `--path`. |
-| `--output <path>` | `mikebom.cdx.json` | SBOM output path |
-| `--format <fmt>` | `cyclonedx-json` | See [output formats](#output-formats). Only `cyclonedx-json` is actually written today. |
+| `--output <[FMT=]PATH>` | per-format default (`mikebom.cdx.json`, `mikebom.spdx.json`, …) | Output path override. Two forms: bare `--output <path>` (applies to the single requested format — rejected with multiple formats) and per-format `--output <fmt>=<path>` (repeatable; each entry retargets one format). The special key `openvex` retargets the OpenVEX sidecar that SPDX emission co-produces when VEX is present — legal only alongside an SPDX format. |
+| `--format <fmt>` | `cyclonedx-json` | See [output formats](#output-formats). Comma-separated list + repeatable flag: `--format cyclonedx-json,spdx-2.3-json` produces both from a single scan. Duplicates dedupe silently. |
 | `--max-file-size <bytes>` | `268435456` (256 MB) | Skip hashing files larger than this |
 | `--no-hashes` | off | Omit per-component content hashes from the SBOM |
 | `--deb-codename <value>` | auto | Value to stamp as the `distro=` qualifier on deb PURLs (e.g., `debian-12`, `ubuntu-24.04`, `kali-rolling`). Stamped verbatim. Overrides the value auto-derived from `<root>/etc/os-release` (`ID` + `VERSION_ID` → `distro=<id>-<version_id>`). Despite the flag name, it accepts any string; the canonical shape is `<namespace>-<VERSION_ID>` matching rpm and apk. |
@@ -308,13 +308,26 @@ Flags:
 
 ## Output formats
 
-The `--format` flag on `sbom scan`, `sbom generate`, and `trace run` accepts:
+The `--format` flag on `sbom scan` accepts a comma-separated list;
+the flag itself is repeatable. Duplicates dedupe silently. Default
+is `cyclonedx-json`. Every registered format id:
 
-| Value | Status |
-|---|---|
-| `cyclonedx-json` | Implemented. Default. CycloneDX 1.6 JSON. |
-| `cyclonedx-xml` | **Partial (stub).** Accepted as a value; written output is currently CycloneDX JSON regardless. |
-| `spdx-json` | **Partial (stub).** Accepted as a value; written output is currently CycloneDX JSON regardless. |
+| Value | Status | Default filename |
+|---|---|---|
+| `cyclonedx-json` | **Stable.** Default. CycloneDX 1.6 JSON. | `mikebom.cdx.json` |
+| `spdx-2.3-json` | **Stable.** SPDX 2.3 JSON. Covers all 9 supported ecosystems. Validates clean against the official SPDX 2.3 JSON schema. | `mikebom.spdx.json` |
+| `spdx-3-json-experimental` | **[EXPERIMENTAL]** SPDX 3.0.1 JSON-LD. **npm ecosystem only**; non-npm components are filtered out of the `@graph`. License emission, CPE, supplier, and evidence fields are out of stub scope — see `docs/reference/sbom-format-mapping.md` for the full scope contract. Opt-in; the format id carries the `-experimental` suffix so it can't be picked up by accident. | `mikebom.spdx3-experimental.json` |
 
-See [architecture/generation.md](../architecture/generation.md) for the
-CycloneDX 1.6 mapping details.
+**OpenVEX sidecar** — when the scan produces VEX statements (via
+`ResolvedComponent.advisories`) AND SPDX 2.3 output is requested,
+mikebom co-emits an OpenVEX 0.2.0 JSON file alongside the SPDX
+file. The SPDX document carries a `DocumentRef-OpenVEX` entry in
+`externalDocumentRefs` with a SHA-256 of the sidecar bytes. Use
+`--output openvex=<path>` to retarget the sidecar. When the scan
+has no advisories, no sidecar is written and no
+`externalDocumentRefs` entry appears.
+
+See [architecture/generation.md](../architecture/generation.md) for
+the CycloneDX 1.6 mapping details and
+[`docs/reference/sbom-format-mapping.md`](../reference/sbom-format-mapping.md)
+for the full cross-format data-placement map.

@@ -8,6 +8,32 @@ adheres to [Semantic Versioning](https://semver.org/) once it exits
 ## [Unreleased]
 
 ### Added
+- **Milestone 010 — SPDX 2.3 output + OpenVEX sidecar + SPDX 3.0.1
+  experimental stub.** SPDX 2.3 JSON is now a peer of CycloneDX across
+  all 9 supported ecosystems. A single `mikebom sbom scan` invocation
+  can emit both formats from one pass over the target; the new
+  `--format` flag accepts a comma-separated list and is repeatable,
+  and `--output` accepts either a bare path (single-format, legacy)
+  or repeated `<fmt>=<path>` (per-format). Every data element that
+  CDX emits has a documented target in SPDX — native field where the
+  spec has one, `annotations[]` entry with a `mikebom-annotation/v1`
+  JSON envelope for the rest; the full map is at
+  `docs/reference/sbom-format-mapping.md`. When a scan produces
+  advisory data, SPDX 2.3 emission co-emits a companion OpenVEX 0.2.0
+  JSON sidecar referenced from the SPDX document via
+  `externalDocumentRefs` with a SHA-256 of the sidecar bytes;
+  `--output openvex=<path>` retargets it (legal only alongside an
+  SPDX format). A third, opt-in format `spdx-3-json-experimental`
+  emits a minimal SPDX 3.0.1 JSON-LD document for npm components —
+  clearly labeled `[EXPERIMENTAL]` in `--help`, in error messages,
+  and in the document's own `CreationInfo.comment`. Typing bare
+  `spdx-3-json` offers a did-you-mean hint. No behavior change for
+  users who don't request SPDX output: CycloneDX emission is
+  byte-identical to the pre-milestone baseline, guarded by pinned
+  golden fixtures and a dedicated regression test.
+  See `specs/010-spdx-output-support/spec.md` for the full
+  requirement list and `docs/reference/sbom-format-mapping.md` for
+  the cross-format data-placement contract.
 - **Feature 009 refinement — bytecode-presence gating for Maven
   shade-relocation.** Shade-relocation entries are now emitted only when
   an ancestor's bytecode is verifiably present in the enclosing JAR
