@@ -1,0 +1,264 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:maven/com.google.guava/guava@32.1.3-jre",
+      "cpe": "cpe:2.3:a:com.google.guava:guava:32.1.3-jre:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "guava",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:com.google.guava:guava:32.1.3-jre:*:*:*:*:*:*:* | cpe:2.3:a:guava:guava:32.1.3-jre:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/maven/pom-three-deps/pom.xml"
+        },
+        {
+          "name": "mikebom:source-type",
+          "value": "workspace"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:maven/com.google.guava/guava@32.1.3-jre",
+      "supplier": {
+        "name": "com.google.guava"
+      },
+      "type": "library",
+      "version": "32.1.3-jre"
+    },
+    {
+      "bom-ref": "pkg:maven/org.apache.commons/commons-lang3@3.14.0",
+      "cpe": "cpe:2.3:a:org.apache.commons:commons-lang3:3.14.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "hashes": [
+        {
+          "alg": "SHA-1",
+          "content": "1ed471194b02f2c6cb734a0cd6f6f107c673afae"
+        },
+        {
+          "alg": "SHA-256",
+          "content": "7b96bf3ee68949abb5bc465559ac270e0551596fa34523fddf890ec418dde13c"
+        }
+      ],
+      "name": "commons-lang3",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:org.apache.commons:commons-lang3:3.14.0:*:*:*:*:*:*:* | cpe:2.3:a:commons:commons-lang3:3.14.0:*:*:*:*:*:*:* | cpe:2.3:a:commons-lang3:commons-lang3:3.14.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/maven/pom-three-deps/pom.xml"
+        },
+        {
+          "name": "mikebom:source-type",
+          "value": "workspace"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:maven/org.apache.commons/commons-lang3@3.14.0",
+      "supplier": {
+        "name": "org.apache.commons"
+      },
+      "type": "library",
+      "version": "3.14.0"
+    },
+    {
+      "bom-ref": "pkg:maven/org.apache.commons/commons-text@1.11.0",
+      "cpe": "cpe:2.3:a:org.apache.commons:commons-text:1.11.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "commons-text",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:org.apache.commons:commons-text:1.11.0:*:*:*:*:*:*:* | cpe:2.3:a:commons:commons-text:1.11.0:*:*:*:*:*:*:* | cpe:2.3:a:commons-text:commons-text:1.11.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/maven/pom-three-deps/pom.xml"
+        },
+        {
+          "name": "mikebom:source-type",
+          "value": "transitive"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:maven/org.apache.commons/commons-text@1.11.0",
+      "supplier": {
+        "name": "org.apache.commons"
+      },
+      "type": "library",
+      "version": "1.11.0"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "pkg:maven/com.google.guava/guava@32.1.3-jre",
+        "pkg:maven/org.apache.commons/commons-lang3@3.14.0",
+        "pkg:maven/org.apache.commons/commons-text@1.11.0"
+      ],
+      "dependencies": [
+        "pkg:maven/com.google.guava/guava@32.1.3-jre",
+        "pkg:maven/org.apache.commons/commons-lang3@3.14.0",
+        "pkg:maven/org.apache.commons/commons-text@1.11.0"
+      ]
+    },
+    {
+      "aggregate": "incomplete_first_party_only",
+      "assemblies": [
+        "pom-three-deps@0.0.0"
+      ]
+    },
+    {
+      "aggregate": "complete",
+      "dependencies": [
+        "pom-three-deps@0.0.0"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [],
+      "ref": "pkg:maven/com.google.guava/guava@32.1.3-jre"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:maven/org.apache.commons/commons-lang3@3.14.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:maven/org.apache.commons/commons-text@1.11.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:maven/com.google.guava/guava@32.1.3-jre",
+        "pkg:maven/org.apache.commons/commons-lang3@3.14.0",
+        "pkg:maven/org.apache.commons/commons-text@1.11.0"
+      ],
+      "ref": "pom-three-deps@0.0.0"
+    }
+  ],
+  "metadata": {
+    "authors": [
+      {
+        "name": "mikebom"
+      }
+    ],
+    "component": {
+      "bom-ref": "pom-three-deps@0.0.0",
+      "cpe": "cpe:2.3:a:mikebom:pom-three-deps:0.0.0:*:*:*:*:*:*:*",
+      "name": "pom-three-deps",
+      "purl": "pkg:generic/pom-three-deps@0.0.0",
+      "type": "application",
+      "version": "0.0.0"
+    },
+    "licenses": [
+      {
+        "license": {
+          "id": "CC0-1.0"
+        }
+      }
+    ],
+    "lifecycles": [
+      {
+        "phase": "pre-build"
+      }
+    ],
+    "properties": [
+      {
+        "name": "mikebom:generation-context",
+        "value": "filesystem-scan"
+      },
+      {
+        "name": "mikebom:os-release-missing-fields",
+        "value": "ID,VERSION_ID"
+      },
+      {
+        "name": "mikebom:trace-integrity-ring-buffer-overflows",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-events-dropped",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-uprobe-attach-failures",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-kprobe-attach-failures",
+        "value": "0"
+      }
+    ],
+    "supplier": {
+      "name": "mikebom contributors"
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "name": "mikebom",
+          "publisher": "mikebom contributors",
+          "type": "application",
+          "version": "0.1.0-alpha.3"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:00000000-0000-0000-0000-000000000000",
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": []
+}

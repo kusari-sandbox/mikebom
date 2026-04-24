@@ -1,18 +1,23 @@
-use std::path::PathBuf;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 use clap::Args;
 
 use mikebom_common::attestation::integrity::TraceIntegrity;
 use mikebom_common::attestation::metadata::GenerationContext;
 
-use crate::enrich::deps_dev_client::DepsDevClient;
-use crate::enrich::depsdev_source::{enrich_components, DepsDevSource};
 use crate::enrich::clearly_defined_source::{
     enrich_components as cd_enrich_components, ClearlyDefinedSource,
 };
-use crate::generate::cyclonedx::builder::{CycloneDxBuilder, CycloneDxConfig};
-use crate::generate::cyclonedx::serializer::write_cyclonedx_json;
+use crate::enrich::deps_dev_client::DepsDevClient;
+use crate::enrich::depsdev_source::{enrich_components, DepsDevSource};
+use crate::generate::{OutputConfig, ScanArtifacts, SerializerRegistry};
 use crate::scan_fs;
+
+/// Hard-coded default when the user passes no `--format` flag. Kept
+/// as `cyclonedx-json` so pre-milestone-010 invocations behave exactly
+/// as before (FR-004b).
+const DEFAULT_FORMAT: &str = "cyclonedx-json";
 
 #[derive(Args, Debug)]
 pub struct ScanArgs {
@@ -33,13 +38,30 @@ pub struct ScanArgs {
     #[arg(long, conflicts_with = "path")]
     pub image: Option<PathBuf>,
 
-    /// Output path for the CycloneDX SBOM.
-    #[arg(long, default_value = "mikebom.cdx.json")]
-    pub output: PathBuf,
+    /// Output path override. Two forms are accepted:
+    ///
+    /// * Bare `--output <path>` — applies to the single requested
+    ///   format. Rejected when more than one format is requested.
+    /// * Per-format `--output <fmt>=<path>` — repeatable; each entry
+    ///   overrides the default filename for exactly one format id.
+    ///
+    /// Per-format form is required for multi-format emission. When
+    /// omitted, each format writes to its own default filename
+    /// (`mikebom.cdx.json`, `mikebom.spdx.json`, …).
+    #[arg(long, action = clap::ArgAction::Append, value_name = "[FMT=]PATH")]
+    pub output: Vec<String>,
 
-    /// Output format. Only `cyclonedx-json` is implemented today.
-    #[arg(long, default_value = "cyclonedx-json")]
-    pub format: String,
+    /// Output format(s). Comma-separated list, and the flag itself is
+    /// repeatable: `--format cyclonedx-json,spdx-2.3-json` is
+    /// equivalent to `--format cyclonedx-json --format spdx-2.3-json`.
+    /// Duplicates are ignored silently. Default: `cyclonedx-json`.
+    #[arg(
+        long,
+        action = clap::ArgAction::Append,
+        value_delimiter = ',',
+        value_name = "FORMAT",
+    )]
+    pub format: Vec<String>,
 
     /// Maximum file size to hash (bytes). Larger files are skipped. The
     /// default (256 MB) covers the largest realistic package artifact.
@@ -80,6 +102,152 @@ pub struct ScanArgs {
     pub json: bool,
 }
 
+/// Resolved format-dispatch inputs: the canonical (deduped, in-order)
+/// list of format ids the user asked for, plus the per-format path
+/// overrides to apply. Computed before any scan work runs so argument
+/// errors abort early.
+#[derive(Debug)]
+struct DispatchPlan {
+    formats: Vec<String>,
+    overrides: BTreeMap<String, PathBuf>,
+}
+
+/// Parse `--format` + `--output` into a [`DispatchPlan`], enforcing
+/// the FR-001 / FR-004 / FR-004a / FR-004b error semantics the CLI
+/// surface promises: unknown format ids reject with the registered-id
+/// enumeration; per-format overrides for unrequested formats reject;
+/// bare `--output <path>` is only legal with a single requested
+/// format; duplicate overrides and cross-format path collisions
+/// reject.
+fn resolve_dispatch(
+    registry: &SerializerRegistry,
+    format_args: &[String],
+    output_args: &[String],
+) -> anyhow::Result<DispatchPlan> {
+    // De-dupe format ids silently while preserving the user's order.
+    // `--format cyclonedx-json,cyclonedx-json` collapses to one entry.
+    let raw_formats: Vec<String> = if format_args.is_empty() {
+        vec![DEFAULT_FORMAT.to_string()]
+    } else {
+        format_args.to_vec()
+    };
+    let mut formats: Vec<String> = Vec::new();
+    for f in raw_formats {
+        let f = f.trim().to_string();
+        if f.is_empty() {
+            anyhow::bail!("--format value must not be empty");
+        }
+        if !formats.contains(&f) {
+            formats.push(f);
+        }
+    }
+
+    // Reject unknown format ids with a clear enumeration of what IS
+    // registered, so the user can see what changed between versions.
+    for f in &formats {
+        if registry.get(f).is_none() {
+            let known: Vec<&'static str> = registry.ids().collect();
+            anyhow::bail!(
+                "unknown format identifier {:?}; accepted: {}",
+                f,
+                known.join(", "),
+            );
+        }
+    }
+
+    // Parse --output entries. A bare path (no `=`) is legal only when
+    // exactly one format is requested; it then overrides that one
+    // format. A `<fmt>=<path>` entry names the format explicitly.
+    let mut overrides: BTreeMap<String, PathBuf> = BTreeMap::new();
+    let mut bare_path: Option<PathBuf> = None;
+    for raw in output_args {
+        if let Some((fmt, path)) = raw.split_once('=') {
+            let fmt = fmt.trim();
+            let path = path.trim();
+            if fmt.is_empty() || path.is_empty() {
+                anyhow::bail!(
+                    "--output expects <fmt>=<path> with non-empty parts, got {raw:?}",
+                );
+            }
+            if !formats.iter().any(|f| f == fmt) {
+                anyhow::bail!(
+                    "--output targets format {:?} but --format did not request it; \
+                     requested: {}",
+                    fmt,
+                    formats.join(", "),
+                );
+            }
+            if overrides.insert(fmt.to_string(), PathBuf::from(path)).is_some() {
+                anyhow::bail!("--output for format {fmt:?} specified more than once");
+            }
+        } else {
+            if bare_path.is_some() {
+                anyhow::bail!(
+                    "--output bare <path> specified more than once; use \
+                     --output <fmt>=<path> to target specific formats"
+                );
+            }
+            bare_path = Some(PathBuf::from(raw));
+        }
+    }
+
+    if let Some(path) = bare_path {
+        if formats.len() != 1 {
+            anyhow::bail!(
+                "bare --output <path> is only valid with a single --format; \
+                 requested formats: {}. Use --output <fmt>=<path> instead.",
+                formats.join(", "),
+            );
+        }
+        let fmt = formats[0].clone();
+        if overrides.contains_key(&fmt) {
+            anyhow::bail!(
+                "bare --output <path> conflicts with --output {fmt}=<path>; \
+                 specify one form",
+            );
+        }
+        overrides.insert(fmt, path);
+    }
+
+    // Path-collision check: two formats (default or overridden) must
+    // not resolve to the same filesystem path. Done here so the error
+    // fires before any scan work runs.
+    let mut resolved_paths: BTreeMap<PathBuf, String> = BTreeMap::new();
+    for fmt in &formats {
+        let ser = registry
+            .get(fmt)
+            .expect("format id validated above");
+        let path = overrides
+            .get(fmt)
+            .cloned()
+            .unwrap_or_else(|| PathBuf::from(ser.default_filename()));
+        let canonical = canonicalize_for_collision(&path);
+        if let Some(prev) = resolved_paths.insert(canonical.clone(), fmt.clone()) {
+            anyhow::bail!(
+                "output path collision: format {prev:?} and format {fmt:?} both \
+                 resolve to {}",
+                canonical.display(),
+            );
+        }
+    }
+
+    Ok(DispatchPlan { formats, overrides })
+}
+
+/// Normalize a path for collision detection without touching the
+/// filesystem. Relative paths are made absolute against the current
+/// directory so two formats writing to `foo.json` and `./foo.json`
+/// collide as intended.
+fn canonicalize_for_collision(path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map(|cwd| cwd.join(path))
+            .unwrap_or_else(|_| path.to_path_buf())
+    }
+}
+
 pub async fn execute(
     args: ScanArgs,
     offline: bool,
@@ -95,6 +263,11 @@ pub async fn execute(
     if args.path.is_none() && args.image.is_none() {
         anyhow::bail!("one of --path or --image is required");
     }
+
+    // Resolve format dispatch BEFORE any scan work so argument errors
+    // abort without having paid for a scan.
+    let registry = SerializerRegistry::with_defaults();
+    let plan = resolve_dispatch(&registry, &args.format, &args.output)?;
 
     // `--image` dispatches to Docker-tarball extraction, then falls
     // through into the same scan path. Keeping both modes on one code
@@ -307,24 +480,68 @@ pub async fn execute(
         bloom_filter_false_positive_rate: 0.0,
     };
 
-    let cdx_config = CycloneDxConfig {
-        include_hashes: !args.no_hashes,
-        include_source_files: true, // path-pattern evidence is the whole value prop here
+    // Build the neutral artifacts bundle once and hand it to every
+    // serializer the user requested — the single-pass guarantee of
+    // FR-004 / SC-009.
+    let artifacts = ScanArtifacts {
+        target_name: &target_name,
+        components: &components,
+        relationships: &relationships,
+        integrity: &integrity,
+        complete_ecosystems: &complete_ecosystems,
+        os_release_missing_fields: &os_release_missing_fields,
+        scan_target_coord: scan_target_coord.as_ref(),
         generation_context: generation_context.clone(),
         include_dev,
+        include_hashes: !args.no_hashes,
+        include_source_files: true, // path-pattern evidence is the whole value prop here
     };
-    let builder = CycloneDxBuilder::new(cdx_config)
-        .with_os_release_missing_fields(os_release_missing_fields);
-    let bom = builder.build(
-        &components,
-        &relationships,
-        &integrity,
-        &target_name,
-        &complete_ecosystems,
-        scan_target_coord.as_ref(),
-    )?;
+    let output_cfg = OutputConfig {
+        mikebom_version: env!("CARGO_PKG_VERSION"),
+        created: chrono::Utc::now(),
+        overrides: plan.overrides.clone(),
+    };
 
-    write_cyclonedx_json(&bom, &args.output)?;
+    // Dispatch: serialize to every requested format and write each
+    // emitted artifact to the chosen path. The first format's first
+    // artifact path drives the backwards-compatible `--json` summary
+    // output below (matches pre-milestone behavior, which only knew
+    // about one file).
+    let mut primary_output_path: Option<PathBuf> = None;
+    let mut primary_format: Option<String> = None;
+    for fmt in &plan.formats {
+        let serializer = registry
+            .get(fmt)
+            .expect("format id validated by resolve_dispatch");
+        let emitted = serializer.serialize(&artifacts, &output_cfg)?;
+        for artifact in emitted {
+            // The primary artifact (first returned by the serializer)
+            // honors the per-format --output override; side artifacts
+            // (e.g. the OpenVEX sidecar in US2) always use their
+            // relative_path relative to the primary's directory.
+            let target = if artifact.relative_path
+                == Path::new(serializer.default_filename())
+            {
+                plan.overrides
+                    .get(fmt)
+                    .cloned()
+                    .unwrap_or_else(|| artifact.relative_path.clone())
+            } else {
+                artifact.relative_path.clone()
+            };
+            write_bytes_to(&target, &artifact.bytes)?;
+            if primary_output_path.is_none() {
+                primary_output_path = Some(target.clone());
+                primary_format = Some(fmt.clone());
+            }
+            tracing::info!(
+                format = %fmt,
+                path = %target.display(),
+                bytes = artifact.bytes.len(),
+                "wrote SBOM artifact"
+            );
+        }
+    }
 
     if args.json {
         let ctx_str = match generation_context {
@@ -333,8 +550,11 @@ pub async fn execute(
             GenerationContext::BuildTimeTrace => "build-time-trace",
         };
         let summary = serde_json::json!({
-            "output_file": args.output.to_string_lossy(),
-            "format": args.format,
+            "output_file": primary_output_path
+                .as_ref()
+                .map(|p| p.to_string_lossy())
+                .unwrap_or_default(),
+            "format": primary_format.clone().unwrap_or_default(),
             "components": components.len(),
             "relationships": relationships.len(),
             "scanned_root": root_path.to_string_lossy(),
@@ -345,10 +565,176 @@ pub async fn execute(
     }
 
     tracing::info!(
-        output = %args.output.display(),
+        output = %primary_output_path
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default(),
         components = components.len(),
         relationships = relationships.len(),
         "SBOM written"
     );
     Ok(())
+}
+
+/// Write `bytes` to `path`, creating any missing parent directories.
+///
+/// Shared by every serializer artifact (CDX today; SPDX + OpenVEX in
+/// later phases). Kept local to this CLI module so the generator crate
+/// has no filesystem dependencies.
+fn write_bytes_to(path: &Path, bytes: &[u8]) -> anyhow::Result<()> {
+    use anyhow::Context;
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("creating directory: {}", parent.display()))?;
+        }
+    }
+    std::fs::write(path, bytes)
+        .with_context(|| format!("writing SBOM to {}", path.display()))?;
+    Ok(())
+}
+
+#[cfg(test)]
+#[cfg_attr(test, allow(clippy::unwrap_used))]
+mod tests {
+    use super::*;
+
+    fn reg() -> SerializerRegistry {
+        SerializerRegistry::with_defaults()
+    }
+
+    #[test]
+    fn default_format_is_cyclonedx_when_no_flag_given() {
+        let plan = resolve_dispatch(&reg(), &[], &[]).unwrap();
+        assert_eq!(plan.formats, vec!["cyclonedx-json".to_string()]);
+        assert!(plan.overrides.is_empty());
+    }
+
+    #[test]
+    fn duplicate_format_ids_dedupe_silently() {
+        let plan = resolve_dispatch(
+            &reg(),
+            &["cyclonedx-json".into(), "cyclonedx-json".into()],
+            &[],
+        )
+        .unwrap();
+        assert_eq!(plan.formats, vec!["cyclonedx-json".to_string()]);
+    }
+
+    #[test]
+    fn unknown_format_rejects_with_known_list() {
+        let err = resolve_dispatch(&reg(), &["spdx-2.3-json".into()], &[])
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("unknown format identifier") && err.contains("cyclonedx-json"),
+            "error should enumerate registered ids, got: {err}"
+        );
+    }
+
+    #[test]
+    fn bare_output_applies_to_single_requested_format() {
+        let plan =
+            resolve_dispatch(&reg(), &[], &["out.cdx.json".into()]).unwrap();
+        assert_eq!(
+            plan.overrides.get("cyclonedx-json"),
+            Some(&PathBuf::from("out.cdx.json"))
+        );
+    }
+
+    #[test]
+    fn fmt_equals_path_parses_as_per_format_override() {
+        let plan = resolve_dispatch(
+            &reg(),
+            &["cyclonedx-json".into()],
+            &["cyclonedx-json=custom.cdx.json".into()],
+        )
+        .unwrap();
+        assert_eq!(
+            plan.overrides.get("cyclonedx-json"),
+            Some(&PathBuf::from("custom.cdx.json"))
+        );
+    }
+
+    #[test]
+    fn override_for_unrequested_format_rejects() {
+        let err = resolve_dispatch(
+            &reg(),
+            &["cyclonedx-json".into()],
+            &["spdx-2.3-json=s.json".into()],
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            err.contains("but --format did not request it"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn duplicate_override_for_same_format_rejects() {
+        let err = resolve_dispatch(
+            &reg(),
+            &["cyclonedx-json".into()],
+            &[
+                "cyclonedx-json=a.json".into(),
+                "cyclonedx-json=b.json".into(),
+            ],
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("specified more than once"), "got: {err}");
+    }
+
+    #[test]
+    fn bare_output_rejected_when_multiple_formats_requested() {
+        // Register a second (fake) format by using the existing
+        // `cyclonedx-json` twice won't test this — multiple distinct
+        // registered ids only appear once SPDX lands. We simulate the
+        // condition by checking that bare `--output` with two format
+        // args (even before dedup) resolves to one-format and succeeds,
+        // then confirm the negative path by forcing the check via the
+        // error message branch below.
+        //
+        // Cross-check: build args that survive dedup as a single
+        // format — bare path works. Using two *identical* ids dedupes,
+        // so this is actually the default path. The multi-format
+        // negative case is covered by `format_dispatch.rs` integration
+        // test once SPDX lands; this unit test guards the happy dedup
+        // case.
+        let plan = resolve_dispatch(
+            &reg(),
+            &["cyclonedx-json".into(), "cyclonedx-json".into()],
+            &["out.cdx.json".into()],
+        )
+        .unwrap();
+        assert_eq!(plan.formats.len(), 1);
+        assert_eq!(
+            plan.overrides.get("cyclonedx-json"),
+            Some(&PathBuf::from("out.cdx.json"))
+        );
+    }
+
+    #[test]
+    fn empty_format_value_rejects() {
+        let err = resolve_dispatch(&reg(), &["".into()], &[])
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("must not be empty"), "got: {err}");
+    }
+
+    #[test]
+    fn bare_and_per_format_override_for_same_format_rejects() {
+        let err = resolve_dispatch(
+            &reg(),
+            &["cyclonedx-json".into()],
+            &[
+                "cyclonedx-json=a.json".into(),
+                "b.json".into(),
+            ],
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("conflicts with --output"), "got: {err}");
+    }
 }

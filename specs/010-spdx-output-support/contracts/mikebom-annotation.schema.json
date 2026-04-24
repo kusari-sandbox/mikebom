@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mikebom.kusari.dev/schema/mikebom-annotation/v1.json",
+  "title": "Mikebom SPDX Annotation Comment Envelope (v1)",
+  "description": "JSON payload that mikebom places inside SPDX 2.3 annotations[].comment to losslessly preserve mikebom-specific data that has no native SPDX 2.3 home. Consumers that ignore SPDX annotations see clean SPDX; consumers that read them recover full mikebom fidelity. See specs/010-spdx-output-support/contracts/sbom-format-mapping.md for the per-field placement contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "field", "value"],
+  "properties": {
+    "schema": {
+      "description": "Versioned schema identifier. Always 'mikebom-annotation/v1' for this revision. Future schema revisions MUST bump this string and SHOULD remain readable by old consumers via duck-typing on the 'field' / 'value' pair.",
+      "type": "string",
+      "const": "mikebom-annotation/v1"
+    },
+    "field": {
+      "description": "The originating mikebom field identifier as it appears in CycloneDX. Examples: 'mikebom:evidence-kind', 'mikebom:shade-relocation', 'evidence.identity', 'evidence.occurrences', 'compositions', 'mikebom:trace-integrity-events-dropped'. The exact set of valid identifiers is enumerated in the data-placement map (sbom-format-mapping.md, Sections C / D / E).",
+      "type": "string",
+      "minLength": 1
+    },
+    "value": {
+      "description": "The field value, JSON-typed. Free-form: may be a string, number, boolean, object, or array. The shape mirrors what the same field carries in CycloneDX. Consumers should treat the value as opaque unless they know the field's schema."
+    }
+  },
+  "examples": [
+    {
+      "schema": "mikebom-annotation/v1",
+      "field": "mikebom:evidence-kind",
+      "value": "instrumentation"
+    },
+    {
+      "schema": "mikebom-annotation/v1",
+      "field": "mikebom:confidence",
+      "value": 0.92
+    },
+    {
+      "schema": "mikebom-annotation/v1",
+      "field": "evidence.identity",
+      "value": {
+        "technique": "hash-comparison",
+        "confidence": 1.0
+      }
+    },
+    {
+      "schema": "mikebom-annotation/v1",
+      "field": "evidence.occurrences",
+      "value": [
+        {
+          "location": "/usr/lib/x86_64-linux-gnu/libssl.so.3",
+          "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "md5": "5d41402abc4b2a76b9719d911017c592"
+        }
+      ]
+    },
+    {
+      "schema": "mikebom-annotation/v1",
+      "field": "compositions",
+      "value": [
+        {
+          "aggregate": "complete",
+          "assemblies": ["pkg:deb/debian/openssl@3.0?arch=amd64"]
+        }
+      ]
+    }
+  ]
+}

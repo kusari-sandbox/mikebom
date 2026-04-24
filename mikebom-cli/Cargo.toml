@@ -63,6 +63,13 @@ tracing-subscriber.workspace = true
 [dev-dependencies]
 serde_json.workspace = true
 tempfile = "3"
+# Milestone 010 — pure-Rust JSON Schema validator used in tests to check
+# produced SPDX 2.3 / SPDX 3.0.1 / OpenVEX output against the vendored
+# upstream schemas under `tests/fixtures/schemas/`. Supports both Draft 7
+# (SPDX 2.3) and Draft 2020-12 (SPDX 3.0.1, OpenVEX). See
+# specs/010-spdx-output-support/research.md R5. Pure Rust — no C deps;
+# verified to not break the no_c_dependencies regression test.
+jsonschema = { version = "0.46", default-features = false }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 aya = "0.13"

@@ -15,6 +15,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-23
 - Rust stable, same workspace toolchain as milestones 001–006. No nightly features. `mikebom-ebpf` untouched. + Existing only — `quick-xml = "0.31"` for POM parsing (already used in `maven.rs`), `walkdir`, `serde`/`serde_json`, `tracing`. No new crates. (007-polyglot-fp-cleanup)
 - Rust stable, same workspace as milestones 001–007. No nightly features. `mikebom-ebpf` untouched. + Existing only — `quick-xml`, `zip`, `walkdir`, `serde`/`serde_json`, `tracing`. No new crates. (008-polyglot-final-cleanup)
 - Rust stable, same workspace as milestones 001–008. No nightly features. `mikebom-ebpf` untouched. + Existing only — `zip` (archive read), `spdx` (via `SpdxExpression::try_canonical`), `tracing`. No new crates. (009-maven-shade-deps)
+- Rust stable (same workspace toolchain as milestones 001–009). No nightly features. `mikebom-ebpf` is untouched — this milestone is user-space only. (010-spdx-output-support)
+- N/A — all state is in-process for the duration of a single scan, mirroring milestones 002–009. (010-spdx-output-support)
 
 - Rust stable (user-space) + nightly (eBPF target via `aya-ebpf`) + aya, aya-ebpf, aya-build, tokio, clap, reqwest, serde/serde_json, cyclonedx-bom, packageurl, sha2, chrono, thiserror, anyhow, tracing (001-build-trace-pipeline)
 
@@ -59,9 +61,9 @@ of CI-readiness — they are not equivalent.
 Rust stable (user-space) + nightly (eBPF target via `aya-ebpf`): Follow standard conventions
 
 ## Recent Changes
+- 010-spdx-output-support: Added Rust stable (same workspace toolchain as milestones 001–009). No nightly features. `mikebom-ebpf` is untouched — this milestone is user-space only.
 - 009-maven-shade-deps: Added Rust stable, same workspace as milestones 001–008. No nightly features. `mikebom-ebpf` untouched. + Existing only — `zip` (archive read), `spdx` (via `SpdxExpression::try_canonical`), `tracing`. No new crates.
 - 008-polyglot-final-cleanup: Added Rust stable, same workspace as milestones 001–007. No nightly features. `mikebom-ebpf` untouched. + Existing only — `quick-xml`, `zip`, `walkdir`, `serde`/`serde_json`, `tracing`. No new crates.
-- 007-polyglot-fp-cleanup: Added Rust stable, same workspace toolchain as milestones 001–006. No nightly features. `mikebom-ebpf` untouched. + Existing only — `quick-xml = "0.31"` for POM parsing (already used in `maven.rs`), `walkdir`, `serde`/`serde_json`, `tracing`. No new crates.
 
 
 <!-- MANUAL ADDITIONS START -->

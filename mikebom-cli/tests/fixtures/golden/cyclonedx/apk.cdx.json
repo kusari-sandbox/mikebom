@@ -1,0 +1,186 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:apk/alpine/busybox@1.36.1-r15?arch=x86_64&distro=alpine-3.19",
+      "cpe": "cpe:2.3:a:alpinelinux:busybox:1.36.1-r15:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "busybox",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:alpinelinux:busybox:1.36.1-r15:*:*:*:*:*:*:* | cpe:2.3:a:busybox:busybox:1.36.1-r15:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/apk/synthetic/lib/apk/db/installed"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:apk/alpine/busybox@1.36.1-r15?arch=x86_64&distro=alpine-3.19",
+      "type": "library",
+      "version": "1.36.1-r15"
+    },
+    {
+      "bom-ref": "pkg:apk/alpine/musl@1.2.4_git20230717-r4?arch=x86_64&distro=alpine-3.19",
+      "cpe": "cpe:2.3:a:alpinelinux:musl:1.2.4_git20230717-r4:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "musl",
+      "properties": [
+        {
+          "name": "mikebom:cpe-candidates",
+          "value": "cpe:2.3:a:alpinelinux:musl:1.2.4_git20230717-r4:*:*:*:*:*:*:* | cpe:2.3:a:musl:musl:1.2.4_git20230717-r4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/apk/synthetic/lib/apk/db/installed"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "deployed"
+        }
+      ],
+      "purl": "pkg:apk/alpine/musl@1.2.4_git20230717-r4?arch=x86_64&distro=alpine-3.19",
+      "type": "library",
+      "version": "1.2.4_git20230717-r4"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "pkg:apk/alpine/busybox@1.36.1-r15?arch=x86_64&distro=alpine-3.19",
+        "pkg:apk/alpine/musl@1.2.4_git20230717-r4?arch=x86_64&distro=alpine-3.19"
+      ],
+      "dependencies": [
+        "pkg:apk/alpine/busybox@1.36.1-r15?arch=x86_64&distro=alpine-3.19",
+        "pkg:apk/alpine/musl@1.2.4_git20230717-r4?arch=x86_64&distro=alpine-3.19"
+      ]
+    },
+    {
+      "aggregate": "incomplete_first_party_only",
+      "assemblies": [
+        "synthetic@0.0.0"
+      ]
+    },
+    {
+      "aggregate": "complete",
+      "dependencies": [
+        "synthetic@0.0.0"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [],
+      "ref": "pkg:apk/alpine/busybox@1.36.1-r15?arch=x86_64&distro=alpine-3.19"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:apk/alpine/musl@1.2.4_git20230717-r4?arch=x86_64&distro=alpine-3.19"
+    },
+    {
+      "dependsOn": [
+        "pkg:apk/alpine/busybox@1.36.1-r15?arch=x86_64&distro=alpine-3.19",
+        "pkg:apk/alpine/musl@1.2.4_git20230717-r4?arch=x86_64&distro=alpine-3.19"
+      ],
+      "ref": "synthetic@0.0.0"
+    }
+  ],
+  "metadata": {
+    "authors": [
+      {
+        "name": "mikebom"
+      }
+    ],
+    "component": {
+      "bom-ref": "synthetic@0.0.0",
+      "cpe": "cpe:2.3:a:mikebom:synthetic:0.0.0:*:*:*:*:*:*:*",
+      "name": "synthetic",
+      "purl": "pkg:generic/synthetic@0.0.0",
+      "type": "application",
+      "version": "0.0.0"
+    },
+    "licenses": [
+      {
+        "license": {
+          "id": "CC0-1.0"
+        }
+      }
+    ],
+    "lifecycles": [
+      {
+        "phase": "operations"
+      }
+    ],
+    "properties": [
+      {
+        "name": "mikebom:generation-context",
+        "value": "filesystem-scan"
+      },
+      {
+        "name": "mikebom:trace-integrity-ring-buffer-overflows",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-events-dropped",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-uprobe-attach-failures",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-kprobe-attach-failures",
+        "value": "0"
+      }
+    ],
+    "supplier": {
+      "name": "mikebom contributors"
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "name": "mikebom",
+          "publisher": "mikebom contributors",
+          "type": "application",
+          "version": "0.1.0-alpha.3"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:00000000-0000-0000-0000-000000000000",
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": []
+}

@@ -1,0 +1,471 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:cargo/anyhow@1.0.80",
+      "cpe": "cpe:2.3:a:anyhow:anyhow:1.0.80:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5ad32ce52e4161730f7098c077cd2ed6229b5804ccf99e5366be1ab72a98b4e1"
+        }
+      ],
+      "name": "anyhow",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:cargo/anyhow@1.0.80",
+      "type": "library",
+      "version": "1.0.80"
+    },
+    {
+      "bom-ref": "pkg:cargo/my-fork@0.1.0",
+      "cpe": "cpe:2.3:a:my-fork:my-fork:0.1.0:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "my-fork",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+        },
+        {
+          "name": "mikebom:source-type",
+          "value": "git"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:cargo/my-fork@0.1.0",
+      "type": "library",
+      "version": "0.1.0"
+    },
+    {
+      "bom-ref": "pkg:cargo/proc-macro2@1.0.76",
+      "cpe": "cpe:2.3:a:proc-macro2:proc-macro2:1.0.76:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "95fc56cda0b5c3325f5fbbd7ff9fda9e02bb00bb3dac51252d2f1bfa1cb8cc8c"
+        }
+      ],
+      "name": "proc-macro2",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:cargo/proc-macro2@1.0.76",
+      "type": "library",
+      "version": "1.0.76"
+    },
+    {
+      "bom-ref": "pkg:cargo/quote@1.0.35",
+      "cpe": "cpe:2.3:a:quote:quote:1.0.35:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "291ec9ab5efd934aaf503a6466c5d5251535d108ee747472c3977cc5acc868ef"
+        }
+      ],
+      "name": "quote",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:cargo/quote@1.0.35",
+      "type": "library",
+      "version": "1.0.35"
+    },
+    {
+      "bom-ref": "pkg:cargo/serde@1.0.197",
+      "cpe": "cpe:2.3:a:serde:serde:1.0.197:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3fb1c753d2daa1c9a31c65b0c2e1b8b3f6eafbbaa32a9c0b48da3b0b4e2b92d7"
+        }
+      ],
+      "name": "serde",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:cargo/serde@1.0.197",
+      "type": "library",
+      "version": "1.0.197"
+    },
+    {
+      "bom-ref": "pkg:cargo/serde_derive@1.0.197",
+      "cpe": "cpe:2.3:a:serde_derive:serde_derive:1.0.197:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7eb0b34b42edc17f6b7cac84a52a1c5f0e1bb2227e997ca9011ea3dd34e8610b"
+        }
+      ],
+      "name": "serde_derive",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:cargo/serde_derive@1.0.197",
+      "type": "library",
+      "version": "1.0.197"
+    },
+    {
+      "bom-ref": "pkg:cargo/syn@2.0.48",
+      "cpe": "cpe:2.3:a:syn:syn:2.0.48:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0f3531638e407dfc0814761abb7c00a5b54992b849452a0646b7f65c9f9aefaa"
+        }
+      ],
+      "name": "syn",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:cargo/syn@2.0.48",
+      "type": "library",
+      "version": "2.0.48"
+    },
+    {
+      "bom-ref": "pkg:cargo/unicode-ident@1.0.12",
+      "cpe": "cpe:2.3:a:unicode-ident:unicode-ident:1.0.12:*:*:*:*:*:*:*",
+      "evidence": {
+        "identity": [
+          {
+            "confidence": 0.85,
+            "field": "purl",
+            "methods": [
+              {
+                "confidence": 0.85,
+                "technique": "manifest-analysis"
+              }
+            ]
+          }
+        ]
+      },
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
+        }
+      ],
+      "name": "unicode-ident",
+      "properties": [
+        {
+          "name": "mikebom:source-files",
+          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+        },
+        {
+          "name": "mikebom:sbom-tier",
+          "value": "source"
+        }
+      ],
+      "purl": "pkg:cargo/unicode-ident@1.0.12",
+      "type": "library",
+      "version": "1.0.12"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "pkg:cargo/anyhow@1.0.80",
+        "pkg:cargo/my-fork@0.1.0",
+        "pkg:cargo/proc-macro2@1.0.76",
+        "pkg:cargo/quote@1.0.35",
+        "pkg:cargo/serde@1.0.197",
+        "pkg:cargo/serde_derive@1.0.197",
+        "pkg:cargo/syn@2.0.48",
+        "pkg:cargo/unicode-ident@1.0.12"
+      ],
+      "dependencies": [
+        "pkg:cargo/anyhow@1.0.80",
+        "pkg:cargo/my-fork@0.1.0",
+        "pkg:cargo/proc-macro2@1.0.76",
+        "pkg:cargo/quote@1.0.35",
+        "pkg:cargo/serde@1.0.197",
+        "pkg:cargo/serde_derive@1.0.197",
+        "pkg:cargo/syn@2.0.48",
+        "pkg:cargo/unicode-ident@1.0.12"
+      ]
+    },
+    {
+      "aggregate": "incomplete_first_party_only",
+      "assemblies": [
+        "lockfile-v3@0.0.0"
+      ]
+    },
+    {
+      "aggregate": "complete",
+      "dependencies": [
+        "lockfile-v3@0.0.0"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [
+        "pkg:cargo/anyhow@1.0.80",
+        "pkg:cargo/my-fork@0.1.0",
+        "pkg:cargo/serde@1.0.197"
+      ],
+      "ref": "lockfile-v3@0.0.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:cargo/anyhow@1.0.80"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:cargo/my-fork@0.1.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:cargo/unicode-ident@1.0.12"
+      ],
+      "ref": "pkg:cargo/proc-macro2@1.0.76"
+    },
+    {
+      "dependsOn": [
+        "pkg:cargo/proc-macro2@1.0.76"
+      ],
+      "ref": "pkg:cargo/quote@1.0.35"
+    },
+    {
+      "dependsOn": [
+        "pkg:cargo/serde_derive@1.0.197"
+      ],
+      "ref": "pkg:cargo/serde@1.0.197"
+    },
+    {
+      "dependsOn": [
+        "pkg:cargo/proc-macro2@1.0.76",
+        "pkg:cargo/quote@1.0.35",
+        "pkg:cargo/syn@2.0.48"
+      ],
+      "ref": "pkg:cargo/serde_derive@1.0.197"
+    },
+    {
+      "dependsOn": [
+        "pkg:cargo/proc-macro2@1.0.76",
+        "pkg:cargo/quote@1.0.35",
+        "pkg:cargo/unicode-ident@1.0.12"
+      ],
+      "ref": "pkg:cargo/syn@2.0.48"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:cargo/unicode-ident@1.0.12"
+    }
+  ],
+  "metadata": {
+    "authors": [
+      {
+        "name": "mikebom"
+      }
+    ],
+    "component": {
+      "bom-ref": "lockfile-v3@0.0.0",
+      "cpe": "cpe:2.3:a:mikebom:lockfile-v3:0.0.0:*:*:*:*:*:*:*",
+      "name": "lockfile-v3",
+      "purl": "pkg:generic/lockfile-v3@0.0.0",
+      "type": "application",
+      "version": "0.0.0"
+    },
+    "licenses": [
+      {
+        "license": {
+          "id": "CC0-1.0"
+        }
+      }
+    ],
+    "lifecycles": [
+      {
+        "phase": "pre-build"
+      }
+    ],
+    "properties": [
+      {
+        "name": "mikebom:generation-context",
+        "value": "filesystem-scan"
+      },
+      {
+        "name": "mikebom:os-release-missing-fields",
+        "value": "ID,VERSION_ID"
+      },
+      {
+        "name": "mikebom:trace-integrity-ring-buffer-overflows",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-events-dropped",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-uprobe-attach-failures",
+        "value": "0"
+      },
+      {
+        "name": "mikebom:trace-integrity-kprobe-attach-failures",
+        "value": "0"
+      }
+    ],
+    "supplier": {
+      "name": "mikebom contributors"
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "name": "mikebom",
+          "publisher": "mikebom contributors",
+          "type": "application",
+          "version": "0.1.0-alpha.3"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:00000000-0000-0000-0000-000000000000",
+  "specVersion": "1.6",
+  "version": 1,
+  "vulnerabilities": []
+}

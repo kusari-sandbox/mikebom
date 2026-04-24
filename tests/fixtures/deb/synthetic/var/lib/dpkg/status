@@ -1,0 +1,12 @@
+Package: libc6
+Status: install ok installed
+Version: 2.36-9
+Architecture: amd64
+Maintainer: Debian <debian@example.org>
+
+Package: zlib1g
+Status: install ok installed
+Version: 1:1.2.13.dfsg-1
+Architecture: amd64
+Maintainer: Debian <debian@example.org>
+
