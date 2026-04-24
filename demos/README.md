@@ -40,8 +40,24 @@ to persist them.
 | `mikebom.cdx.json`            | CycloneDX SBOM derived from the attestation                 |
 | `syft.cdx.json`               | CycloneDX SBOM from syft scanning the same package cache    |
 | `trivy.cdx.json`              | CycloneDX SBOM from trivy scanning the same package cache   |
-| `truth.txt` (or `Cargo.lock`) | Ground truth: packages that were actually installed         |
 | `report.md`                   | Per-tool recall / precision / evidence-coverage / diffs     |
 
-The comparison is produced by `mikebom sbom compare`, which is just another
-subcommand of the mikebom binary — no external comparison tool needed.
+Ground-truth files are ecosystem-specific:
+
+| Demo    | Ground truth file | Source                                                   |
+|---------|-------------------|----------------------------------------------------------|
+| Debian  | `truth.txt`       | Post-install `dpkg-query` output for the target packages |
+| Rust    | `Cargo.lock`      | The lockfile `cargo` resolves to during `cargo install`  |
+
+The comparison is produced by `mikebom sbom compare` (passing
+`--ecosystem {deb,cargo}` along with `--mikebom`, `--syft`, `--trivy`,
+and `--truth`), which is just another subcommand of the mikebom binary —
+no external comparison tool needed.
+
+## Reproducibility
+
+Each demo's numbers are tied to the package versions resolved the day
+the script runs (`apt` for Debian, `cargo` for Rust — both pulling from
+upstream indices). If you want a stable comparison across runs, snapshot
+the resulting `*.cdx.json` artifacts alongside the fixture's
+`Dockerfile`/script at a specific git SHA.

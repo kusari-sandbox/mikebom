@@ -128,9 +128,7 @@ acknowledgement types because they mean different things.
   18](../design-notes.md#deferred-sbomqs-score-lift) for the planned
   ClearlyDefined deb arm (priority next).
 - **apk**: apk's installed DB doesn't carry copyright pointers like dpkg
-  does, so apk components still ship with empty `licenses[]`. See the known
-  gap in
-  [`EVALUATION.md`](../../EVALUATION.md#known-gaps-called-out-by-design).
+  does, so apk components still ship with empty `licenses[]`.
 - **npm / cargo / gem / pypi / maven / golang**: declared licenses come
   from manifests; deps.dev backfills missing ones; ClearlyDefined
   contributes concluded licenses. This is where the

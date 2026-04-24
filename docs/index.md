@@ -1,6 +1,11 @@
 # mikebom documentation
 
-Two tracks. Pick the one that matches what you're trying to do.
+**New here?** Read
+[Installation](user-guide/installation.md) → [Quickstart](user-guide/quickstart.md).
+That's enough to produce your first CycloneDX SBOM on any supported OS.
+
+Two tracks for everyone else. Pick the one that matches what you're
+trying to do.
 
 ## Track 1 — Use mikebom
 
@@ -33,8 +38,9 @@ the way it did, or contribute to the pipeline.
 
 ## Reference material
 
-- [Ecosystems](ecosystems.md) — per-ecosystem coverage matrix for all nine supported ecosystems
-- [Design notes](design-notes.md) — the living architectural changelog. Dated entries, ecosystem-specific sharp edges, sbomqs scoring history. Architecture pages link here for deeper context rather than duplicating content.
+- [Ecosystems](ecosystems.md) — per-ecosystem coverage matrix for all nine supported ecosystems (authoritative source of truth)
+- [Design notes](design-notes.md) — architectural decisions at the cross-cutting level. Maven layered resolution, source-type markers, CycloneDX shape decisions, known limitations.
+- [Changelog](../CHANGELOG.md) — what shipped in which release; dated release notes; deprecations and stability-surface changes.
 - [Research](research/) — one-off investigations (e.g. Go binary scope analysis)
 
 ## Ground-truth examples
@@ -43,4 +49,3 @@ Before reading anything else, consider running one of these — they exercise th
 full pipeline end-to-end:
 
 - [`demos/README.md`](../demos/README.md) — Debian and Rust build-trace demos (inside `mikebom-dev`)
-- [`EVALUATION.md`](../EVALUATION.md) — accuracy benchmarks with real output and head-to-head comparison vs. syft / trivy / scalibr
