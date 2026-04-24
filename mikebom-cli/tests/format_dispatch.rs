@@ -53,10 +53,16 @@ fn run_scan_in(
 
 /// Normalize CDX volatile fields (serialNumber + metadata.timestamp)
 /// so two runs of the same scan are byte-comparable. Mirrors the
-/// helper in `cdx_regression.rs`.
+/// helper in `cdx_regression.rs` — including the workspace-absolute-
+/// path rewrite that makes goldens portable between macOS dev and
+/// Linux CI (see `cdx_regression.rs::normalize` for the full story).
 fn normalize_cdx(raw: &str) -> String {
+    let ws = workspace_root();
+    let ws_str = ws.to_string_lossy().to_string();
+    let replaced = raw.replace(ws_str.as_str(), "<WORKSPACE>");
+
     let mut json: serde_json::Value =
-        serde_json::from_str(raw).expect("produced SBOM is valid JSON");
+        serde_json::from_str(&replaced).expect("produced SBOM is valid JSON");
     if let Some(obj) = json.as_object_mut() {
         if obj.contains_key("serialNumber") {
             obj.insert(

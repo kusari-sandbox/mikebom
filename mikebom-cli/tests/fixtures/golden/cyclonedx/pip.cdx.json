@@ -34,7 +34,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/certifi-2023.7.22.dist-info/METADATA"
+          "value": "<WORKSPACE>/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/certifi-2023.7.22.dist-info/METADATA"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -78,7 +78,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/charset_normalizer-3.3.2.dist-info/METADATA"
+          "value": "<WORKSPACE>/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/charset_normalizer-3.3.2.dist-info/METADATA"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -122,7 +122,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/flask-3.0.0.dist-info/METADATA"
+          "value": "<WORKSPACE>/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/flask-3.0.0.dist-info/METADATA"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -166,7 +166,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/idna-3.6.dist-info/METADATA"
+          "value": "<WORKSPACE>/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/idna-3.6.dist-info/METADATA"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -210,7 +210,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/jinja2-3.1.2.dist-info/METADATA"
+          "value": "<WORKSPACE>/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/jinja2-3.1.2.dist-info/METADATA"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -254,7 +254,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/requests-2.31.0.dist-info/METADATA"
+          "value": "<WORKSPACE>/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/requests-2.31.0.dist-info/METADATA"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -298,7 +298,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/urllib3-2.0.7.dist-info/METADATA"
+          "value": "<WORKSPACE>/tests/fixtures/python/simple-venv/.venv/lib/python3.12/site-packages/urllib3-2.0.7.dist-info/METADATA"
         },
         {
           "name": "mikebom:sbom-tier",

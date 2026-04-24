@@ -26,7 +26,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/apk/synthetic/lib/apk/db/installed"
+          "value": "<WORKSPACE>/tests/fixtures/apk/synthetic/lib/apk/db/installed"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -62,7 +62,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/apk/synthetic/lib/apk/db/installed"
+          "value": "<WORKSPACE>/tests/fixtures/apk/synthetic/lib/apk/db/installed"
         },
         {
           "name": "mikebom:sbom-tier",

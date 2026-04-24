@@ -28,7 +28,7 @@
       "properties": [
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+          "value": "<WORKSPACE>/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -60,7 +60,7 @@
       "properties": [
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+          "value": "<WORKSPACE>/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
         },
         {
           "name": "mikebom:source-type",
@@ -102,7 +102,7 @@
       "properties": [
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+          "value": "<WORKSPACE>/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -140,7 +140,7 @@
       "properties": [
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+          "value": "<WORKSPACE>/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -178,7 +178,7 @@
       "properties": [
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+          "value": "<WORKSPACE>/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -216,7 +216,7 @@
       "properties": [
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+          "value": "<WORKSPACE>/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -254,7 +254,7 @@
       "properties": [
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+          "value": "<WORKSPACE>/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -292,7 +292,7 @@
       "properties": [
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
+          "value": "<WORKSPACE>/tests/fixtures/cargo/lockfile-v3/Cargo.lock"
         },
         {
           "name": "mikebom:sbom-tier",

@@ -38,7 +38,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -89,7 +89,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -140,7 +140,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -191,7 +191,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -242,7 +242,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -293,7 +293,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -344,7 +344,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -395,7 +395,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -440,7 +440,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -485,7 +485,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -530,7 +530,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/go/simple-module/go.sum"
+          "value": "<WORKSPACE>/tests/fixtures/go/simple-module/go.sum"
         },
         {
           "name": "mikebom:sbom-tier",

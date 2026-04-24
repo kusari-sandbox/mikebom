@@ -26,7 +26,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/deb/synthetic/var/lib/dpkg/status"
+          "value": "<WORKSPACE>/tests/fixtures/deb/synthetic/var/lib/dpkg/status"
         },
         {
           "name": "mikebom:sbom-tier",
@@ -65,7 +65,7 @@
         },
         {
           "name": "mikebom:source-files",
-          "value": "/Users/mlieberman/Projects/mikebom/tests/fixtures/deb/synthetic/var/lib/dpkg/status"
+          "value": "<WORKSPACE>/tests/fixtures/deb/synthetic/var/lib/dpkg/status"
         },
         {
           "name": "mikebom:sbom-tier",

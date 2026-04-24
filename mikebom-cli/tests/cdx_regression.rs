@@ -24,6 +24,13 @@ use std::process::Command;
 /// of the document carry the structural regression guarantee.
 const SERIAL_PLACEHOLDER: &str = "urn:uuid:00000000-0000-0000-0000-000000000000";
 const TIMESTAMP_PLACEHOLDER: &str = "1970-01-01T00:00:00Z";
+/// Stand-in for the absolute path of the workspace root when a scan
+/// target's absolute path leaks into `mikebom:source-files` /
+/// `evidence.source_file_paths` / `evidence.occurrences[].location`.
+/// Macs emit `/Users/<user>/Projects/mikebom/...`; CI Linux emits
+/// `/home/runner/work/mikebom/mikebom/...`; both rewrite to
+/// `<WORKSPACE>` for cross-host byte comparison.
+const WORKSPACE_PLACEHOLDER: &str = "<WORKSPACE>";
 
 #[derive(Clone, Copy)]
 struct EcosystemCase {
@@ -101,14 +108,36 @@ fn run_scan(case: &EcosystemCase) -> String {
     std::fs::read_to_string(&out_path).expect("read produced sbom")
 }
 
-/// Replace the two inherently volatile fields (`serialNumber` v4 UUID
-/// and `metadata.timestamp` wall-clock stamp) with deterministic
-/// placeholders so the rest of the document can be byte-compared.
-/// Any other difference — component order, property keys, license
-/// shape, added/removed fields — surfaces as a regression.
+/// Replace the three inherently volatile things in CDX output:
+///
+/// 1. `serialNumber` v4 UUID — regenerated per invocation by the CDX
+///    builder (`Uuid::new_v4()`).
+/// 2. `metadata.timestamp` — wall-clock stamp (`Utc::now()`).
+/// 3. The workspace absolute path — embedded in
+///    `mikebom:source-files` + `evidence.source_file_paths` and
+///    therefore different on macOS-dev
+///    (`/Users/<user>/Projects/mikebom/...`) vs Linux CI
+///    (`/home/runner/work/mikebom/mikebom/...`). Everything past the
+///    workspace root (e.g. `tests/fixtures/cargo/lockfile-v3/...`) IS
+///    deterministic, so we rewrite the prefix to the literal
+///    `<WORKSPACE>` placeholder in both golden and produced output
+///    before byte-comparing.
+///
+/// Any OTHER difference (component order, property keys, license
+/// shape, added/removed fields) surfaces as a regression — those are
+/// the invariants this test guards.
 fn normalize(raw: &str) -> String {
-    let mut json: serde_json::Value =
-        serde_json::from_str(raw).expect("produced SBOM is valid JSON");
+    // Do the workspace-root rewrite at string-level so it hits every
+    // path that happens to contain it, regardless of which field
+    // carries it (source-files property, evidence.source_file_paths,
+    // evidence.occurrences[].location, …). `workspace_root()` is
+    // the same canonical path the scan was invoked with.
+    let ws = workspace_root();
+    let ws_str = ws.to_string_lossy().to_string();
+    let replaced = raw.replace(ws_str.as_str(), WORKSPACE_PLACEHOLDER);
+
+    let mut json: serde_json::Value = serde_json::from_str(&replaced)
+        .expect("produced SBOM is valid JSON after workspace-path rewrite");
     if let Some(obj) = json.as_object_mut() {
         if obj.contains_key("serialNumber") {
             obj.insert(
