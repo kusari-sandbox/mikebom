@@ -56,6 +56,40 @@ jobs:
       - name: Build eBPF object
         run: cargo run --package xtask -- ebpf
 
+      # sbomqs is the cross-format SBOM-quality scorer that
+      # enforces spec SC-001: mikebom's SPDX output must meet or
+      # beat its CDX output on NTIA-minimum native features.
+      # `tests/sbomqs_parity.rs` reads `$PATH` for the binary; it
+      # exits with a visible skip if sbomqs isn't available, so
+      # dropping this step doesn't break the build — it just
+      # silently stops enforcing SC-001. Pinned to a specific
+      # version so the sbomqs JSON output shape (feature keys in
+      # particular) stays stable across CI runs.
+      - name: Install sbomqs
+        # v2.x requires the `/v2` suffix in the module path per Go's
+        # post-v1 module versioning convention.
+        #
+        # GOMODCACHE redirected to a throwaway path so `go install`
+        # doesn't populate $HOME/go/pkg/mod with sbomqs's transitive
+        # deps. Without this, tests that discover a Go module cache
+        # at $HOME/go/pkg/mod (e.g. scan_go_source_tree_emits_
+        # transitive_edges_when_cache_present) stop hitting their
+        # empty-cache skip path and start observing whichever deps
+        # sbomqs happened to pull in — brittle across sbomqs
+        # version bumps. Binary lands at $GOBIN (= $HOME/go/bin
+        # by default) regardless of GOMODCACHE.
+        #
+        # No post-install cleanup: Go's module cache writes files
+        # read-only (0444), so `rm -rf` refuses. $RUNNER_TEMP is
+        # ephemeral per-job anyway, so just leaving the cache
+        # there costs nothing — and the isolation goal (keep
+        # $HOME/go/pkg/mod pristine) is met.
+        run: |
+          GOMODCACHE="${RUNNER_TEMP}/go-mod-cache-sbomqs" \
+            go install github.com/interlynk-io/sbomqs/v2@v2.0.6
+      - name: Add Go bin to PATH
+        run: echo "${HOME}/go/bin" >> "$GITHUB_PATH"
+
       # Pin `+stable` explicitly on clippy/test so these never fall through
       # to nightly even if something earlier changes the default.
       #
