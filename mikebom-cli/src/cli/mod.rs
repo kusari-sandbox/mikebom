@@ -4,7 +4,6 @@ pub mod trace_cmd;
 
 // Subcommand implementations
 pub mod auto_dirs;
-pub mod compare;
 pub mod enrich;
 pub mod generate;
 pub mod policy;

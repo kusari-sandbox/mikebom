@@ -2,7 +2,6 @@ use clap::{Args, Subcommand};
 
 use std::process::ExitCode;
 
-use super::compare::CompareArgs;
 use super::enrich::EnrichArgs;
 use super::generate::GenerateArgs;
 use super::scan_cmd::ScanArgs;
@@ -23,8 +22,6 @@ pub enum SbomSubcommand {
     /// Verify a signed attestation (DSSE envelope) against a key /
     /// identity / layout
     Verify(VerifyArgs),
-    /// Compare mikebom's SBOM against syft/trivy + ground truth
-    Compare(CompareArgs),
     /// Walk a directory (or an extracted container image) and produce
     /// an SBOM from the package artifacts on disk. No eBPF required —
     /// runs anywhere Rust runs.
@@ -48,10 +45,6 @@ pub async fn execute(
             Ok(ExitCode::from(0))
         }
         SbomSubcommand::Verify(args) => super::verify::execute(args).await,
-        SbomSubcommand::Compare(args) => {
-            super::compare::execute(args).await?;
-            Ok(ExitCode::from(0))
-        }
         SbomSubcommand::Scan(args) => {
             super::scan_cmd::execute(
                 args,

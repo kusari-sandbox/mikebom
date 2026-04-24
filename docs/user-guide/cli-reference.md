@@ -2,7 +2,7 @@
 
 mikebom follows a strict `mikebom <noun> <verb>` pattern. Top-level nouns:
 
-- **`sbom`** — SBOM generation, enrichment, verification, comparison *(stable)*
+- **`sbom`** — SBOM generation, enrichment, verification *(stable)*
 - **`policy`** — in-toto layout generation + enforcement *(stable)*
 - **`attestation`** — attestation management *(stable)*
 - **`trace`** — eBPF build-process tracing *(**experimental**, Linux only)*
@@ -199,41 +199,6 @@ Note: as of the current code, the only enrichment source wired into the
 enrichment via deps.dev / ClearlyDefined happens in `sbom scan` but has not
 yet been threaded into the `generate` flow — this is why `--enrich` takes
 effect but does not currently fetch licenses from deps.dev.
-
----
-
-## `mikebom sbom compare`
-
-**Status:** Implemented.
-
-Compare mikebom's CycloneDX output against syft, trivy, and a ground-truth
-dependency list. Emits a markdown report with recall, precision, and
-evidence-coverage metrics; optional JSON summary to stdout.
-
-```bash
-mikebom sbom compare \
-  --mikebom mikebom.cdx.json \
-  --syft syft.cdx.json \
-  --trivy trivy.cdx.json \
-  --truth Cargo.lock \
-  --ecosystem cargo \
-  --output report.md \
-  --json
-```
-
-| Flag | Required | Purpose |
-|---|---|---|
-| `--mikebom <path>` | yes | CycloneDX JSON from mikebom |
-| `--syft <path>` | no | CycloneDX JSON from syft |
-| `--trivy <path>` | no | CycloneDX JSON from trivy |
-| `--truth <path>` | yes | Ground truth: `Cargo.lock`, `dpkg-query -W --showformat='${Package}\t${Version}\t${Architecture}\n'` output, or raw PURL list (one per line, starting with `pkg:`) |
-| `--ecosystem <eco>` | yes | `cargo` or `deb` (scopes the comparison; PURLs outside this ecosystem are filtered out before the diff) |
-| `--output <path>` | yes | Markdown report output path |
-| `--json` | no | Print a JSON summary to stdout |
-
-PURLs are canonicalized (lowercased, non-identity qualifiers dropped, `%2b` /
-`%3a` decoded) before comparison so minor encoding differences don't inflate
-the "unique" sets.
 
 ---
 

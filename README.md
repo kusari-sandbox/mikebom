@@ -185,17 +185,6 @@ mikebom sbom enrich project.cdx.json \
   --patch add-supplier.json --author you@example.com
 ```
 
-**8. Compare mikebom's output against syft / trivy + ground truth.**
-Writes a Markdown report and (optionally) a JSON summary.
-
-```bash
-mikebom sbom compare \
-  --mikebom project.cdx.json \
-  --syft syft.cdx.json --trivy trivy.cdx.json \
-  --truth Cargo.lock --ecosystem cargo \
-  --output compare.md --json
-```
-
 **Common flags** across every `sbom *` subcommand: `--offline`,
 `--include-dev`, `--include-declared-deps`,
 `--include-legacy-rpmdb` (env: `MIKEBOM_INCLUDE_LEGACY_RPMDB=1`).
@@ -244,17 +233,14 @@ witness-v0.1 attestation format (compatible with `sbomit generate`).
 - **[Changelog](CHANGELOG.md)** — what shipped in which release.
 - **[Specs](specs/)** — per-milestone planning specs
   (001 build-trace → 009 Maven shade-relocation).
-- **[Demos](demos/)** — end-to-end demo scripts
-  (Debian + Rust build-trace).
 
 ## Workspace layout
 
 ```
-mikebom-cli/      User-space CLI: scan, resolve, enrich, generate, verify, compare, trace
+mikebom-cli/      User-space CLI: scan, resolve, enrich, generate, verify, trace
 mikebom-common/   Shared types: PURL, attestation schema, resolution types
 mikebom-ebpf/     Kernel-side eBPF probes (uprobe on libssl, kprobe on file ops)
 xtask/            Workspace build/dev tooling
-demos/            End-to-end demo scripts (Debian + Rust)
 docs/             User guide, architecture, ecosystems, design notes
 specs/            Per-milestone planning specs
 tests/fixtures/   Real + synthetic fixtures consumed by integration tests
