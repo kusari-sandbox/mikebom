@@ -80,21 +80,30 @@ fn build_synthetic_image(files: &[ImageFile]) -> (tempfile::TempDir, PathBuf) {
     (dir, tar_path)
 }
 
-/// Build a synthetic image substantial enough that scan work
-/// dominates CLI startup + serialization overhead by a wide
-/// margin — the single-scan amortization is only a meaningful
-/// fraction of wall-clock when the scan itself is expensive
-/// enough to measure cleanly through noise. Sizes are chosen so
-/// each single-format run takes several hundred ms even on a
-/// shared CI runner, pushing the theoretical 50 % dual-format
-/// saving up against the spec's 30 % SC-009 threshold with a
-/// comfortable noise margin.
+/// Build a synthetic image where actual scan work **dominates**
+/// CLI startup + docker-extract + serialization overhead by a
+/// comfortable margin.
 ///
-/// Composition: 200 npm packages (exercises npm walker +
-/// deep-hash), 150 deb stanzas in dpkg/status (dpkg reader), and
-/// a layer of 50 stand-alone `.deb` archive files (triggers the
-/// artifact-file walker's hash path). Total on-disk footprint
-/// inside the tarball stays in the low megabytes.
+/// SC-009's ≥ 30 % reduction only holds when per-scan wall-clock
+/// is big enough that the fixed overhead per `mikebom` invocation
+/// (CLI init + docker-tarball extract + enrichment no-op) is a
+/// small fraction of the total. On a 100 ms-scale per-scan
+/// timing, ~50 ms of that is fixed overhead — leaving only ~50 ms
+/// scan work per invocation. The theoretical best-case dual-
+/// format reduction is then ~25 %, below the threshold. The
+/// first CI run of this test hit exactly that shape (28.3 %).
+///
+/// Fix: inflate the synthetic fixture until per-scan wall-clock
+/// is ~500 ms+ on representative runners. Startup overhead
+/// becomes a small fraction of total time and the ~50 % dual-
+/// format ceiling is reachable with comfortable noise margin.
+///
+/// Composition: 1500 npm packages (exercises npm walker +
+/// deep-hash — each package.json is ~4 KB so there's real
+/// hashing per component), 500 deb stanzas in dpkg/status
+/// (dpkg reader's per-stanza parse loop). At ~6 MB of
+/// package.json content alone, this is a plausible lower bound
+/// for a real container image's npm + deb footprint.
 fn build_benchmark_fixture() -> (tempfile::TempDir, PathBuf) {
     let mut files: Vec<ImageFile> = Vec::new();
 
@@ -103,9 +112,9 @@ fn build_benchmark_fixture() -> (tempfile::TempDir, PathBuf) {
         content: b"ID=debian\nVERSION_ID=12\nVERSION_CODENAME=bookworm\n".to_vec(),
     });
 
-    // 150 deb packages — one big dpkg/status blob.
+    // 500 deb packages — one big dpkg/status blob.
     let mut dpkg = String::new();
-    for i in 0..150 {
+    for i in 0..500 {
         use std::fmt::Write as _;
         write!(
             dpkg,
@@ -122,12 +131,12 @@ fn build_benchmark_fixture() -> (tempfile::TempDir, PathBuf) {
         content: dpkg.into_bytes(),
     });
 
-    // 200 npm packages. Each package.json has ~1 KB of body so
-    // deep-hash has real bytes to chew per component.
-    for i in 0..200 {
+    // 1500 npm packages. 4 KB per package.json so the deep-hash
+    // pass actually has work to do per component.
+    for i in 0..1500 {
         let content = format!(
             r#"{{"name":"pkg-{i:04}","version":"2.{i}.0","license":"MIT","description":"{repeat}"}}"#,
-            repeat = "x".repeat(1024)
+            repeat = "x".repeat(4096)
         );
         let path: &'static str = Box::leak(
             format!("usr/lib/node_modules/pkg-{i:04}/package.json").into_boxed_str(),
