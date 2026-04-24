@@ -78,10 +78,15 @@ jobs:
         # sbomqs happened to pull in — brittle across sbomqs
         # version bumps. Binary lands at $GOBIN (= $HOME/go/bin
         # by default) regardless of GOMODCACHE.
+        #
+        # No post-install cleanup: Go's module cache writes files
+        # read-only (0444), so `rm -rf` refuses. $RUNNER_TEMP is
+        # ephemeral per-job anyway, so just leaving the cache
+        # there costs nothing — and the isolation goal (keep
+        # $HOME/go/pkg/mod pristine) is met.
         run: |
           GOMODCACHE="${RUNNER_TEMP}/go-mod-cache-sbomqs" \
             go install github.com/interlynk-io/sbomqs/v2@v2.0.6
-          rm -rf "${RUNNER_TEMP}/go-mod-cache-sbomqs"
       - name: Add Go bin to PATH
         run: echo "${HOME}/go/bin" >> "$GITHUB_PATH"
 
