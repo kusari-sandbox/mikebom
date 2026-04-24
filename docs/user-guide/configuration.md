@@ -51,8 +51,7 @@ Offline mode still produces a complete CycloneDX SBOM with:
 
 What changes under `--offline`: licenses for cargo crates drop sharply because
 crates.io doesn't publish licenses into `Cargo.lock` — they only come through
-the deps.dev enrichment pass. See the before/after numbers in
-[`EVALUATION.md`](../../EVALUATION.md#depsdev-enrichment-for-non-debapk-ecosystems---offline-toggle).
+the deps.dev enrichment pass.
 
 ## Where flags are *not* interchangeable with env vars
 

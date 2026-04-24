@@ -148,6 +148,19 @@ Behaviour notes:
   installed-package database, not from observing the install event.
 - Artifact-file-resolved components carry confidence 0.70 with
   `technique: "filename"`.
+- Maven fat-jars built with the shade-plugin emit nested
+  `components[].components[]` entries per shade-relocated ancestor (one
+  `pkg:maven/<g>/<a>@<v>` per ancestor declared in the JAR's
+  `META-INF/DEPENDENCIES`), tagged with the property
+  `mikebom:shade-relocation = true`. Emission is gated on
+  bytecode-presence verification — declared-but-not-relocated ancestors
+  are dropped. Feature 009; see
+  [`docs/ecosystems.md`](../ecosystems.md) and
+  [`specs/009-maven-shade-deps/spec.md`](../../specs/009-maven-shade-deps/spec.md).
+- `sbom scan` inherits the top-level `--offline`, `--include-dev`,
+  `--include-declared-deps`, and `--include-legacy-rpmdb` flags — they
+  can be passed either before or after `scan`. See [global flags](#global-flags)
+  and [Configuration](configuration.md).
 
 ---
 
@@ -220,35 +233,28 @@ mikebom sbom compare \
 
 PURLs are canonicalized (lowercased, non-identity qualifiers dropped, `%2b` /
 `%3a` decoded) before comparison so minor encoding differences don't inflate
-the "unique" sets. See [`EVALUATION.md`](../../EVALUATION.md) for real report
-output.
+the "unique" sets.
 
 ---
 
 ## `mikebom sbom enrich`
 
-**Status: Planned (Phase 6 / US4).** The subcommand is wired into `--help` but
-currently errors with `enrich command not yet implemented — see Phase 6 (US4)`.
-
-Planned purpose: add license, VEX, and supplier metadata to an existing SBOM
-file.
-
----
-
-## `mikebom sbom validate`
-
-**Status: Planned (Phase 7 / US5).** Currently errors with
-`validate command not yet implemented — see Phase 7 (US5)`.
-
-Planned purpose: validate an SBOM or attestation for CycloneDX / SPDX
-conformance.
+**Status: Implemented (feature 006 US5).** Detailed documentation is
+below in the "`mikebom sbom enrich` — feature 006 US5" section. In
+short: accepts one or more RFC 6902 JSON Patch files via `--patch`
+and records per-patch provenance on the BOM metadata.
 
 ---
 
 ## `mikebom attestation validate`
 
-**Status: Planned (Phase 7 / US5).** Currently errors with
-`attestation validate not yet implemented — see Phase 7 (US5)`.
+**Status: Implemented.** Validates an attestation file for in-toto /
+SBOMit schema conformance (shape checks only — does *not* verify
+signatures; use `mikebom sbom verify` for that).
+
+```bash
+mikebom attestation validate some.attestation.json
+```
 
 Planned purpose: validate an in-toto attestation file for schema conformance.
 

@@ -49,8 +49,7 @@ hashes mikebom can use.
 
 **Known limitations:**
 - apk's DB doesn't carry copyright pointers like dpkg does, so apk
-  components ship with empty `licenses[]`. See the known gap in
-  [`EVALUATION.md`](../EVALUATION.md#known-gaps-called-out-by-design).
+  components ship with empty `licenses[]`.
 
 ---
 
@@ -76,8 +75,7 @@ CycloneDX `components[].hashes[]`.
 **Enrichment:**
 - deps.dev: fetches declared licenses and VCS URLs. Without deps.dev,
   cargo license coverage drops to zero (crates.io doesn't publish licenses
-  into `Cargo.lock`, only into `Cargo.toml`). See the
-  [offline toggle numbers](../EVALUATION.md#depsdev-enrichment-for-non-debapk-ecosystems---offline-toggle).
+  into `Cargo.lock`, only into `Cargo.toml`).
 - ClearlyDefined: concluded licenses from CD's cratesio provider.
 
 **Source-type markers:**
@@ -92,11 +90,6 @@ CycloneDX `components[].hashes[]`.
 **Module:** `mikebom-cli/src/scan_fs/package_db/dpkg.rs`, with DEP-5
 copyright parsing in `scan_fs/package_db/copyright.rs` and per-file deep
 hashing in `scan_fs/package_db/file_hashes.rs`.
-
-> Debian is the ecosystem where other SBOM tools most often fail. See
-> [`EVALUATION.md`](../EVALUATION.md) for head-to-head numbers showing
-> mikebom at 100% recall/precision on Debian ground-truth where syft and
-> trivy report zero components.
 
 **Detection:** stanza parser over `/var/lib/dpkg/status`, plus per-package
 `/var/lib/dpkg/info/<pkg>.list` manifests for deep-hash occurrences.
@@ -170,9 +163,10 @@ gemspec-sourced entries also use `PackageDatabase`.
 **Dep graph:** full tree. `Gemfile.lock`'s indent-6 lines encode per-gem
 edges; gemspecs themselves carry no dep edges.
 
-**Hashes:** none currently. Bundler 2.5+ started emitting `CHECKSUMS`
-sections; adoption is still thin enough that the parser hasn't been
-prioritized.
+**Hashes:** none currently. Bundler 2.5+ emits `CHECKSUMS` sections in
+`Gemfile.lock`; the parser for them is tracked as deferred
+work — see the sbomqs-score-lift items in
+[`design-notes.md`](design-notes.md) (Deferred #17).
 
 **Enrichment:**
 - deps.dev: skipped (not in deps.dev's supported ecosystems).
@@ -291,6 +285,23 @@ is deferred.
 - `declared-not-cached` — deps.dev says it's a declared dep but not
   present locally at any version.
 
+**Shade-plugin fat-jars (feature 009):**
+When a JAR contains `META-INF/DEPENDENCIES` (the Apache
+`maven-dependency-plugin`'s declared-transitive manifest), mikebom
+parses it into ancestor coords and emits one nested component per
+ancestor under the enclosing JAR's primary coord, tagged
+`mikebom:shade-relocation = true`. Emission is gated on
+**bytecode-presence verification**: an ancestor is retained only when a
+`.class` entry in the JAR matches either its original group path
+(UNSHADED) or a shade-relocated path containing the ancestor's
+distinctive artifact-id leaf (SHADED, generic leaves like `io`, `api`,
+`util`, `core` excluded). The UNSHADED check is suppressed when
+ancestor and primary share a reactor group namespace, since sibling
+reactor artifacts cannot be distinguished from the primary's own
+classes under the shared namespace. Full rules in
+[`specs/009-maven-shade-deps/spec.md`](../specs/009-maven-shade-deps/spec.md)
+FR-002b.
+
 **Known limitations:**
 - `<exclusions>` not parsed. If a project excludes a transitive via
   `<exclusions>`, mikebom still emits the excluded coord.
@@ -327,13 +338,16 @@ sha256, sha384, sha512; flows through to CycloneDX `components[].hashes[]`.
 - ClearlyDefined: concluded licenses. Namespace for scoped packages
   strips the leading `@` (`@angular` → `angular`).
 
-**Feature 005 — npm internals filtering:**
+**npm internals filtering (scope-by-mode, always on):**
 - In `--image` scans, components discovered inside npm's own bundled tree
   (`**/node_modules/npm/node_modules/**`) are marked
-  `mikebom:npm-role = internal`.
-- In `--path` scans, internals are filtered out before resolution. The
-  assumption is that a path-mode scan targets the application's
+  `mikebom:npm-role = internal` and retained — the image contains
+  npm's own install, so those bytes are legitimately present.
+- In `--path` scans, internals are filtered out before resolution on
+  the assumption that a path-mode scan targets the application's
   `node_modules/`, not a tool cache.
+- This is not user-gated — there is no flag to toggle it. See
+  feature 005 (`specs/005-purl-and-scope-alignment/`) for rationale.
 
 ---
 
@@ -407,8 +421,10 @@ mikebom can use. This is why rpm scans score 6.1/10 on sbomqs (Integrity
 - **Berkeley DB rpmdb** (`/var/lib/rpm/Packages`, pre-RHEL 8) is
   **detected but not parsed.** Diagnostic logged, zero rpm components
   emitted. The `--include-legacy-rpmdb` flag (or
-  `MIKEBOM_INCLUDE_LEGACY_RPMDB=1`) threads through today as a no-op until
-  the BDB reader ships in milestone 004 US4.
+  `MIKEBOM_INCLUDE_LEGACY_RPMDB=1`) threads through to
+  `rpmdb_bdb::read`, which is a stub pending the concrete Hash/BTree
+  page parser (milestone 004 US4 tasks T061–T065). Until those land,
+  flipping the flag changes nothing about scan output.
 - **rpmdb.sqlite size cap** is 200 MB (defense-in-depth; real rpmdbs are
   ~5 MB).
 - **Pure-Rust SQLite reader** handles leaf-table + interior-table pages

@@ -26,7 +26,7 @@ pub struct ScanArgs {
     /// trace start is hashed and added to the file-access record, so
     /// the resulting SBOM carries real content hashes even when the
     /// kernel-side kprobe misses the output-file open (observed with
-    /// curl's -O and cargo's .crate writes — see EVALUATION.md).
+    /// curl's -O and cargo's .crate writes).
     /// Accepts the flag multiple times or comma-separated.
     #[arg(long, value_delimiter = ',')]
     pub artifact_dir: Vec<PathBuf>,
