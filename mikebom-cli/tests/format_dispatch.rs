@@ -33,12 +33,24 @@ fn bin() -> &'static str {
 /// completed process output. The caller chooses the working
 /// directory — most tests use a tempdir so default-filename emission
 /// can be observed without stamping on cwd.
+///
+/// `HOME` and friends are redirected to a tempdir so host-level
+/// package caches (`~/.m2/`, `~/go/pkg/mod/`, etc.) don't leak
+/// extra discovered components into the test output. See
+/// `cdx_regression.rs::run_scan` for the full rationale.
 fn run_scan_in(
     cwd: &Path,
     extra_args: &[&str],
 ) -> std::process::Output {
+    let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let mut cmd = Command::new(bin());
     cmd.current_dir(cwd)
+        .env("HOME", fake_home.path())
+        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
+        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
+        .env("GOPATH", fake_home.path().join("no-gopath"))
+        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
+        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
         .arg("--offline")
         .arg("sbom")
         .arg("scan")

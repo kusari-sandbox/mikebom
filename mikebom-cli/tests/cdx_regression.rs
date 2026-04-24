@@ -75,6 +75,26 @@ fn golden_path(label: &str) -> PathBuf {
 
 /// Run `mikebom sbom scan` against a fixture and return the raw CDX
 /// JSON text.
+///
+/// The scan subprocess runs with `HOME` and related cache-pointing
+/// env vars redirected to an empty tempdir. Several ecosystem
+/// scanners read home-dir caches to discover additional components
+/// beyond what's in the fixture:
+///
+///   - Maven: `$HOME/.m2/repository/`, `$M2_REPO`, `$MAVEN_HOME` —
+///     reads cached POMs to find transitives. My dev box has
+///     commons-text cached; CI runners do not, so the dev-generated
+///     golden had a commons-text Package that the CI output was
+///     missing.
+///   - Go: `$GOPATH`, `$GOMODCACHE` (defaults under `$HOME/go/`) —
+///     reads module zip metadata when cached.
+///   - Cargo: `$CARGO_HOME` (defaults to `$HOME/.cargo/`) — rarely
+///     affects output today but isolate for future-proofing.
+///
+/// With all five redirected to a per-test tempdir, the scanner's
+/// home-cache lookups uniformly hit an empty directory on both
+/// macOS dev and Linux CI, making the golden portable. The scan
+/// target (the fixture) still provides all the real component data.
 fn run_scan(case: &EcosystemCase) -> String {
     let fx = fixture_path(case.fixture_subpath);
     assert!(
@@ -86,8 +106,15 @@ fn run_scan(case: &EcosystemCase) -> String {
     let bin = env!("CARGO_BIN_EXE_mikebom");
     let tmp = tempfile::tempdir().expect("tempdir");
     let out_path = tmp.path().join("mikebom.cdx.json");
+    let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let mut cmd = Command::new(bin);
-    cmd.arg("--offline")
+    cmd.env("HOME", fake_home.path())
+        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
+        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
+        .env("GOPATH", fake_home.path().join("no-gopath"))
+        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
+        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+        .arg("--offline")
         .arg("sbom")
         .arg("scan")
         .arg("--path")
