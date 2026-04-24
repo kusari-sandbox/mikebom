@@ -104,12 +104,13 @@ pub struct SpdxAnnotation {
     pub comment: String,
 }
 
-/// SPDX 2.3 external document reference. Used by the OpenVEX
-/// sidecar cross-reference in US2 — declared here so the
-/// [`SpdxDocument`] struct can reference it across phases without a
-/// follow-up struct move.
+/// SPDX 2.3 external document reference. Populated by the
+/// OpenVEX-sidecar co-emission path in
+/// [`super::Spdx2_3JsonSerializer::serialize`] per FR-016a — the
+/// entry names the sidecar's relative path and a SHA-256 of its
+/// bytes so a consumer reading only the SPDX file can locate and
+/// integrity-check the sidecar.
 #[derive(Debug, Clone, serde::Serialize)]
-#[allow(dead_code)]
 pub struct SpdxExternalDocumentRef {
     #[serde(rename = "externalDocumentId")]
     pub id: String,

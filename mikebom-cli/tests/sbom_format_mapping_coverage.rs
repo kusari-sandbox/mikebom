@@ -40,9 +40,11 @@ fn goldens_dir() -> PathBuf {
 }
 
 fn map_path() -> PathBuf {
-    // Phase-4 T039 will move this to docs/reference/sbom-format-mapping.md;
-    // this test's path then updates in lockstep with T039.
-    workspace_root().join("specs/010-spdx-output-support/contracts/sbom-format-mapping.md")
+    // Canonical home (per T039). A mirror copy lives under
+    // specs/010-spdx-output-support/contracts/ for plan-review
+    // purposes; this test reads the canonical version because
+    // that's the file consumers of mikebom read.
+    workspace_root().join("docs/reference/sbom-format-mapping.md")
 }
 
 /// Every item we expect to find named in the map's CDX column.
