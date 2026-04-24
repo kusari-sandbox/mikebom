@@ -2,23 +2,25 @@
   ============================================================
   SYNC IMPACT REPORT
   ============================================================
-  Version change: 1.2.0 → 1.2.1
-  Bump rationale: PATCH — codified the pre-PR verification
-  workflow that CI already enforces. No principle changes,
-  no new principles. Prompted by a PR that passed
-  `cargo test -p mikebom` locally but failed CI with 14
-  `clippy::unwrap_used` errors in test code.
+  Version change: 1.2.1 → 1.3.0
+  Bump rationale: MINOR — Principle V (Specification Compliance)
+  materially expanded. The SPDX bullet now permits both SPDX 2.3
+  and SPDX 3.x (instead of pinning SPDX 3.1, which is currently
+  rc1). Adds a new normative requirement: experimental / opt-in
+  SPDX 3 emitters MUST be visibly labeled in CLI help, output
+  filename, and document creator metadata. Prompted by milestone
+  010 (SPDX Output Support), which ships SPDX 2.3 as the primary
+  output and an opt-in SPDX 3.0.1 stub.
 
   Modified sections:
-    - Development Workflow → new subsection "Pre-PR
-      Verification (MANDATORY)" naming the two exact commands
-      CI runs and the `#[cfg_attr(test, allow(clippy::unwrap_used))]`
-      guard required on test modules that use `.unwrap()`.
+    - Principle V → SPDX bullet rewritten; rationale extended
+      with deployed-ecosystem context.
 
-  Added sections: none (new subsection under existing section)
+  Added sections: none
   Removed sections: none
 
   Previous SYNC IMPACT history:
+    - 1.2.0 → 1.2.1: PATCH — codified pre-PR verification.
     - 1.1.0 → 1.2.0: MINOR — new principle XII (External Data
       Source Enrichment); principle II + strict boundary #1
       amended to distinguish discovery from enrichment.
@@ -112,7 +114,16 @@ Generated SBOMs MUST strictly conform to:
   "Generation Context" reflecting active build-time trace.
 - **CycloneDX 1.6** — valid JSON or XML serialization via
   `cyclonedx-bom` or the `sbom-rs` ecosystem.
-- **SPDX 3.1** — when SPDX output is requested.
+- **SPDX 2.3 and SPDX 3.x** — when SPDX output is requested.
+  Output MUST conform to the SPDX 2.3 JSON schema for the
+  stable `spdx-2.3-json` format, and to the targeted SPDX
+  3.x JSON schema (currently 3.0.1; subsequent 3.x minors
+  may be adopted in follow-up milestones) for any SPDX 3
+  emitter. Experimental or opt-in SPDX 3 emitters MUST be
+  visibly labeled as such — in CLI `--help` text, in the
+  output filename, and in the produced document's
+  creator/tool metadata — so that consumers cannot mistake
+  them for production-grade output.
 - **PURL Specification** — every Package URL emitted MUST
   conform to the PURL spec. Invalid PURLs MUST NOT appear
   in output.
@@ -125,6 +136,14 @@ a blocking bug.
 technically defensible SBOMs. A spec-conformant document
 containing malformed PURLs is still non-compliant.
 Sub-element validity is as critical as envelope validity.
+SPDX 2.3 remains the dominant deployed SPDX version across
+the SBOM consumer ecosystem — federal procurement pipelines,
+sbomqs, syft/grype/trivy interop, and the LF SPDX tools
+validator all expect 2.3 today. SPDX 3.x (currently 3.0.1
+stable, 3.1-rc1 in flight) is the forward path. Permitting
+both lets mikebom serve current adopters without locking
+out future ones; the experimental-labeling requirement
+preserves consumer trust during the transition.
 
 ### VI. Three-Crate Architecture
 
@@ -395,4 +414,4 @@ changes do not violate any principle. Violations require
 either a code fix or a constitution amendment — never silent
 deviation.
 
-**Version**: 1.2.0 | **Ratified**: 2026-04-15 | **Last Amended**: 2026-04-16
+**Version**: 1.3.0 | **Ratified**: 2026-04-15 | **Last Amended**: 2026-04-23
