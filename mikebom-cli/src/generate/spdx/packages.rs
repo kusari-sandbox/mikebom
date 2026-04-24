@@ -12,6 +12,7 @@ use mikebom_common::resolution::ResolvedComponent;
 use mikebom_common::types::hash::HashAlgorithm;
 use mikebom_common::types::license::SpdxExpression;
 
+use super::annotations::annotate_component;
 use super::document::SpdxAnnotation;
 use super::ids::SpdxId;
 use crate::generate::ScanArtifacts;
@@ -98,13 +99,11 @@ pub enum SpdxExternalRefCategory {
     #[serde(rename = "PACKAGE-MANAGER")]
     PackageManager,
     #[serde(rename = "SECURITY")]
-    #[allow(dead_code)]
     Security,
     #[serde(rename = "PERSISTENT-ID")]
     #[allow(dead_code)]
     PersistentId,
     #[serde(rename = "OTHER")]
-    #[allow(dead_code)]
     Other,
 }
 
@@ -201,15 +200,39 @@ fn supplier_string(name: &str) -> String {
 /// One `SpdxPackage` per `ResolvedComponent`, in the scan's iteration
 /// order (already stable since milestone 002; guaranteed by the
 /// deduplicator).
-pub fn build_packages(artifacts: &ScanArtifacts<'_>) -> Vec<SpdxPackage> {
+///
+/// `annotator` and `date` are threaded in from `build_document` so
+/// the per-package annotations (T034 — the `mikebom:*` + evidence
+/// envelopes) carry the same creator + timestamp strings as the
+/// document's `creationInfo`. Match is what lets a consumer treat
+/// the annotations as provenanced by the same tool run.
+pub fn build_packages(
+    artifacts: &ScanArtifacts<'_>,
+    annotator: &str,
+    date: &str,
+) -> Vec<SpdxPackage> {
     let mut packages = Vec::with_capacity(artifacts.components.len());
     for c in artifacts.components {
-        packages.push(component_to_package(c, artifacts.include_hashes));
+        packages.push(component_to_package(
+            c,
+            artifacts.include_hashes,
+            artifacts.include_dev,
+            artifacts.include_source_files,
+            annotator,
+            date,
+        ));
     }
     packages
 }
 
-fn component_to_package(c: &ResolvedComponent, include_hashes: bool) -> SpdxPackage {
+fn component_to_package(
+    c: &ResolvedComponent,
+    include_hashes: bool,
+    include_dev: bool,
+    include_source_files: bool,
+    annotator: &str,
+    date: &str,
+) -> SpdxPackage {
     let spdx_id = SpdxId::for_purl(&c.purl);
     let checksums: Vec<SpdxChecksum> = if include_hashes {
         c.hashes
@@ -223,13 +246,47 @@ fn component_to_package(c: &ResolvedComponent, include_hashes: bool) -> SpdxPack
         Vec::new()
     };
 
-    let external_refs = vec![SpdxExternalRef {
+    // A1: PURL. Always first so the primary cross-reference is at
+    // the top of the array (stable reader expectation).
+    let mut external_refs = vec![SpdxExternalRef {
         category: SpdxExternalRefCategory::PackageManager,
         ref_type: "purl".to_string(),
         locator: c.purl.as_str().to_string(),
     }];
 
+    // A12: primary CPE. The first entry in `c.cpes` is the
+    // highest-signal synthesized candidate; the full set lives in
+    // the `mikebom:cpe-candidates` annotation (C19).
+    if let Some(primary_cpe) = c.cpes.first() {
+        external_refs.push(SpdxExternalRef {
+            category: SpdxExternalRefCategory::Security,
+            ref_type: "cpe23Type".to_string(),
+            locator: primary_cpe.clone(),
+        });
+    }
+
+    // A9/A10/A11: external references — homepage, vcs, distribution,
+    // etc. CDX uses a free-form `type` string; SPDX 2.3's
+    // `externalRefs[]` with `category: OTHER` accepts any
+    // `referenceType`, so we pass the ref_type through verbatim.
+    // This preserves the CDX → SPDX mapping documented in the map.
+    for r in &c.external_references {
+        external_refs.push(SpdxExternalRef {
+            category: SpdxExternalRefCategory::Other,
+            ref_type: r.ref_type.clone(),
+            locator: r.url.clone(),
+        });
+    }
+
     let supplier = c.supplier.as_deref().map(supplier_string);
+
+    let annotations = annotate_component(
+        annotator,
+        date,
+        c,
+        include_dev,
+        include_source_files,
+    );
 
     SpdxPackage {
         spdx_id,
@@ -244,7 +301,7 @@ fn component_to_package(c: &ResolvedComponent, include_hashes: bool) -> SpdxPack
         license_concluded: reduce_license_vec(&c.concluded_licenses),
         copyright_text: None,
         external_refs,
-        annotations: Vec::new(),
+        annotations,
     }
 }
 
@@ -340,7 +397,7 @@ mod tests {
             mk_component("pkg:cargo/tokio@1.35.0", "tokio", "1.35.0"),
         ];
         let integ = empty_integrity();
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ));
+        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert_eq!(pkgs.len(), 2);
     }
 
@@ -348,7 +405,7 @@ mod tests {
     fn package_carries_purl_external_ref() {
         let comps = vec![mk_component("pkg:cargo/serde@1.0.197", "serde", "1.0.197")];
         let integ = empty_integrity();
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ));
+        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         let purl_ref = pkgs[0]
             .external_refs
             .iter()
@@ -367,7 +424,7 @@ mod tests {
         .unwrap()];
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ));
+        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert_eq!(pkgs[0].checksums.len(), 1);
         assert_eq!(pkgs[0].checksums[0].algorithm, SpdxChecksumAlgorithm::SHA256);
     }
@@ -383,7 +440,7 @@ mod tests {
         let comps = [c];
         let mut artifacts = mk_artifacts("demo", &comps, &[], &integ);
         artifacts.include_hashes = false;
-        let pkgs = build_packages(&artifacts);
+        let pkgs = build_packages(&artifacts, "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert!(pkgs[0].checksums.is_empty());
     }
 
@@ -396,7 +453,7 @@ mod tests {
         c.licenses = vec![SpdxExpression::new("MIT").unwrap()];
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ));
+        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         match &pkgs[0].license_declared {
             SpdxLicenseField::Expression(s) => assert_eq!(s, "MIT"),
             other => panic!("expected Expression, got {other:?}"),
@@ -413,7 +470,7 @@ mod tests {
         c.licenses = vec![SpdxExpression::new("Some Free-Text License").unwrap()];
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ));
+        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert!(matches!(
             pkgs[0].license_declared,
             SpdxLicenseField::NoAssertion
@@ -426,7 +483,7 @@ mod tests {
         c.concluded_licenses = vec![SpdxExpression::new("Apache-2.0").unwrap()];
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ));
+        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         match &pkgs[0].license_concluded {
             SpdxLicenseField::Expression(s) => assert_eq!(s, "Apache-2.0"),
             other => panic!("expected Expression, got {other:?}"),
@@ -438,7 +495,7 @@ mod tests {
         let c = mk_component("pkg:cargo/x@1", "x", "1");
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ));
+        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert!(matches!(pkgs[0].license_declared, SpdxLicenseField::NoAssertion));
         assert!(matches!(pkgs[0].license_concluded, SpdxLicenseField::NoAssertion));
     }
@@ -449,7 +506,7 @@ mod tests {
         c.supplier = Some("Acme Corp".to_string());
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ));
+        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert_eq!(pkgs[0].supplier.as_deref(), Some("Organization: Acme Corp"));
     }
 
