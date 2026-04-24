@@ -281,6 +281,7 @@ fn spec_to_entry(
         co_owned_by: None,
         hashes: Vec::new(),
         sbom_tier: Some("source".to_string()),
+        shade_relocation: None,
     })
 }
 
@@ -321,6 +322,7 @@ fn gemspec_to_entry(
         co_owned_by: None,
         hashes: Vec::new(),
         sbom_tier: Some("analyzed".to_string()),
+        shade_relocation: None,
     })
 }
 

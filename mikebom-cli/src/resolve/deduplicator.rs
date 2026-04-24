@@ -265,6 +265,17 @@ fn fold_declared_not_cached(components: &mut Vec<ResolvedComponent>) {
         if is_secondary_source_type(c.source_type.as_deref()) {
             continue;
         }
+        // Feature 009: shade-relocation entries aren't on-disk twins
+        // of a transitive coord — they're nested components at a
+        // different semantic level. If a BFS-emitted transitive with
+        // parent_purl=None is folded INTO a shade-relocation child
+        // (parent_purl=Some) and removed, the shade child loses its
+        // ability to nest (its parent PURL vanishes from
+        // top_level_purls). Exclude shade-relocation entries from
+        // the on-disk set so pass 2's fold skips them.
+        if c.shade_relocation == Some(true) {
+            continue;
+        }
         on_disk.entry(canonical_coord_key(c)).or_default().push(i);
     }
 
@@ -279,7 +290,13 @@ fn fold_declared_not_cached(components: &mut Vec<ResolvedComponent>) {
         .map(|(i, _)| i)
         .collect();
 
-    for &sec_idx in secondary_indices.iter().rev() {
+    // First pass: fold all secondary→on-disk merges into the `dst`
+    // entries WITHOUT removing the secondaries. Record which
+    // secondaries to remove afterward. Avoids the index-shift bug
+    // where removing secondary at idx K invalidates any on-disk
+    // index that was originally > K.
+    let mut to_remove: Vec<usize> = Vec::new();
+    for &sec_idx in secondary_indices.iter() {
         let key = canonical_coord_key(&components[sec_idx]);
         let Some(on_disk_indices) = on_disk.get(&key).cloned() else {
             // No on-disk twin. Keep the secondary entry —
@@ -289,6 +306,7 @@ fn fold_declared_not_cached(components: &mut Vec<ResolvedComponent>) {
         // Clone the secondary entry's evidence before we drop it,
         // then fold into every on-disk match.
         let sec = components[sec_idx].clone();
+        to_remove.push(sec_idx);
         for dst_idx in on_disk_indices {
             let dst = &mut components[dst_idx];
             // Evidence-trail marker: declared-not-cached → "deps.dev",
@@ -341,7 +359,14 @@ fn fold_declared_not_cached(components: &mut Vec<ResolvedComponent>) {
                 dst.sbom_tier = Some("deployed".to_string());
             }
         }
-        components.remove(sec_idx);
+    }
+    // Second pass: remove the secondaries. Dedup + sort-descending
+    // so removing from the back doesn't shift indices we still
+    // need.
+    to_remove.sort_unstable();
+    to_remove.dedup();
+    for sec_idx in to_remove.iter().rev() {
+        components.remove(*sec_idx);
     }
 }
 
@@ -395,6 +420,7 @@ mod tests {
             raw_version: None,
             parent_purl: None,
             co_owned_by: None,
+            shade_relocation: None,
             external_references: Vec::new(),
         }
     }

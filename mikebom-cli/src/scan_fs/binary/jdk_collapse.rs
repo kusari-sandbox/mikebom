@@ -100,6 +100,7 @@ impl JdkCollapser {
                     requirement_range: None,
                     source_type: None,
                     sbom_tier: Some("analyzed".to_string()),
+                    shade_relocation: None,
                     buildinfo_status: None,
                     evidence_kind: Some("jdk-runtime-collapsed".to_string()),
                     binary_class: None,

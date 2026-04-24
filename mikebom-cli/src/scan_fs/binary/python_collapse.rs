@@ -125,6 +125,7 @@ impl PythonStdlibCollapser {
                     requirement_range: None,
                     source_type: None,
                     sbom_tier: Some("analyzed".to_string()),
+                    shade_relocation: None,
                     buildinfo_status: None,
                     // New evidence-kind — see `generate/cyclonedx/builder.rs`
                     // enum update.

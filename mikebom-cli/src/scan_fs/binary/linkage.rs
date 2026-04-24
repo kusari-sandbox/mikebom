@@ -164,6 +164,7 @@ impl LinkageAggregator {
                 requirement_range: None,
                 source_type: None,
                 sbom_tier: Some("analyzed".to_string()),
+                shade_relocation: None,
                 buildinfo_status: None,
                 evidence_kind: Some("dynamic-linkage".to_string()),
                 binary_class: None,

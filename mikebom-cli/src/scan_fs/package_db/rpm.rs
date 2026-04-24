@@ -510,6 +510,7 @@ fn assemble_entry(
         source_type: None,
         buildinfo_status: None,
         sbom_tier: Some("deployed".to_string()),
+        shade_relocation: None,
         evidence_kind: Some("rpmdb-sqlite".to_string()),
         binary_class: None,
         binary_stripped: None,

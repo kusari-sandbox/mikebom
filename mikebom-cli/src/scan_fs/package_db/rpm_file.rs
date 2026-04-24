@@ -361,6 +361,7 @@ fn parse_rpm_file(
         requirement_range: None,
         source_type: None,
         sbom_tier: Some("source".to_string()),
+        shade_relocation: None,
         buildinfo_status: None,
         evidence_kind: Some("rpm-file".to_string()),
         binary_class: None,

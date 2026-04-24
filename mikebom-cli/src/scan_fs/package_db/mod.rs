@@ -173,6 +173,13 @@ pub struct PackageDbEntry {
     /// after this reader returns. Empty by default; populated by
     /// readers that have manifest-level hashes available.
     pub hashes: Vec<ContentHash>,
+    /// Feature 009: `Some(true)` when the entry was derived from a
+    /// shaded JAR's `META-INF/DEPENDENCIES` file (ancestor dep with
+    /// relocated bytecode inside the enclosing JAR). Consumers can
+    /// filter on this to separate "linkable direct deps" from
+    /// "bytecode-present shaded ancestors." Surfaced via CDX
+    /// property `mikebom:shade-relocation = true`.
+    pub shade_relocation: Option<bool>,
 }
 
 /// Hard failures a database reader can raise that MUST abort the scan
@@ -824,6 +831,7 @@ Architecture: arm64
             co_owned_by: None,
             hashes: Vec::new(),
             sbom_tier: sbom_tier.map(String::from),
+            shade_relocation: None,
         }
     }
 

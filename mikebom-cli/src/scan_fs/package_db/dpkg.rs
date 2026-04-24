@@ -221,6 +221,7 @@ fn parse_stanza(
         co_owned_by: None,
         hashes: Vec::new(),
         sbom_tier: Some("deployed".to_string()),
+        shade_relocation: None,
     })
 }
 
