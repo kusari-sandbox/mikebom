@@ -1348,6 +1348,169 @@ pub(crate) fn parse_dependencies_file(bytes: &[u8]) -> Vec<ShadeAncestor> {
     out
 }
 
+/// Feature 009 refinement (spec FR-002b): filter parsed
+/// `ShadeAncestor` entries down to those whose bytecode is actually
+/// present in `jar_path`. Many JARs embed `META-INF/DEPENDENCIES`
+/// as a declared-transitive manifest without being fat-jars —
+/// maven-dependency-plugin emits it into any JAR it's configured
+/// on. Emitting those ancestors would claim bytecode presence that
+/// isn't there, producing false positives for vulnerability
+/// scanners matching against mikebom's output.
+///
+/// Detection:
+/// 1. Enumerate every `.class` path in the JAR once.
+/// 2. For each ancestor, check for bytecode evidence:
+///    (a) UNSHADED — any class at the ancestor's original group
+///        path (`org.apache.commons.compress` → any class starting
+///        with `org/apache/commons/compress/`). Only trusted when
+///        the ancestor's group namespace is disjoint from the
+///        enclosing JAR's primary group_id; otherwise we cannot
+///        distinguish ancestor bytecode from the primary's own
+///        classes that live under the same reactor namespace
+///        (e.g. `maven-surefire-common` has classes at
+///        `org/apache/maven/surefire/...` — but so do its sibling
+///        artifacts `surefire-api`, `surefire-booter`, etc.).
+///    (b) SHADED — any class whose path contains the ancestor's
+///        DISTINCTIVE leaf group-segment wrapped in slashes
+///        (e.g. `/compress/`, `/lang3/`, `/qdox/`).
+/// 3. Generic-leaf guard: a leaf from [`GENERIC_SHADE_LEAVES`]
+///    (`io`, `api`, `util`, `core`, etc.) isn't specific enough
+///    for (b) — too many unrelated classes match. For such
+///    ancestors, ONLY the UNSHADED check applies.
+///
+/// Returns the filtered subset. DEBUG-logs ancestors that fail the
+/// check so operators can verify.
+pub(crate) fn filter_ancestors_by_bytecode_presence(
+    jar_path: &Path,
+    primary_group_id: &str,
+    ancestors: Vec<ShadeAncestor>,
+) -> Vec<ShadeAncestor> {
+    let class_paths = collect_class_paths(jar_path);
+    if class_paths.is_empty() {
+        if !ancestors.is_empty() {
+            tracing::debug!(
+                jar = %jar_path.display(),
+                ancestor_count = ancestors.len(),
+                "shade-relocation: JAR has no class files; dropping all ancestors"
+            );
+        }
+        return Vec::new();
+    }
+    let mut kept: Vec<ShadeAncestor> = Vec::with_capacity(ancestors.len());
+    for ancestor in ancestors {
+        if ancestor_classes_present(&ancestor, primary_group_id, &class_paths) {
+            kept.push(ancestor);
+        } else {
+            tracing::debug!(
+                jar = %jar_path.display(),
+                group = %ancestor.group_id,
+                artifact = %ancestor.artifact_id,
+                version = %ancestor.version,
+                "shade-relocation: ancestor bytecode absent from JAR; dropping"
+            );
+        }
+    }
+    kept
+}
+
+/// Leaf-group segments that are too generic to prove shade
+/// presence via a "path contains `/LEAF/`" match alone. When an
+/// ancestor's deepest group-path segment lands in this set, the
+/// shade-path branch of [`ancestor_classes_present`] is skipped
+/// and only the unshaded-path branch applies.
+const GENERIC_SHADE_LEAVES: &[&str] = &[
+    "io", "api", "util", "utils", "core", "impl", "common", "commons",
+    "base", "main", "lib", "shared", "plugin", "plugins", "ext",
+];
+
+/// Open `jar_path`, enumerate every `.class` entry, return the paths.
+/// Returns an empty vec on open/read failure — callers treat that as
+/// "no bytecode evidence for any ancestor" (safe default).
+fn collect_class_paths(jar_path: &Path) -> Vec<String> {
+    let Ok(file) = std::fs::File::open(jar_path) else {
+        return Vec::new();
+    };
+    let Ok(mut zip) = zip::ZipArchive::new(file) else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = Vec::with_capacity(64);
+    for i in 0..zip.len() {
+        let Ok(entry) = zip.by_index(i) else {
+            continue;
+        };
+        let name = entry.name();
+        if name.ends_with(".class") {
+            out.push(name.to_string());
+        }
+    }
+    out
+}
+
+/// True when `ancestor`'s bytecode is (a) present at its original
+/// group path, or (b) present at a shade-relocated path whose leaf
+/// component matches a distinctive, non-generic fragment of the
+/// ancestor's artifact ID. See
+/// [`filter_ancestors_by_bytecode_presence`] for the motivating
+/// rationale.
+///
+/// The shade-path fragment comes from `artifact_id.rsplit('-').next()`
+/// rather than the group path's last segment. Group leaves are often
+/// organization names (`commons`, `plugins`, `shared`) that are too
+/// generic to prove shade presence; artifact-id trailing fragments
+/// tend to be distinctive project identifiers (`compress`, `lang3`,
+/// `qdox`, `asm`).
+///
+/// The UNSHADED check is suppressed when `ancestor` lives in the
+/// same group namespace as the enclosing JAR's `primary_group_id`.
+/// In that case the matching classes could equally belong to the
+/// primary itself (siblings in a reactor share the group prefix),
+/// so we can't treat the path hit as ancestor evidence. The shade
+/// check is still evaluated — real shade relocation produces a
+/// path fragment that is not on either artifact's natural layout.
+fn ancestor_classes_present(
+    ancestor: &ShadeAncestor,
+    primary_group_id: &str,
+    class_paths: &[String],
+) -> bool {
+    // Unshaded path: classes at the ancestor's original group path.
+    // Skip when ancestor and primary share a reactor namespace —
+    // same-group path hits could equally be the primary's own classes.
+    if !shares_group_namespace(&ancestor.group_id, primary_group_id) {
+        let group_prefix = format!("{}/", ancestor.group_id.replace('.', "/"));
+        if class_paths.iter().any(|p| p.starts_with(&group_prefix)) {
+            return true;
+        }
+    }
+    // Shaded path: classes whose path contains the ancestor's
+    // distinctive artifact-id trailing fragment. Skip generic
+    // fragments that aren't specific enough to prove presence.
+    let leaf = ancestor
+        .artifact_id
+        .rsplit('-')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if leaf.is_empty() || GENERIC_SHADE_LEAVES.contains(&leaf.as_str()) {
+        return false;
+    }
+    let needle = format!("/{leaf}/");
+    class_paths.iter().any(|p| p.contains(&needle))
+}
+
+/// True when two Maven group_ids occupy overlapping namespaces:
+/// either one is a dotted prefix of the other (same reactor /
+/// parent-child) or they are identical. Used to decide whether the
+/// UNSHADED-path heuristic can distinguish ancestor bytecode from
+/// the enclosing JAR's own classes.
+fn shares_group_namespace(ancestor_group_id: &str, primary_group_id: &str) -> bool {
+    if ancestor_group_id == primary_group_id {
+        return true;
+    }
+    let a = format!("{ancestor_group_id}.");
+    let p = format!("{primary_group_id}.");
+    primary_group_id.starts_with(&a) || ancestor_group_id.starts_with(&p)
+}
+
 /// Feature 009: emit `PackageDbEntry` values for a set of parsed
 /// `ShadeAncestor` entries, nested under an enclosing JAR's primary
 /// coord. Applies the self-reference guard (spec FR-005) and the
@@ -2148,7 +2311,10 @@ pub fn read_with_claims(
         // Feature 009: parse `META-INF/DEPENDENCIES` (Apache Maven
         // Dependency Plugin output) for shade-relocated ancestor
         // coords. Stash per-JAR; emitted later once the primary coord
-        // is known. Absent DEPENDENCIES file → no-op.
+        // is known. Absent DEPENDENCIES file → no-op. FR-002b's
+        // bytecode-presence filter needs the primary group_id and
+        // runs at emission time (see the `shade_ancestors_by_jar`
+        // drain below), not here.
         if let Some(deps_bytes) = read_jar_entry_bytes(jar_path, "META-INF/DEPENDENCIES") {
             let ancestors = parse_dependencies_file(&deps_bytes);
             if !ancestors.is_empty() {
@@ -2660,6 +2826,18 @@ pub fn read_with_claims(
                 .map(|m| m.coord.clone());
             match (primary_coord_opt, primary_purl.as_ref()) {
                 (Some(primary_coord), Some(primary_purl_str)) => {
+                    // FR-002b: drop ancestors whose bytecode isn't
+                    // actually in the JAR. Needs the primary's
+                    // group_id to suppress the unshaded-path check
+                    // when ancestor and primary share a reactor.
+                    let ancestors = filter_ancestors_by_bytecode_presence(
+                        Path::new(&source_path),
+                        &primary_coord.group_id,
+                        ancestors,
+                    );
+                    if ancestors.is_empty() {
+                        continue;
+                    }
                     let ancestor_count = ancestors.len();
                     let before = out.len();
                     let mut seen_ancestor_keys: HashSet<String> = HashSet::new();
@@ -2727,6 +2905,18 @@ pub fn read_with_claims(
                 );
                 continue;
             };
+            // Spec FR-002b: only emit ancestors whose bytecode is
+            // actually in the JAR. The .m2 cache is full of regular
+            // JARs whose DEPENDENCIES are declared-only (not shaded);
+            // emitting them would be false positives for vuln scanners.
+            let ancestors = filter_ancestors_by_bytecode_presence(
+                &jar_path,
+                &primary_meta.coord.group_id,
+                ancestors,
+            );
+            if ancestors.is_empty() {
+                continue;
+            }
             let Some(primary_purl) = build_maven_purl(
                 &primary_meta.coord.group_id,
                 &primary_meta.coord.artifact_id,
@@ -5399,5 +5589,120 @@ mod tests {
             ),
             Some(("com.example".to_string(), "a".to_string(), "1.0".to_string()))
         );
+    }
+
+    /// FR-002b unit coverage: exercises every branch of
+    /// [`ancestor_classes_present`] — unshaded hit, shade-leaf hit,
+    /// shared-namespace suppresses unshaded hit, generic-leaf
+    /// disables shade-leaf check, and no-evidence drop.
+    #[test]
+    fn filter_ancestors_bytecode_presence_dispositions() {
+        let primary_group = "org.apache.maven.surefire";
+        let class_paths: Vec<String> = vec![
+            // Primary's own classes under its reactor namespace.
+            "org/apache/maven/surefire/booter/Provider.class".to_string(),
+            "org/apache/maven/surefire/providerapi/Provider.class".to_string(),
+            // Shaded ancestor at a distinctive leaf.
+            "org/apache/maven/surefire/shared/compress/ArchiveStream.class".to_string(),
+            // Unshaded ancestor at its original group path (different namespace).
+            "com/thoughtworks/qdox/JavaProjectBuilder.class".to_string(),
+            // Generic-leaf shade fragment — must NOT count on its own.
+            "org/apache/maven/surefire/shared/io/IOUtils.class".to_string(),
+        ];
+
+        // 1. Shaded hit — distinctive leaf "compress" from artifact_id.
+        let ancestor = ShadeAncestor {
+            group_id: "org.apache.commons".to_string(),
+            artifact_id: "commons-compress".to_string(),
+            classifier: None,
+            version: "1.23.0".to_string(),
+            license: None,
+        };
+        assert!(
+            ancestor_classes_present(&ancestor, primary_group, &class_paths),
+            "shade-leaf match should emit"
+        );
+
+        // 2. Unshaded hit — ancestor in a disjoint namespace.
+        let ancestor = ShadeAncestor {
+            group_id: "com.thoughtworks.qdox".to_string(),
+            artifact_id: "qdox".to_string(),
+            classifier: None,
+            version: "2.0.0".to_string(),
+            license: None,
+        };
+        assert!(
+            ancestor_classes_present(&ancestor, primary_group, &class_paths),
+            "unshaded group-path match in disjoint namespace should emit"
+        );
+
+        // 3. Shared namespace suppresses unshaded — sibling reactor
+        //    artifact's classes at the primary's group path are not
+        //    evidence of ancestor bytecode. Leaf "api" is generic, so
+        //    shade-leaf check is disabled too → drop.
+        let ancestor = ShadeAncestor {
+            group_id: "org.apache.maven.surefire".to_string(),
+            artifact_id: "surefire-api".to_string(),
+            classifier: None,
+            version: "3.2.2".to_string(),
+            license: None,
+        };
+        assert!(
+            !ancestor_classes_present(&ancestor, primary_group, &class_paths),
+            "shared-namespace ancestor with generic leaf must not emit"
+        );
+
+        // 4. Generic-leaf ancestor in a disjoint namespace — unshaded
+        //    path absent, shade-leaf "io" is generic → drop.
+        let ancestor = ShadeAncestor {
+            group_id: "org.apache.commons".to_string(),
+            artifact_id: "commons-io".to_string(),
+            classifier: None,
+            version: "2.12.0".to_string(),
+            license: None,
+        };
+        assert!(
+            !ancestor_classes_present(&ancestor, primary_group, &class_paths),
+            "generic-leaf ancestor without unshaded evidence must not emit"
+        );
+
+        // 5. No evidence at all — disjoint namespace, no unshaded
+        //    path, distinctive leaf "fake" absent from any class path.
+        let ancestor = ShadeAncestor {
+            group_id: "com.example".to_string(),
+            artifact_id: "widget-fake".to_string(),
+            classifier: None,
+            version: "1.0.0".to_string(),
+            license: None,
+        };
+        assert!(
+            !ancestor_classes_present(&ancestor, primary_group, &class_paths),
+            "no evidence must not emit"
+        );
+    }
+
+    /// Parent-child reactor relationships count as shared namespace
+    /// even when the group_ids aren't identical.
+    #[test]
+    fn shares_group_namespace_recognizes_parent_child() {
+        // Same group.
+        assert!(shares_group_namespace(
+            "org.apache.maven.surefire",
+            "org.apache.maven.surefire"
+        ));
+        // Parent contains child.
+        assert!(shares_group_namespace(
+            "org.apache.maven.surefire.plugin",
+            "org.apache.maven.surefire"
+        ));
+        // Child is a subnamespace of parent.
+        assert!(shares_group_namespace(
+            "org.apache.maven.surefire",
+            "org.apache.maven.surefire.plugin"
+        ));
+        // Disjoint groups.
+        assert!(!shares_group_namespace("org.apache.commons", "org.apache.maven.surefire"));
+        // Lexical prefix without the dot boundary — should NOT share.
+        assert!(!shares_group_namespace("org.example.foo", "org.example.foobar"));
     }
 }
