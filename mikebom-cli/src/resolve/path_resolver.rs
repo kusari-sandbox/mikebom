@@ -6,15 +6,16 @@
 
 use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
-/// Attempt to resolve a file path into a PURL by matching against known
-/// package manager cache/install directory patterns.
-///
-/// Returns `None` if the path doesn't match any known pattern.
-pub fn resolve_path(path: &str) -> Option<Purl> {
+/// Test-only convenience wrapper around `resolve_path_with_context`.
+/// Production callers always thread per-trace context.
+#[cfg(test)]
+fn resolve_path(path: &str) -> Option<Purl> {
     resolve_path_with_context(path, None)
 }
 
-/// Same as [`resolve_path`] but threads per-trace context (e.g. the distro
+/// Resolve a file path into a PURL by matching against known package
+/// manager cache/install directory patterns. Threads per-trace context
+/// (e.g. the distro
 /// identifier from `/etc/os-release`) through to the deb resolver so the
 /// produced PURL can carry a `distro=<value>` qualifier. The value is
 /// stamped verbatim — callers decide the shape (scan-mode package-DB

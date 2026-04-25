@@ -11,6 +11,10 @@
 //! collection — consumable by `sbomit generate` and any witness-aware
 //! verifier.
 
+// Witness-builder is invoked from `cli/scan.rs::execute_scan` Linux-
+// only trace flow; on macOS the file compiles but is unreachable.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 use std::collections::BTreeMap;
 
 use mikebom_common::attestation::file::{FileOpType, FileOperation};

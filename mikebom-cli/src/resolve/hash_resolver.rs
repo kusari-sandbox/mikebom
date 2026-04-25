@@ -15,7 +15,6 @@ use mikebom_common::types::purl::{encode_purl_segment, Purl};
 pub struct HashResolver {
     client: reqwest::Client,
     base_url: String,
-    timeout: Duration,
 }
 
 /// A single match result from a deps.dev hash query.
@@ -64,24 +63,9 @@ impl HashResolver {
         Self {
             client,
             base_url: "https://api.deps.dev/v3alpha".to_string(),
-            timeout,
         }
     }
 
-    /// Create a resolver with a custom base URL (for testing).
-    #[cfg(test)]
-    fn with_base_url(base_url: String, timeout: Duration) -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(timeout)
-            .build()
-            .unwrap_or_default();
-
-        Self {
-            client,
-            base_url,
-            timeout,
-        }
-    }
 
     /// Build the API URL for a hash query.
     fn build_url(&self, hash: &ContentHash) -> anyhow::Result<String> {
@@ -144,10 +128,6 @@ impl HashResolver {
         Ok(matches)
     }
 
-    /// Returns the configured timeout.
-    pub fn timeout(&self) -> Duration {
-        self.timeout
-    }
 }
 
 /// Convert a deps.dev system name to a PURL string.

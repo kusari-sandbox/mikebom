@@ -12,6 +12,10 @@
 //! user sees they're not getting auto-detection and can pass
 //! `--artifact-dir` explicitly.
 
+// `detect` is invoked from `cli/scan.rs::execute_scan` Linux-only
+// trace flow; the helpers it calls are all only reachable from there.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 use std::path::PathBuf;
 
 /// Scan a command argv for known build tools and return the artifact

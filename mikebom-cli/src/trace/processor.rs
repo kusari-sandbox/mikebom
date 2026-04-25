@@ -7,6 +7,11 @@
 //! On non-Linux platforms, a stub implementation is provided that
 //! immediately returns an error.
 
+// Stats / processor types are only constructed inside the Linux-only
+// `cli/scan.rs::execute_scan` flow; on macOS the file compiles but is
+// unreachable. Allow dead_code on non-Linux.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Statistics collected during a trace session.

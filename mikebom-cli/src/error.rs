@@ -1,3 +1,8 @@
+// `MikebomError` is only constructed inside the Linux-only
+// `cli/scan.rs::execute_scan` trace flow; on macOS the variants are
+// flagged dead. Allow on non-Linux to keep cross-platform clippy quiet.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 /// Application error types for mikebom CLI.
 ///
 /// Uses `thiserror` for library-level errors with structured variants.

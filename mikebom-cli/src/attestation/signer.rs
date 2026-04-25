@@ -5,6 +5,11 @@
 //! FR-006a: the caller gets a typed `SigningError`, no silent fallback
 //! to unsigned output.
 
+// Signer is invoked only from `cli/scan.rs::execute_scan` (Linux-only
+// trace flow). On macOS the file compiles but is unreachable; allow
+// dead_code on non-Linux.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 use std::path::{Path, PathBuf};
 
 use base64::engine::general_purpose::STANDARD as BASE64_STD;

@@ -1,3 +1,8 @@
+// Loader types are only constructed inside the Linux-only
+// `cli/scan.rs::execute_scan` flow; on macOS the file compiles but is
+// unreachable.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 use std::path::PathBuf;
 
 pub struct LoaderConfig {

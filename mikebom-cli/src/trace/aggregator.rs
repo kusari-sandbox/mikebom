@@ -1,6 +1,15 @@
 //! Event aggregator: correlates raw eBPF events into attestation-level
 //! Connection and FileOperation objects.
 
+// On non-Linux platforms eBPF can't load and the trace pipeline is
+// unreachable; the aggregator types are only constructed inside
+// `#[cfg(target_os = "linux")]` scopes in `cli/scan.rs::execute_scan`
+// and from there into `attestation::builder`/`witness_builder`. Allow
+// dead_code on non-Linux to keep the cross-platform compile clean
+// without splitting these types behind their own cfg gate (they're
+// referenced unconditionally by the attestation modules' types).
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 use std::collections::HashMap;
 
 use mikebom_common::attestation::file::{FileAccess, FileAccessSummary, FileOperation, FileOpType};

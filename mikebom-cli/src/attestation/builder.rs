@@ -1,5 +1,11 @@
 //! Builds an InTotoStatement from aggregated trace data.
 
+// Builder is only invoked from `cli/scan.rs::execute_scan` (Linux-only
+// trace flow); on macOS this file compiles but its functions are
+// unreachable. Allow dead_code on non-Linux to keep cross-platform
+// clippy clean.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 use std::collections::BTreeMap;
 
 use mikebom_common::attestation::metadata::{

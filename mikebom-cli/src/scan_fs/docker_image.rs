@@ -32,6 +32,8 @@ use tempfile::TempDir;
 pub struct ExtractedImage {
     /// Owned tempdir that holds the extracted rootfs. Dropped when the
     /// caller is done scanning, which removes all extracted files.
+    /// Held for lifetime, not read directly.
+    #[allow(dead_code)]
     pub tempdir: TempDir,
     /// Root of the union filesystem (a subdirectory of `tempdir.path()`).
     pub rootfs: PathBuf,

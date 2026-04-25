@@ -5,17 +5,20 @@
 
 use mikebom_common::types::purl::{encode_purl_segment, Purl};
 
-/// Attempt to resolve a hostname + path pair into a PURL by matching
-/// against known package registry URL patterns.
-///
-/// Returns `None` if the URL doesn't match any known registry pattern.
-pub fn resolve_url(hostname: &str, path: &str) -> Option<Purl> {
+/// Test-only convenience wrapper around `resolve_url_with_context`
+/// that omits the deb-codename context. Production callers always
+/// thread context, so this is `#[cfg(test)]` to avoid showing up as
+/// an orphan in the dead-code lint.
+#[cfg(test)]
+fn resolve_url(hostname: &str, path: &str) -> Option<Purl> {
     resolve_url_with_context(hostname, path, None)
 }
 
-/// Same as [`resolve_url`] but threads per-trace context (e.g. the distro
-/// codename sampled from `/etc/os-release` on the build host) through to
-/// resolvers that need it. Only the deb resolver consumes this today.
+/// Resolve a hostname + path pair into a PURL by matching against known
+/// package registry URL patterns. Threads per-trace context (e.g. the
+/// distro codename sampled from `/etc/os-release` on the build host)
+/// through to resolvers that need it. Only the deb resolver consumes
+/// this today.
 pub fn resolve_url_with_context(
     hostname: &str,
     path: &str,

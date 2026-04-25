@@ -7,7 +7,6 @@
 
 use std::path::{Path, PathBuf};
 
-use object::{Object, ObjectSection};
 use serde::Deserialize;
 
 /// Defense-in-depth cap on a single binary's size. 500 MB covers every
@@ -22,33 +21,11 @@ pub const MIN_BINARY_SIZE_BYTES: u64 = 1024;
 /// `.rodata` gets truncated silently (the parent `BinaryFileComponent`
 /// carries `mikebom:binary-parse-limit = "string-region-cap"` in that
 /// case — plumbed by the caller).
-pub const MAX_STRING_REGION_BYTES: usize = 16 * 1024 * 1024;
-
-/// Output of a successful ELF scan. Mirrors `ElfBinary` in
-/// `data-model.md` but trims fields we don't yet use to keep the
-/// surface manageable.
-#[derive(Clone, Debug, Default)]
-pub struct ElfScan {
-    /// `DT_NEEDED` entries, soname strings. Deduped within this binary
-    /// (cross-binary dedup happens in `linkage.rs`).
-    pub needed: Vec<String>,
-    /// Systemd `.note.package` payload, when present and parseable.
-    pub note_package: Option<ElfNotePackage>,
-    /// Concatenated bytes of `.rodata` + `.data.rel.ro` (capped at
-    /// `MAX_STRING_REGION_BYTES`). Fed to the curated version-string
-    /// scanner.
-    pub string_region: Vec<u8>,
-    /// True when `.symtab` / `.dynsym` AND `.note.package` are both
-    /// absent — intrinsic "stripped" signal for the file-level
-    /// component.
-    pub stripped: bool,
-    /// True when ANY loadable PT_DYNAMIC segment is present. Drives
-    /// the `linkage_kind = "dynamic"` vs `"static"` decision.
-    pub has_dynamic: bool,
-}
-
 /// Parsed `.note.package` payload (systemd FDO Packaging Metadata
 /// Notes schema — research R4). Fields align with the published spec.
+/// `os_cpe` is populated by serde from the JSON payload but not yet
+/// consumed by mikebom code; preserved for spec fidelity.
+#[allow(dead_code)]
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct ElfNotePackage {
     #[serde(rename = "type")]
@@ -61,88 +38,6 @@ pub struct ElfNotePackage {
     pub distro: Option<String>,
     #[serde(default, rename = "osCpe")]
     pub os_cpe: Option<String>,
-}
-
-/// Parse an ELF binary from bytes. Returns `None` if the input isn't
-/// an ELF or parsing fails in a way that prevents useful output. Never
-/// panics — all errors are swallowed into `None` with a WARN log.
-pub fn parse(path: &Path, bytes: &[u8]) -> Option<ElfScan> {
-    let file = match object::read::File::parse(bytes) {
-        Ok(f) => f,
-        Err(e) => {
-            tracing::warn!(path = %path.display(), error = %e, "skipping ELF parse");
-            return None;
-        }
-    };
-    if !matches!(file.format(), object::BinaryFormat::Elf) {
-        return None;
-    }
-
-    let mut out = ElfScan::default();
-
-    // `.dynamic` section presence is the authoritative signal that
-    // this is a dynamically-linked ELF.
-    out.has_dynamic = file.section_by_name(".dynamic").is_some();
-
-    // Extract DT_NEEDED via object's `imports()` API.
-    out.needed = extract_dt_needed(&file);
-
-    // Extract .note.package JSON payload.
-    if let Some(section) = file.section_by_name(".note.package") {
-        if let Ok(data) = section.data() {
-            out.note_package = parse_note_package(data);
-        }
-    }
-
-    // Extract read-only string region (`.rodata` + `.data.rel.ro`).
-    for name in [".rodata", ".data.rel.ro"] {
-        if let Some(section) = file.section_by_name(name) {
-            if let Ok(data) = section.data() {
-                let room = MAX_STRING_REGION_BYTES.saturating_sub(out.string_region.len());
-                let take = data.len().min(room);
-                out.string_region.extend_from_slice(&data[..take]);
-                if take < data.len() {
-                    break; // cap hit — don't keep reading
-                }
-            }
-        }
-    }
-
-    // Stripped = no symbol tables AND no .note.package to identify
-    // the file. This is the "we have no evidence" flag per FR-027.
-    let has_symtab = file.section_by_name(".symtab").is_some()
-        || file.section_by_name(".dynsym").is_some();
-    out.stripped = !has_symtab && out.note_package.is_none();
-
-    Some(out)
-}
-
-/// Extract `DT_NEEDED` entries via `object::read::File::imports()`.
-/// For ELF, `import.library()` is the soname (e.g. `libc.so.6`). We
-/// dedupe within this binary by string — cross-binary dedup happens
-/// in `linkage.rs`. Returns `None` on failure; caller treats as empty.
-fn extract_dt_needed(file: &object::read::File<'_>) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut seen = std::collections::HashSet::new();
-    let imports = match file.imports() {
-        Ok(i) => i,
-        Err(e) => {
-            tracing::debug!(error = %e, "ELF imports() failed; treating as empty");
-            return out;
-        }
-    };
-    for imp in imports {
-        let lib = imp.library();
-        if lib.is_empty() {
-            continue;
-        }
-        if let Ok(s) = std::str::from_utf8(lib) {
-            if seen.insert(s.to_string()) {
-                out.push(s.to_string());
-            }
-        }
-    }
-    out
 }
 
 /// Parse a `.note.package` section blob. Format (per spec):
@@ -282,11 +177,5 @@ mod tests {
         note.extend_from_slice(b"FDO\0");
         note.extend_from_slice(b"x\0\0\0");
         assert!(parse_note_package(&note).is_none());
-    }
-
-    #[test]
-    fn parse_non_elf_returns_none() {
-        let bytes = b"this is not an ELF binary, just text";
-        assert!(parse(Path::new("/tmp/notelf"), bytes).is_none());
     }
 }

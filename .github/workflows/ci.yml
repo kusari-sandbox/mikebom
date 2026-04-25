@@ -93,14 +93,41 @@ jobs:
       # Pin `+stable` explicitly on clippy/test so these never fall through
       # to nightly even if something earlier changes the default.
       #
-      # No `-D warnings`: the repo's load-bearing lint is
-      # `#![deny(clippy::unwrap_used)]` at the mikebom-cli crate root
-      # (Constitution Principle IV). That still errors through clippy
-      # regardless of -D warnings. Other clippy categories remain
-      # warnings — visible in the log, not blocking — so CI doesn't
-      # become a constant stream of cosmetic-lint bikeshedding.
+      # `-D warnings` is on as of milestone 016 (PR #34): the legacy
+      # backlog of dead-code + doc-list warnings was cleared, leaving
+      # a zero-warnings baseline. New lint categories from future
+      # toolchain bumps fail CI loudly; the resolution is to fix the
+      # new category in the same PR (often `cargo clippy --fix` does
+      # most of the work), or add `#[allow(...)]` with a concrete
+      # planned-consumer reference per spec FR-003.
       - name: Clippy
-        run: cargo +stable clippy --workspace --all-targets
+        run: cargo +stable clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo +stable test --workspace
+
+  lint-and-test-macos:
+    name: Lint + test (macos-latest)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo + build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      # No eBPF / nightly / bpf-linker / sbomqs steps here — those are
+      # all Linux-only. Cargo's target-metadata exclusion skips
+      # `mikebom-ebpf` automatically on non-Linux, and `sbomqs_parity`
+      # tests skip cleanly when sbomqs isn't on $PATH. The macOS job
+      # exists to enforce the maintainer's local-dev experience: zero
+      # warnings on Apple Silicon, all user-space tests pass.
+      - name: Clippy
+        run: cargo +stable clippy --workspace --all-targets -- -D warnings
 
       - name: Tests
         run: cargo +stable test --workspace

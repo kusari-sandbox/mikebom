@@ -20,6 +20,7 @@ fn binary_path() -> &'static str {
 }
 
 /// Build a minimal real `.rpm` file at `dest` with the given fields.
+#[allow(clippy::too_many_arguments)] // synthetic-rpm test helper; flat parameter list mirrors the rpm::PackageBuilder API surface.
 fn write_synthetic_rpm(
     dest: &Path,
     name: &str,

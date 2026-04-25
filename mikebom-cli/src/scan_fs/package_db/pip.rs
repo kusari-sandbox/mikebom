@@ -135,7 +135,7 @@ pub fn read(rootfs: &Path, include_dev: bool) -> Vec<PackageDbEntry> {
 
 /// Max depth for the recursive Python project-root search. Same budget
 /// as `candidate_project_roots` in `npm.rs` — covers realistic monorepo
-/// + image layouts (`usr/src/app/services/api/` = 4 levels) without
+/// plus image layouts (`usr/src/app/services/api/` = 4 levels) without
 /// running away into deep source trees.
 const MAX_PROJECT_ROOT_DEPTH: usize = 6;
 
@@ -1230,6 +1230,13 @@ fn pinned_version_from(body: &str) -> Option<String> {
 
 #[cfg(test)]
 #[cfg_attr(test, allow(clippy::unwrap_used))]
+// Several license-precedence tests build `PipDistInfoEntry` via the
+// `default()` + per-field-assign pattern to keep each test focused on
+// the single field it exercises (e.g., "license-expression alone wins"
+// vs "raw alone wins" vs "classifier fallback"). A struct-init refactor
+// would add 7 noise fields per test; the conditional-set pattern is
+// the cleaner expression here. Allow the lint scoped to the test module.
+#[cfg_attr(test, allow(clippy::field_reassign_with_default))]
 mod tests {
     use super::*;
     use std::fs;

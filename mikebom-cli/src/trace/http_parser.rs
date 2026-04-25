@@ -5,6 +5,10 @@
 //! It is intentionally simple — we only need the request line, Host
 //! header, status line, and Content-Length for attestation purposes.
 
+// HTTP parsing is only invoked from the Linux-only eBPF TLS-trace
+// path; on macOS the file compiles but is unreachable.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 use mikebom_common::attestation::network::{HttpRequest, HttpResponse};
 
 /// Parse an HTTP request from a plaintext TLS fragment.

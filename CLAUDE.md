@@ -1,6 +1,6 @@
 # mikebom Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-24
+Auto-generated from all feature plans. Last updated: 2026-04-25
 
 ## Active Technologies
 - Rust stable (user-space only; no eBPF touched in this milestone) (002-python-npm-ecosystem)
@@ -23,6 +23,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-24
 - N/A — in-process per scan. (012-sbom-quality-fixes)
 - Rust stable (workspace toolchain inherited from milestones 001–012; no nightly). + existing only — `serde`/`serde_json` (format output parsing), `regex` (catalog-row parsing — already in the dependency closure), `tempfile`, `tracing`, `anyhow`. `clap` for the new `parity-check` subcommand (already used for `scan`). **No new crates.** (013-format-parity-enforcement)
 - N/A — all state in-process per test invocation / per CLI invocation. (013-format-parity-enforcement)
+- Rust stable (workspace toolchain inherited from milestones 001–015; no nightly required for this user-space-only work). + existing only — `cargo +stable clippy` (lint engine), `dtolnay/rust-toolchain@stable` (already used in CI), `Swatinem/rust-cache@v2` (already used). **No new crates.** (016-remaining-clippy-cleanup)
+- N/A — purely source-tree edits. (016-remaining-clippy-cleanup)
 
 - Rust stable (user-space) + nightly (eBPF target via `aya-ebpf`) + aya, aya-ebpf, aya-build, tokio, clap, reqwest, serde/serde_json, cyclonedx-bom, packageurl, sha2, chrono, thiserror, anyhow, tracing (001-build-trace-pipeline)
 
@@ -67,9 +69,9 @@ of CI-readiness — they are not equivalent.
 Rust stable (user-space) + nightly (eBPF target via `aya-ebpf`): Follow standard conventions
 
 ## Recent Changes
+- 016-remaining-clippy-cleanup: Added Rust stable (workspace toolchain inherited from milestones 001–015; no nightly required for this user-space-only work). + existing only — `cargo +stable clippy` (lint engine), `dtolnay/rust-toolchain@stable` (already used in CI), `Swatinem/rust-cache@v2` (already used). **No new crates.**
 - 013-format-parity-enforcement: Added Rust stable (workspace toolchain inherited from milestones 001–012; no nightly). + existing only — `serde`/`serde_json` (format output parsing), `regex` (catalog-row parsing — already in the dependency closure), `tempfile`, `tracing`, `anyhow`. `clap` for the new `parity-check` subcommand (already used for `scan`). **No new crates.**
 - 012-sbom-quality-fixes: Added Rust stable (workspace toolchain inherited from milestones 001–011; no nightly required). + existing only — `spdx` (license-expression canonicalization), `data-encoding` (BASE32 for LicenseRef hash prefix), `sha2`, `serde`/`serde_json`, `tracing`, `anyhow`. Dev-dep: existing `jsonschema = "0.46"`. **No new crates.**
-- 011-spdx-3-full-support: Added Rust stable (workspace toolchain inherited from milestones 001–010; no nightly required for user-space work) + existing only — `serde`/`serde_json` (JSON-LD encoding), `data-encoding` (BASE32 for deterministic SPDXIDs / IRIs), `sha2` (content-addressed IRIs, scan fingerprint), `chrono` (RFC 3339 timestamps), `spdx` (license-expression canonicalization, already used by SPDX 2.3 path), `tracing`, `anyhow`. Dev-dep: existing `jsonschema = "0.46"` (already validates SPDX 2.3) extended to SPDX 3.0.1. No new crates.
 
 
 <!-- MANUAL ADDITIONS START -->

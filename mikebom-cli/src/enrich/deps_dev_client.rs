@@ -1,14 +1,17 @@
+// Several response-shape structs in this file are populated by serde
+// JSON deserialization from the deps.dev API but only some fields are
+// then read directly in mikebom code (e.g., `VersionInfo::licenses`
+// drives license enrichment but `advisory_keys` / `links` aren't yet
+// consumed). Rust's dead-code analysis doesn't see through serde, so
+// the un-read fields are flagged. Allow dead_code per-struct to
+// preserve the wire-shape definitions; serde populates everything,
+// and downstream callers may add reads later without re-shaping the
+// struct.
+#![allow(dead_code)]
+
 use std::time::Duration;
 
 use serde::Deserialize;
-
-/// A result from querying deps.dev by content hash.
-#[derive(Clone, Debug, Deserialize)]
-pub struct QueryResult {
-    pub system: String,
-    pub name: String,
-    pub version: String,
-}
 
 /// Version information from deps.dev GetVersion API.
 #[derive(Clone, Debug, Deserialize)]
@@ -96,14 +99,6 @@ impl DepsDevClient {
         }
     }
 
-    /// Build the URL for a hash-based query.
-    fn query_url(&self, hash_hex: &str) -> String {
-        format!(
-            "{}/query?hash.type=sha256&hash.value={}",
-            self.base_url, hash_hex
-        )
-    }
-
     /// Build the URL for a GetVersion request.
     fn version_url(&self, system: &str, name: &str, version: &str) -> String {
         format!(
@@ -113,25 +108,6 @@ impl DepsDevClient {
             url_encode(name),
             url_encode(version),
         )
-    }
-
-    /// Query deps.dev for packages matching a content hash.
-    pub async fn query_by_hash(&self, hash_hex: &str) -> anyhow::Result<Vec<QueryResult>> {
-        let url = self.query_url(hash_hex);
-        tracing::debug!(url = %url, "querying deps.dev by hash");
-
-        let response = self.http.get(&url).send().await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            anyhow::bail!(
-                "deps.dev query failed: HTTP {status} — {body}"
-            );
-        }
-
-        let results: Vec<QueryResult> = response.json().await?;
-        Ok(results)
     }
 
     /// Build the URL for a `:dependencies` request — the full
@@ -226,16 +202,6 @@ fn url_encode(s: &str) -> String {
 #[cfg_attr(test, allow(clippy::unwrap_used))]
 mod tests {
     use super::*;
-
-    #[test]
-    fn query_url_construction() {
-        let client = DepsDevClient::new(Duration::from_secs(5));
-        let url = client.query_url("abc123def456");
-        assert_eq!(
-            url,
-            "https://api.deps.dev/v3/query?hash.type=sha256&hash.value=abc123def456"
-        );
-    }
 
     #[test]
     fn version_url_construction() {

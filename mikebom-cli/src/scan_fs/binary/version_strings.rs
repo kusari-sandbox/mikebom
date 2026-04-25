@@ -11,11 +11,7 @@
 //! | PCRE      | `PCRE X.Y YYYY-MM-DD`                                        |
 //! | PCRE2     | `PCRE2 X.Y YYYY-MM-DD`                                       |
 //!
-//! Scanning runs ONLY against format-appropriate read-only string
-//! sections (ELF `.rodata` + `.data.rel.ro`, Mach-O `__TEXT,__cstring`
-//! + `__TEXT,__const`, PE `.rdata`) — never against the full binary
-//! image (Q4 resolution / FR-025). This bounds the false-positive
-//! surface. Control-set validation per SC-005.
+//! Scanning runs ONLY against format-appropriate read-only string sections (ELF `.rodata` + `.data.rel.ro`, Mach-O `__TEXT,__cstring` + `__TEXT,__const`, PE `.rdata`) — never against the full binary image (Q4 resolution / FR-025). This bounds the false-positive surface. Control-set validation per SC-005.
 
 /// One match from the curated scanner. Converted to a
 /// `PackageDbEntry` with `pkg:generic/<library>@<version>` and

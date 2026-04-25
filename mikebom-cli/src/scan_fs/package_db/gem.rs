@@ -529,6 +529,10 @@ fn harvest_gemspecs_in_dir(dir: &Path, out: &mut Vec<PathBuf>) {
 /// `specification.`) assignment lines and strip the quoted literal.
 /// Any non-trivial Ruby expression (interpolation, conditionals) for
 /// name or version returns `None` and the caller skips the gem.
+///
+/// Production code calls `parse_gemspec_full` directly (richer return).
+/// This name+version-only wrapper stays for unit-test convenience.
+#[allow(dead_code)]
 pub(crate) fn parse_gemspec(text: &str) -> Option<(String, String)> {
     parse_gemspec_full(text).map(|g| (g.name, g.version))
 }

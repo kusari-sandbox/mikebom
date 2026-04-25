@@ -12,6 +12,10 @@
 //! - ClientHello fields (version, random, session ID, cipher suites, compression)
 //! - Extensions parsing to find type 0x0000 (server_name)
 
+// SNI extraction is only invoked from the Linux-only eBPF TLS-trace
+// path; on macOS the file compiles but is unreachable.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+
 /// Extract the SNI hostname from a TLS ClientHello record.
 ///
 /// Returns `Some(hostname)` if a valid SNI extension was found,
