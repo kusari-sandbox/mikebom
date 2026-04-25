@@ -44,13 +44,28 @@ impl SpdxId {
     /// URL-escaping, and case normalization already happened upstream
     /// in `mikebom_common::types::purl`, and we inherit their invariants.
     pub fn for_purl(purl: &Purl) -> Self {
-        let canonical = purl.as_str();
-        let mut hasher = Sha256::new();
-        hasher.update(canonical.as_bytes());
-        let digest = hasher.finalize();
-        let encoded = BASE32_NOPAD.encode(&digest);
-        let prefix = &encoded[..PURL_HASH_PREFIX_LEN];
+        let prefix = hash_prefix(purl.as_str().as_bytes(), PURL_HASH_PREFIX_LEN);
         SpdxId(format!("SPDXRef-Package-{prefix}"))
+    }
+
+    /// Derive a SPDX 2.3 `LicenseRef-<hash>` identifier for a raw
+    /// (non-canonicalizable) license expression.
+    ///
+    /// Deterministic: identical raw expression → identical
+    /// `LicenseRef-<hash>` everywhere, every run. The hash input is
+    /// the raw expression string (`extractedText` in SPDX 2.3 §10.3
+    /// terminology); the output is a SPDX-§10.1-conformant
+    /// `licenseId` (`LicenseRef-<chars>` where chars is
+    /// BASE32-NOPAD alphabet `[A-Z2-7]` — a subset of SPDX's
+    /// `[A-Za-z0-9.\-]+` identifier regex).
+    ///
+    /// Milestone 012 US3: used by `spdx/packages.rs::reduce_license_vec`
+    /// when any term in a CycloneDX `licenses[]` entry fails SPDX-
+    /// expression canonicalization (the all-or-nothing rule per
+    /// clarification Q1).
+    pub fn for_license_ref(raw_expression: &str) -> Self {
+        let prefix = hash_prefix(raw_expression.as_bytes(), PURL_HASH_PREFIX_LEN);
+        SpdxId(format!("LicenseRef-{prefix}"))
     }
 
     /// The SPDX-spec-required document-level identifier.
@@ -79,6 +94,18 @@ impl SpdxId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+}
+
+/// Deterministic base32 prefix of SHA-256(input) — the shared
+/// hashing primitive used by [`SpdxId::for_purl`] and
+/// [`SpdxId::for_license_ref`]. Factored out so the two identifier
+/// kinds use byte-identical hashing (same function, same
+/// encoding, same prefix length) — which means a stable ID scheme
+/// across mikebom's SPDX output surface.
+fn hash_prefix(input: &[u8], chars: usize) -> String {
+    let digest = Sha256::digest(input);
+    let encoded = BASE32_NOPAD.encode(&digest);
+    encoded[..chars].to_string()
 }
 
 #[cfg(test)]
@@ -174,5 +201,86 @@ mod tests {
         // Bare string, not `{"SpdxId": "..."}` or similar.
         assert!(json.starts_with('"') && json.ends_with('"'), "got {json}");
         assert!(json.contains("SPDXRef-Package-"));
+    }
+
+    // Milestone 012 US3: `for_license_ref` derivations.
+
+    #[test]
+    fn for_license_ref_is_deterministic() {
+        let a = SpdxId::for_license_ref("GNU General Public");
+        let b = SpdxId::for_license_ref("GNU General Public");
+        assert_eq!(
+            a, b,
+            "same raw expression must yield same LicenseRef id"
+        );
+    }
+
+    #[test]
+    fn for_license_ref_starts_with_license_ref() {
+        let id = SpdxId::for_license_ref("GNU General Public");
+        assert!(
+            id.as_str().starts_with("LicenseRef-"),
+            "got {}",
+            id.as_str()
+        );
+    }
+
+    #[test]
+    fn for_license_ref_has_expected_length() {
+        // "LicenseRef-" (11) + 16-char hash prefix = 27 chars total.
+        let id = SpdxId::for_license_ref("GNU General Public");
+        assert_eq!(id.as_str().len(), 27, "got {}", id.as_str());
+    }
+
+    #[test]
+    fn for_license_ref_character_set_is_spdx_legal() {
+        // SPDX 2.3 §10.1: licenseId must match `LicenseRef-[A-Za-z0-9.\-]+`.
+        // Our output is `LicenseRef-` followed by BASE32_NOPAD alphabet
+        // `[A-Z2-7]` — strictly inside the legal charset.
+        let inputs = [
+            "GNU General Public",
+            "MIT",
+            "Apache 2",
+            "MIT AND GNU General Public",
+            "custom proprietary expr (v1.0)",
+        ];
+        for raw in inputs {
+            let id = SpdxId::for_license_ref(raw);
+            for c in id.as_str().chars() {
+                assert!(
+                    c.is_ascii_alphanumeric() || c == '.' || c == '-',
+                    "char {c:?} in {} is not SPDX-legal",
+                    id.as_str()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn for_license_ref_different_inputs_different_ids() {
+        let a = SpdxId::for_license_ref("GNU General Public");
+        let b = SpdxId::for_license_ref("Apache 2");
+        assert_ne!(
+            a, b,
+            "different raw expressions must produce different LicenseRef ids"
+        );
+    }
+
+    #[test]
+    fn for_license_ref_uniqueness_across_10k_synthetic_expressions() {
+        // 10 000 synthetic expressions must all map to distinct
+        // LicenseRef ids. 80 bits of entropy → collision probability
+        // ~3 × 10⁻¹⁶ at this scale, so a collision is a bug in the
+        // derivation, not random bad luck.
+        let mut set = std::collections::HashSet::new();
+        for i in 0..10_000 {
+            let raw = format!("fake-license-{i}");
+            let id = SpdxId::for_license_ref(&raw);
+            assert!(
+                set.insert(id.clone()),
+                "collision at i={i}: {} already seen",
+                id.as_str()
+            );
+        }
     }
 }

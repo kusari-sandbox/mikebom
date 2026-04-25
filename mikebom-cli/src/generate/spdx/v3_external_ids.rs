@@ -66,20 +66,88 @@ pub fn build_external_identifiers_for(component: &ResolvedComponent) -> Vec<Valu
 }
 
 /// True when a CPE 2.3 string has no wildcards in its required
-/// attribute slots — vendor, product, and version specifically.
+/// attribute slots — `part`, `vendor`, `product`, and `version`.
 /// CPE 2.3 syntax: `cpe:2.3:<part>:<vendor>:<product>:<version>:<...8 more>`.
-/// We enforce non-wildcard in the first five fields after the prefix
-/// (part / vendor / product / version / update); other fields
-/// commonly use `*` as legitimate "any" markers in real-world CPE
-/// vectors and don't constitute a "candidate set" signal.
+/// We enforce non-wildcard in the four required slots only; the
+/// remaining slots (update / edition / language / sw_edition /
+/// target_sw / target_hw / other) commonly carry legitimate `*`
+/// "any" markers in real-world CPE vectors — mikebom's synthesizer
+/// routinely leaves `update=*` — and MUST NOT cause the vector to
+/// be dropped.
+///
+/// Milestone 012 US1 / spec FR-002: the milestone-011 code checked
+/// `parts[2..7]` (5 slots including `update`), which rejected every
+/// synthesized CPE whose update slot was `*`. The fix checks only
+/// `parts[2..6]` so the implementation matches this doc comment.
 fn is_fully_resolved_cpe23(cpe: &str) -> bool {
     let parts: Vec<&str> = cpe.split(':').collect();
-    // Need at least the prefix `cpe:2.3:` plus 5 attribute slots.
-    if parts.len() < 7 || parts[0] != "cpe" || parts[1] != "2.3" {
+    // Need at least the prefix `cpe:2.3:` plus 4 required attribute
+    // slots (part/vendor/product/version).
+    if parts.len() < 6 || parts[0] != "cpe" || parts[1] != "2.3" {
         return false;
     }
-    // parts[2..7] = part, vendor, product, version, update.
-    parts[2..7]
+    // parts[2..6] = part, vendor, product, version. Remaining slots
+    // may carry `*` / `-` wildcards without disqualifying the CPE.
+    parts[2..6]
         .iter()
         .all(|s| !s.is_empty() && *s != "*" && *s != "-")
+}
+
+#[cfg(test)]
+#[cfg_attr(test, allow(clippy::unwrap_used))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn synthesized_cpe_with_wildcard_update_passes() {
+        // Mikebom's CPE synthesizer routinely produces this shape —
+        // required slots populated, update+ all wildcards. Pre-fix
+        // this was rejected; post-fix it passes.
+        assert!(is_fully_resolved_cpe23(
+            "cpe:2.3:a:mikebom:foo:1.0:*:*:*:*:*:*:*"
+        ));
+    }
+
+    #[test]
+    fn cpe_with_wildcard_version_fails() {
+        // version=* makes the CPE a true candidate set, not a
+        // resolved vector — must reject.
+        assert!(!is_fully_resolved_cpe23(
+            "cpe:2.3:a:mikebom:foo:*:*:*:*:*:*:*:*"
+        ));
+    }
+
+    #[test]
+    fn cpe_with_dash_wildcard_update_passes() {
+        // CPE 2.3 has two wildcard forms: `*` (any) and `-` (n/a).
+        // Both are legitimate on non-required slots; non-required
+        // slots may use either.
+        assert!(is_fully_resolved_cpe23(
+            "cpe:2.3:a:mikebom:foo:1.0:-:*:*:*:*:*:*"
+        ));
+    }
+
+    #[test]
+    fn cpe_too_short_fails() {
+        // Less than 6 colon-separated parts means no complete
+        // required-slot set.
+        assert!(!is_fully_resolved_cpe23("cpe:2.3:a:mikebom:foo"));
+    }
+
+    #[test]
+    fn non_cpe_prefix_fails() {
+        assert!(!is_fully_resolved_cpe23("not:2.3:a:mikebom:foo:1.0"));
+        assert!(!is_fully_resolved_cpe23("cpe:2.2:a:mikebom:foo:1.0"));
+    }
+
+    #[test]
+    fn cpe_with_wildcard_vendor_or_product_fails() {
+        // Required slots: vendor + product must be non-wildcard.
+        assert!(!is_fully_resolved_cpe23(
+            "cpe:2.3:a:*:foo:1.0:*:*:*:*:*:*:*"
+        ));
+        assert!(!is_fully_resolved_cpe23(
+            "cpe:2.3:a:mikebom:*:1.0:*:*:*:*:*:*:*"
+        ));
+    }
 }
