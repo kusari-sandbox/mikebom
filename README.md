@@ -2,17 +2,30 @@
 
 **NOTE: This tool is in no way production ready. This requires a lot more hardening**
 
-An SBOM generator that reads source trees, package caches, and container
-images with lockfile-aware dep-graph extraction, emits **CycloneDX 1.6
-JSON** with SHA-256 hashes + evidence + real dependency relationships,
-and — on Linux — optionally captures build-time provenance via eBPF.
+A toolkit for working with software bills of materials end-to-end:
+
+- **Generates SBOMs** from source trees, package caches, and container
+  images with lockfile-aware dep-graph extraction, emitting **CycloneDX
+  1.6**, **SPDX 2.3**, and **SPDX 3.0.1** with SHA-256 hashes + evidence
+  + real dependency relationships. On Linux, optionally captures build-
+  time provenance via eBPF.
+- **Analyzes SBOMs** — verifies DSSE-signed attestations against keys /
+  Fulcio identities / in-toto layouts, and (new in milestone 013)
+  cross-checks already-emitted CycloneDX / SPDX 2.3 / SPDX 3.0.1
+  outputs for per-datum × per-format coverage parity via
+  `mikebom sbom parity-check`.
+- **Modifies and enriches SBOMs** — today, `mikebom sbom enrich`
+  applies RFC 6902 JSON Patches with provenance metadata recorded as
+  `mikebom:enrichment-patch[N]` properties. Richer modification
+  workflows (license backfill, supplier resolution, VEX merging) are
+  on the roadmap.
 
 > **Status: 0.1.0-alpha.3, pre-1.0. Source-only; no crates.io release
 > yet.**
 >
 > - **Stable** — `mikebom sbom scan` (filesystem, container image,
 >   package cache) and the rest of the `sbom` surface (`generate`,
->   `enrich`, `verify`, `compare`) plus `policy init` and
+>   `enrich`, `verify`, `parity-check`) plus `policy init` and
 >   `attestation validate`. Cross-platform, no special privileges.
 > - **Experimental, Linux-only** — `mikebom trace capture` /
 >   `trace run`. eBPF-based build-time capture that produces
