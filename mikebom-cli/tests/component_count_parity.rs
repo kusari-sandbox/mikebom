@@ -26,33 +26,15 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+
+mod common;
+use common::{EcosystemCase, CASES};
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("workspace root")
         .to_path_buf()
-}
-
-#[derive(Clone, Copy)]
-struct EcosystemCase {
-    label: &'static str,
-    fixture_subpath: &'static str,
-    deb_codename: Option<&'static str>,
-}
-
-const CASES: &[EcosystemCase] = &[
-    EcosystemCase { label: "apk",    fixture_subpath: "apk/synthetic",         deb_codename: None },
-    EcosystemCase { label: "cargo",  fixture_subpath: "cargo/lockfile-v3",     deb_codename: None },
-    EcosystemCase { label: "deb",    fixture_subpath: "deb/synthetic",         deb_codename: Some("bookworm") },
-    EcosystemCase { label: "gem",    fixture_subpath: "gem/simple-bundle",     deb_codename: None },
-    EcosystemCase { label: "golang", fixture_subpath: "go/simple-module",      deb_codename: None },
-    EcosystemCase { label: "maven",  fixture_subpath: "maven/pom-three-deps",  deb_codename: None },
-    EcosystemCase { label: "npm",    fixture_subpath: "npm/node-modules-walk", deb_codename: None },
-    EcosystemCase { label: "pip",    fixture_subpath: "python/simple-venv",    deb_codename: None },
-    EcosystemCase { label: "rpm",    fixture_subpath: "rpm/bdb-only",          deb_codename: None },
-];
-
-struct Scan {
+}struct Scan {
     cdx: serde_json::Value,
     spdx23: serde_json::Value,
     spdx3: serde_json::Value,

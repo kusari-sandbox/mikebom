@@ -25,6 +25,14 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
+
+
+// Local `bin()` instead of `common::bin` because this file is
+// included as a submodule of `tests/holistic_parity.rs` (via
+// `mod dual_format_perf;`), and a nested `mod common;` resolves
+// relative to the parent test target's directory rather than to
+// `tests/common/mod.rs`. Keeping the one-line helper inline avoids
+// the `#[path]` ceremony.
 fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_mikebom")
 }

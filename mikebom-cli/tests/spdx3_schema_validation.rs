@@ -17,6 +17,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::OnceLock;
 
+
+mod common;
+use common::{EcosystemCase, CASES};
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -41,28 +44,7 @@ fn validator() -> &'static jsonschema::Validator {
             serde_json::from_str(&raw).expect("parse SPDX 3.0.1 schema");
         jsonschema::validator_for(&schema).expect("compile SPDX 3.0.1 schema")
     })
-}
-
-#[derive(Clone, Copy)]
-struct EcosystemCase {
-    label: &'static str,
-    fixture_subpath: &'static str,
-    deb_codename: Option<&'static str>,
-}
-
-const CASES: &[EcosystemCase] = &[
-    EcosystemCase { label: "apk",    fixture_subpath: "apk/synthetic",         deb_codename: None },
-    EcosystemCase { label: "cargo",  fixture_subpath: "cargo/lockfile-v3",     deb_codename: None },
-    EcosystemCase { label: "deb",    fixture_subpath: "deb/synthetic",         deb_codename: Some("bookworm") },
-    EcosystemCase { label: "gem",    fixture_subpath: "gem/simple-bundle",     deb_codename: None },
-    EcosystemCase { label: "golang", fixture_subpath: "go/simple-module",      deb_codename: None },
-    EcosystemCase { label: "maven",  fixture_subpath: "maven/pom-three-deps",  deb_codename: None },
-    EcosystemCase { label: "npm",    fixture_subpath: "npm/node-modules-walk", deb_codename: None },
-    EcosystemCase { label: "pip",    fixture_subpath: "python/simple-venv",    deb_codename: None },
-    EcosystemCase { label: "rpm",    fixture_subpath: "rpm/bdb-only",          deb_codename: None },
-];
-
-/// Run a `mikebom sbom scan --format spdx-3-json` against `fixture`
+}/// Run a `mikebom sbom scan --format spdx-3-json` against `fixture`
 /// and return the parsed JSON document. Sandboxes HOME and the
 /// per-ecosystem cache envs so per-host installed packages don't
 /// leak into the document (cross-host byte-identity rules from

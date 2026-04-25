@@ -23,10 +23,10 @@ use mikebom_common::attestation::witness::{
 };
 use sigstore::crypto::SigningScheme;
 
-fn bin() -> &'static str {
-    env!("CARGO_BIN_EXE_mikebom")
-}
 
+
+mod common;
+use common::bin;
 fn sample_witness_statement() -> WitnessStatement {
     let mut material: MaterialAttestation = std::collections::BTreeMap::new();
     material.insert(

@@ -17,6 +17,9 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+
+mod common;
+use common::{EcosystemCase, CASES};
 /// Deterministic placeholders used in both the pinned golden files
 /// and the normalized freshly-produced output. The field values
 /// themselves are guaranteed-volatile per the CycloneDX spec (a v4
@@ -30,33 +33,7 @@ const TIMESTAMP_PLACEHOLDER: &str = "1970-01-01T00:00:00Z";
 /// Macs emit `/Users/<user>/Projects/mikebom/...`; CI Linux emits
 /// `/home/runner/work/mikebom/mikebom/...`; both rewrite to
 /// `<WORKSPACE>` for cross-host byte comparison.
-const WORKSPACE_PLACEHOLDER: &str = "<WORKSPACE>";
-
-#[derive(Clone, Copy)]
-struct EcosystemCase {
-    /// Short ecosystem label — used to name the golden file.
-    label: &'static str,
-    /// Path under the workspace `tests/fixtures/` directory.
-    fixture_subpath: &'static str,
-    /// When set, passed via `--deb-codename` so the PURL `distro=`
-    /// qualifier is stable across machines that may auto-detect
-    /// something different.
-    deb_codename: Option<&'static str>,
-}
-
-const CASES: &[EcosystemCase] = &[
-    EcosystemCase { label: "apk",    fixture_subpath: "apk/synthetic",     deb_codename: None },
-    EcosystemCase { label: "cargo",  fixture_subpath: "cargo/lockfile-v3", deb_codename: None },
-    EcosystemCase { label: "deb",    fixture_subpath: "deb/synthetic",     deb_codename: Some("bookworm") },
-    EcosystemCase { label: "gem",    fixture_subpath: "gem/simple-bundle", deb_codename: None },
-    EcosystemCase { label: "golang", fixture_subpath: "go/simple-module",  deb_codename: None },
-    EcosystemCase { label: "maven",  fixture_subpath: "maven/pom-three-deps", deb_codename: None },
-    EcosystemCase { label: "npm",    fixture_subpath: "npm/node-modules-walk", deb_codename: None },
-    EcosystemCase { label: "pip",    fixture_subpath: "python/simple-venv", deb_codename: None },
-    EcosystemCase { label: "rpm",    fixture_subpath: "rpm/bdb-only",      deb_codename: None },
-];
-
-fn workspace_root() -> PathBuf {
+const WORKSPACE_PLACEHOLDER: &str = "<WORKSPACE>";fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("workspace root")
