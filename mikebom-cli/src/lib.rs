@@ -28,3 +28,11 @@
 //! function code that benefits from being importable by tests.
 
 pub mod parity;
+
+
+// Probe for milestone-016 SC-003: deliberately-dead private function to
+// verify the new CI gate fails on a new clippy warning. To be deleted
+// before merge — this branch is opened ONLY to confirm CI rejects new
+// warnings. `pub` items don't trigger `dead_code` (they're part of the
+// public API surface), so the probe must be private to fire the lint.
+fn deliberate_dead_code_probe_for_sc003() {}
