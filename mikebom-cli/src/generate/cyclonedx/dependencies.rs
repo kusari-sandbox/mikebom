@@ -114,7 +114,7 @@ mod tests {
     use mikebom_common::types::purl::Purl;
 
     fn make_component(name: &str, version: &str) -> ResolvedComponent {
-        let purl_str = format!("pkg:cargo/{}@{}", name, version);
+        let purl_str = format!("pkg:cargo/{name}@{version}");
         ResolvedComponent {
             purl: Purl::new(&purl_str).expect("valid purl"),
             name: name.to_string(),

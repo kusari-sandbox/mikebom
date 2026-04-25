@@ -1092,7 +1092,7 @@ fn parse_requirements_line(line: &str) -> Option<RequirementsTxtEntry> {
     // Split off `--hash=alg:hex` flags. pip allows MULTIPLE per
     // requirement (one for sdist + one per platform wheel) so collect
     // all of them. Each flag has form `--hash=<alg>:<hex>`.
-    let body = line.splitn(2, "--hash").next().unwrap_or(line).trim();
+    let body = line.split("--hash").next().unwrap_or(line).trim();
     let hashes = parse_hash_flags(line);
 
     // URL-style sources.

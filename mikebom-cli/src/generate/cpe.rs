@@ -208,8 +208,8 @@ mod tests {
         let c = make_component("pkg:deb/debian/jq@1.6-2.1+b1?distro=bookworm");
         let cpes = synthesize_cpes(&c);
         assert_eq!(cpes.len(), 2);
-        assert!(cpes[0].starts_with("cpe:2.3:a:debian:jq:"), "{:?}", cpes);
-        assert!(cpes[1].starts_with("cpe:2.3:a:jq:jq:"), "{:?}", cpes);
+        assert!(cpes[0].starts_with("cpe:2.3:a:debian:jq:"), "{cpes:?}");
+        assert!(cpes[1].starts_with("cpe:2.3:a:jq:jq:"), "{cpes:?}");
     }
 
     #[test]

@@ -221,9 +221,8 @@ fn synthetic_openvex_document_matches_vendored_schema() {
     assert!(
         categories.is_empty(),
         "synthetic OpenVEX document produced schema-validation \
-         categories: {:?} — either the emitter shape drifted from \
-         the vendored 0.2.0 schema or the schema fixture is stale",
-        categories
+         categories: {categories:?} — either the emitter shape drifted from \
+         the vendored 0.2.0 schema or the schema fixture is stale"
     );
 }
 

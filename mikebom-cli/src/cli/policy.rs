@@ -92,6 +92,6 @@ mod tests {
     fn init_args_clap_shape_is_valid() {
         // Wraps PolicySubcommand in a Parser so we can call ::command()
         // on it (PolicyCommand is #[derive(Args)], not Parser).
-        let _ = TestCli::command().debug_assert();
+        TestCli::command().debug_assert();
     }
 }

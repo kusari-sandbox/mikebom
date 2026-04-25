@@ -204,7 +204,7 @@ mod tests {
         //   + cipher_suites_len(2) + cipher_suites(2) -- one dummy suite
         //   + compression_len(1) + compression(1) -- null compression
         //   + extensions
-        let client_hello_body_len = 2 + 32 + 1 + 0 + 2 + 2 + 1 + 1 + extensions_total;
+        let client_hello_body_len = (2 + 32 + 1) + 2 + 2 + 1 + 1 + extensions_total;
 
         // Handshake header: type(1) + length(3) + body
         let handshake_total = 1 + 3 + client_hello_body_len;

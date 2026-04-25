@@ -380,7 +380,7 @@ fn build_entry_from_text_columns(
     let depends: Vec<String> = requires_str
         .split_whitespace()
         .filter_map(|dep| {
-            let bare = dep.trim_end_matches(|c: char| matches!(c, '(' | ')' | ',' | ';'));
+            let bare = dep.trim_end_matches(['(', ')', ',', ';']);
             if bare.is_empty() {
                 None
             } else {

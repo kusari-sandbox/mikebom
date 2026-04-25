@@ -126,9 +126,7 @@ impl DepsDevClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             anyhow::bail!(
-                "deps.dev query failed: HTTP {} — {}",
-                status,
-                body
+                "deps.dev query failed: HTTP {status} — {body}"
             );
         }
 
@@ -175,9 +173,7 @@ impl DepsDevClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             anyhow::bail!(
-                "deps.dev GetDependencies failed: HTTP {} — {}",
-                status,
-                body
+                "deps.dev GetDependencies failed: HTTP {status} — {body}"
             );
         }
 
@@ -201,9 +197,7 @@ impl DepsDevClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             anyhow::bail!(
-                "deps.dev GetVersion failed: HTTP {} — {}",
-                status,
-                body
+                "deps.dev GetVersion failed: HTTP {status} — {body}"
             );
         }
 

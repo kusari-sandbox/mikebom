@@ -257,7 +257,7 @@ fn parse_depends(raw: &str) -> Vec<String> {
             continue;
         }
         let end = tok
-            .find(|c: char| matches!(c, '<' | '>' | '=' | '~'))
+            .find(['<', '>', '=', '~'])
             .unwrap_or(tok.len());
         let name = &tok[..end];
         if name.is_empty() || name.starts_with('/') || name.contains(':') {

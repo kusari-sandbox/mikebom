@@ -269,7 +269,7 @@ impl NpmIntegrity {
         let decoded = base64_decode(b64)?;
         let hex = decoded
             .iter()
-            .map(|b| format!("{:02x}", b))
+            .map(|b| format!("{b:02x}"))
             .collect::<String>();
         Some(Self {
             algorithm: alg_upper.to_string(),
@@ -1514,8 +1514,7 @@ packages:
         for p in cases_true {
             assert!(
                 is_npm_internal_path(Path::new(p)),
-                "expected true for {}",
-                p
+                "expected true for {p}"
             );
         }
         // README-style files directly under node_modules/npm (not inside
@@ -1541,8 +1540,7 @@ packages:
         for p in cases_false {
             assert!(
                 !is_npm_internal_path(Path::new(p)),
-                "expected false for {}",
-                p
+                "expected false for {p}"
             );
         }
     }

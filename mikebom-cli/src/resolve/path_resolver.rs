@@ -258,13 +258,13 @@ fn resolve_npm_path(path: &str) -> Option<Purl> {
                 let encoded = name.replace('@', "%40");
                 format!(
                     "pkg:npm/{encoded}@{}",
-                    encode_purl_segment(&version),
+                    encode_purl_segment(version),
                 )
             } else {
                 format!(
                     "pkg:npm/{}@{}",
                     encode_purl_segment(&name),
-                    encode_purl_segment(&version),
+                    encode_purl_segment(version),
                 )
             };
 

@@ -7,8 +7,7 @@
 //! On non-Linux platforms, a stub implementation is provided that
 //! immediately returns an error.
 
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Statistics collected during a trace session.
 #[derive(Clone, Debug, Default)]
@@ -193,4 +192,3 @@ mod inner {
     }
 }
 
-pub use inner::TraceProcessor;

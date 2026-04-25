@@ -91,7 +91,7 @@ pub fn keyid_from_pem(public_pem: &str) -> Result<String, String> {
     let mut out = String::with_capacity(64);
     for b in hasher.finalize() {
         use std::fmt::Write;
-        let _ = write!(out, "{:02x}", b);
+        let _ = write!(out, "{b:02x}");
     }
     Ok(out)
 }

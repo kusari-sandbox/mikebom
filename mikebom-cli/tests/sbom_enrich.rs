@@ -165,7 +165,7 @@ fn base_attestation_sha256_embedded_in_provenance() {
     use sha2::{Digest, Sha256};
     let mut h = Sha256::new();
     h.update(b"attestation-bytes");
-    let expected: String = h.finalize().iter().map(|b| format!("{:02x}", b)).collect();
+    let expected: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
     assert!(
         value_str.contains(&expected),
         "expected sha-256 {expected} in property value; got {value_str}"

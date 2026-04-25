@@ -86,8 +86,7 @@ fn executable_jar_primary_coord_is_suppressed_from_components() {
             .iter()
             .any(|p| p.contains("com.example/sbom-fixture")),
         "executable JAR's own coord (com.example/sbom-fixture) must \
-         be suppressed from components[] (US4); got {:?}",
-        purls
+         be suppressed from components[] (US4); got {purls:?}"
     );
 }
 
@@ -157,8 +156,7 @@ fn ordinary_maven_target_jar_is_suppressed_via_target_dir_heuristic() {
             .iter()
             .any(|p| p.contains("com.example/sbom-fixture")),
         "Maven build-output JAR under target/ must be suppressed by \
-         the 008 US3 target-dir heuristic; got {:?}",
-        purls
+         the 008 US3 target-dir heuristic; got {purls:?}"
     );
 }
 
@@ -181,8 +179,7 @@ fn ordinary_maven_jar_outside_target_dir_is_emitted() {
         purls
             .iter()
             .any(|p| p.contains("com.example/commons-lib")),
-        "dependency JAR outside target/ must still be emitted: {:?}",
-        purls
+        "dependency JAR outside target/ must still be emitted: {purls:?}"
     );
 }
 
@@ -210,8 +207,7 @@ fn maven_target_dir_jar_with_mismatched_stem_is_emitted() {
             .iter()
             .any(|p| p.contains("com.example/sbom-fixture")),
         "JAR under target/ with mismatched filename stem must NOT \
-         be suppressed by US3 alone: {:?}",
-        purls
+         be suppressed by US3 alone: {purls:?}"
     );
 }
 
@@ -234,15 +230,13 @@ fn executable_jar_self_coord_promoted_to_metadata_component() {
         .any(|p| p.contains("com.example/sbom-fixture"));
     assert!(
         !in_components,
-        "sbom-fixture must not reappear in components[]: {:?}",
-        purls
+        "sbom-fixture must not reappear in components[]: {purls:?}"
     );
     // Soft assertion on promotion: log but don't hard-fail. If the
     // builder promotes to metadata.component, great; if not, the
     // minimum guarantee (suppress from components[]) is the
     // spec-FR-compliance win.
     eprintln!(
-        "metadata.component.purl = {:?} (informational)",
-        mc_purl
+        "metadata.component.purl = {mc_purl:?} (informational)"
     );
 }

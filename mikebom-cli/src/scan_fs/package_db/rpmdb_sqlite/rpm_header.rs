@@ -318,6 +318,14 @@ pub fn parse_header_blob(blob: &[u8]) -> Result<RpmHeader, HeaderError> {
     RpmHeader::parse(blob)
 }
 
+/// Re-exported test helper so `rpm.rs` can craft production-shaped
+/// blob rows in its own tests without duplicating the builder.
+#[cfg(test)]
+pub(crate) use tests::build_test_header;
+
+#[cfg(test)]
+pub(crate) use tests::TagValue;
+
 #[cfg(test)]
 #[cfg_attr(test, allow(clippy::unwrap_used))]
 mod tests {
@@ -552,11 +560,3 @@ mod tests {
         assert_eq!(h.file_paths(), vec![PathBuf::from("/usr/bin/good")]);
     }
 }
-
-/// Re-exported test helper so `rpm.rs` can craft production-shaped
-/// blob rows in its own tests without duplicating the builder.
-#[cfg(test)]
-pub(crate) use tests::build_test_header;
-
-#[cfg(test)]
-pub(crate) use tests::TagValue;

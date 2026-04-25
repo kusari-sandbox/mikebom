@@ -789,7 +789,7 @@ GEM
         let names: Vec<_> = doc.specs.iter().map(|s| s.name.as_str()).collect();
         assert!(names.contains(&"foo"));
         assert!(names.contains(&"activesupport"));
-        assert!(!names.iter().any(|n| *n == "base64")); // base64 never listed at indent 4
+        assert!(!names.contains(&"base64")); // base64 never listed at indent 4
     }
 
     #[test]

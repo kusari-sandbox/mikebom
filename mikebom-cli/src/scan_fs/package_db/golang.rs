@@ -444,7 +444,7 @@ fn h1_to_content_hash(
     if bytes.len() != 32 {
         return None;
     }
-    let hex: String = bytes.iter().map(|b| format!("{:02x}", b)).collect();
+    let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
     ContentHash::with_algorithm(HashAlgorithm::Sha256, &hex).ok()
 }
 
@@ -750,7 +750,7 @@ fn collect_production_imports(
         for import_path in extract_go_imports(&bytes) {
             for module in known_modules {
                 if import_path == *module
-                    || import_path.starts_with(&format!("{}/", module))
+                    || import_path.starts_with(&format!("{module}/"))
                 {
                     out.insert(module.clone());
                     break;

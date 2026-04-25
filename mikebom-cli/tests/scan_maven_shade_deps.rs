@@ -163,18 +163,15 @@ fn shade_relocated_jar_emits_ancestors_with_marker_and_licenses() {
 
     assert!(
         purls.iter().any(|p| p.contains("commons-compress@1.23.0")),
-        "canonical SPDX ancestor must emit: {:?}",
-        purls
+        "canonical SPDX ancestor must emit: {purls:?}"
     );
     assert!(
         purls.iter().any(|p| p.contains("commons-lang3@3.12.0")),
-        "free-form-license ancestor must emit (with empty licenses): {:?}",
-        purls
+        "free-form-license ancestor must emit (with empty licenses): {purls:?}"
     );
     assert!(
         purls.iter().any(|p| p.contains("com.example/no-license@1.0.0")),
-        "no-License-line ancestor must emit: {:?}",
-        purls
+        "no-License-line ancestor must emit: {purls:?}"
     );
 }
 
@@ -208,8 +205,7 @@ fn shade_relocated_jar_preserves_classifier_in_purl() {
 
     assert!(
         purls.iter().any(|p| p.contains("?classifier=tests")),
-        "classifier qualifier must be preserved in PURL: {:?}",
-        purls
+        "classifier qualifier must be preserved in PURL: {purls:?}"
     );
 }
 
@@ -297,14 +293,12 @@ fn self_reference_in_dependencies_is_dropped() {
         .count();
     assert_eq!(
         self_count, 0,
-        "self-reference must not re-emit as shade child: {:?}",
-        shaded_purls
+        "self-reference must not re-emit as shade child: {shaded_purls:?}"
     );
     // Real ancestor must still emit.
     assert!(
         shaded_purls.iter().any(|p| p.contains("commons-compress@1.23.0")),
-        "real ancestor must still emit: {:?}",
-        shaded_purls
+        "real ancestor must still emit: {shaded_purls:?}"
     );
 }
 
@@ -345,8 +339,7 @@ fn deps_declared_but_not_shaded_produces_no_emission() {
 
     assert!(
         shaded.is_empty(),
-        "declared-only DEPENDENCIES must not emit without bytecode: {:?}",
-        shaded
+        "declared-only DEPENDENCIES must not emit without bytecode: {shaded:?}"
     );
 }
 
@@ -382,8 +375,7 @@ fn shaded_dep_at_relocated_path_is_emitted() {
 
     assert!(
         shaded.iter().any(|p| p.contains("commons-compress@1.23.0")),
-        "shade-leaf match must emit the ancestor: {:?}",
-        shaded
+        "shade-leaf match must emit the ancestor: {shaded:?}"
     );
 }
 
@@ -422,8 +414,7 @@ fn unshaded_dep_at_original_group_path_is_emitted() {
 
     assert!(
         shaded.iter().any(|p| p.contains("commons-compress@1.23.0")),
-        "unshaded-path match must emit the ancestor: {:?}",
-        shaded
+        "unshaded-path match must emit the ancestor: {shaded:?}"
     );
 }
 
@@ -462,7 +453,6 @@ fn generic_leaf_ancestor_requires_unshaded_match() {
 
     assert!(
         !shaded.iter().any(|p| p.contains("commons-io@2.12.0")),
-        "generic-leaf ancestor must not emit on shade-path evidence alone: {:?}",
-        shaded
+        "generic-leaf ancestor must not emit on shade-path evidence alone: {shaded:?}"
     );
 }

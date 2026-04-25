@@ -154,27 +154,19 @@ fn python_dependency_tree_resolves_transitively() {
 
     // Exact transitive set per fixture METADATA.
     assert!(
-        depends_on
-            .iter()
-            .any(|s| *s == "pkg:pypi/urllib3@2.0.7"),
+        depends_on.contains(&"pkg:pypi/urllib3@2.0.7"),
         "requests → urllib3@2.0.7 expected; got {depends_on:?}"
     );
     assert!(
-        depends_on
-            .iter()
-            .any(|s| *s == "pkg:pypi/certifi@2023.7.22"),
+        depends_on.contains(&"pkg:pypi/certifi@2023.7.22"),
         "requests → certifi expected; got {depends_on:?}"
     );
     assert!(
-        depends_on
-            .iter()
-            .any(|s| *s == "pkg:pypi/charset-normalizer@3.3.2"),
+        depends_on.contains(&"pkg:pypi/charset-normalizer@3.3.2"),
         "requests → charset-normalizer expected; got {depends_on:?}"
     );
     assert!(
-        depends_on
-            .iter()
-            .any(|s| *s == "pkg:pypi/idna@3.6"),
+        depends_on.contains(&"pkg:pypi/idna@3.6"),
         "requests → idna expected; got {depends_on:?}"
     );
 }

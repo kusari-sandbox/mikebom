@@ -72,8 +72,7 @@ fn jpp_prefixed_sidecar_resolves_to_maven_component() {
         purls
             .iter()
             .any(|p| p == "pkg:maven/com.google.inject/guice@5.1.0"),
-        "expected pkg:maven/com.google.inject/guice@5.1.0 in {:?}",
-        purls
+        "expected pkg:maven/com.google.inject/guice@5.1.0 in {purls:?}"
     );
 }
 
@@ -83,8 +82,7 @@ fn plain_name_sidecar_resolves_to_maven_component() {
     let purls = maven_purls(&sbom);
     assert!(
         purls.iter().any(|p| p == "pkg:maven/aopalliance/aopalliance@1.0"),
-        "expected pkg:maven/aopalliance/aopalliance@1.0 in {:?}",
-        purls
+        "expected pkg:maven/aopalliance/aopalliance@1.0 in {purls:?}"
     );
 }
 
@@ -98,8 +96,7 @@ fn parent_inheritance_resolves_missing_group_id() {
         purls
             .iter()
             .any(|p| p == "pkg:maven/com.google.inject/guice-child@5.1.0"),
-        "expected pkg:maven/com.google.inject/guice-child@5.1.0 in {:?}",
-        purls
+        "expected pkg:maven/com.google.inject/guice-child@5.1.0 in {purls:?}"
     );
 }
 
@@ -109,8 +106,7 @@ fn orphan_jar_without_sidecar_is_not_emitted_as_maven_component() {
     let purls = maven_purls(&sbom);
     assert!(
         !purls.iter().any(|p| p.contains("orphan")),
-        "orphan-3.0.jar has no sidecar POM and must not appear as a Maven component; got {:?}",
-        purls
+        "orphan-3.0.jar has no sidecar POM and must not appear as a Maven component; got {purls:?}"
     );
 }
 
@@ -124,7 +120,6 @@ fn scan_of_empty_rootfs_without_maven_poms_dir_is_clean() {
     let purls = maven_purls(&sbom);
     assert!(
         purls.is_empty(),
-        "empty rootfs produced Maven components: {:?}",
-        purls
+        "empty rootfs produced Maven components: {purls:?}"
     );
 }
