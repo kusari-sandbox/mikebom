@@ -31,11 +31,11 @@ fn sample_witness_statement() -> WitnessStatement {
     let mut material: MaterialAttestation = std::collections::BTreeMap::new();
     material.insert(
         "src/main.rs".to_string(),
-        witness::sha256_digest(&"a".repeat(64)),
+        witness::sha256_digest("a".repeat(64)),
     );
     material.insert(
         "Cargo.toml".to_string(),
-        witness::sha256_digest(&"b".repeat(64)),
+        witness::sha256_digest("b".repeat(64)),
     );
 
     let cmd = CommandRunAttestation {
@@ -55,7 +55,7 @@ fn sample_witness_statement() -> WitnessStatement {
         "target/release/ripgrep".to_string(),
         Product {
             mime_type: "application/x-executable".to_string(),
-            digest: witness::sha256_digest(&"c".repeat(64)),
+            digest: witness::sha256_digest("c".repeat(64)),
         },
     );
 
@@ -89,7 +89,7 @@ fn sample_witness_statement() -> WitnessStatement {
         statement_type: witness::STATEMENT_TYPE_V01.to_string(),
         subject: vec![WitnessSubject {
             name: "target/release/ripgrep".to_string(),
-            digest: witness::sha256_digest(&"c".repeat(64)),
+            digest: witness::sha256_digest("c".repeat(64)),
         }],
         predicate_type: witness::COLLECTION_PREDICATE_TYPE.to_string(),
         predicate: Collection {

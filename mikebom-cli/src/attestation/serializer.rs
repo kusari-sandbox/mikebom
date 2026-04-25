@@ -151,7 +151,7 @@ pub fn read_attestation(path: &Path) -> anyhow::Result<InTotoStatement> {
     let content = std::fs::read_to_string(path)
         .map_err(|e| anyhow::anyhow!("failed to read attestation file {}: {}", path.display(), e))?;
     let stmt: InTotoStatement = serde_json::from_str(&content)
-        .map_err(|e| anyhow::anyhow!("failed to parse attestation JSON: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("failed to parse attestation JSON: {e}"))?;
     Ok(stmt)
 }
 

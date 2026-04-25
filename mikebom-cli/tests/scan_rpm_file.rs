@@ -147,19 +147,15 @@ fn scan_rpm_file_fixture_emits_canonical_components() {
     // Vendor-slug mapping — header-derived.
     let purls: Vec<&str> = rpms.iter().map(|c| c["purl"].as_str().unwrap()).collect();
     assert!(
-        purls.iter().any(|p| *p == "pkg:rpm/redhat/openssl-libs@3.0.7-28.el9_4?arch=x86_64"),
+        purls.contains(&"pkg:rpm/redhat/openssl-libs@3.0.7-28.el9_4?arch=x86_64"),
         "Red Hat PURL missing. Got: {purls:?}"
     );
     assert!(
-        purls
-            .iter()
-            .any(|p| *p == "pkg:rpm/fedora/curl@8.2.1-fc39?arch=x86_64"),
+        purls.contains(&"pkg:rpm/fedora/curl@8.2.1-fc39?arch=x86_64"),
         "Fedora PURL missing. Got: {purls:?}"
     );
     assert!(
-        purls
-            .iter()
-            .any(|p| *p == "pkg:rpm/rocky/bash@5.1.8-1.el9.rocky?arch=x86_64"),
+        purls.contains(&"pkg:rpm/rocky/bash@5.1.8-1.el9.rocky?arch=x86_64"),
         "Rocky PURL missing. Got: {purls:?}"
     );
 

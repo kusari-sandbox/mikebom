@@ -124,7 +124,7 @@ fn emit_report(report: &VerificationReport, json: bool) -> anyhow::Result<()> {
             detail,
             partial_identity,
         } => {
-            println!("FAIL — {:?}", mode);
+            println!("FAIL — {mode:?}");
             println!("  detail: {detail}");
             if let Some(id) = partial_identity {
                 println!("  partial_identity: {} {}", id.kind, id.label);
@@ -173,6 +173,6 @@ mod tests {
             layout_satisfied: None,
         };
         let code = exit_code_for(&report);
-        assert_eq!(format!("{:?}", code), format!("{:?}", ExitCode::from(0)));
+        assert_eq!(format!("{code:?}"), format!("{:?}", ExitCode::from(0)));
     }
 }

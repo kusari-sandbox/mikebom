@@ -315,7 +315,7 @@ fn parse_rpm_file(
     };
     let distro_seg = match distro_version {
         Some(dv) if !dv.is_empty() => {
-            format!("&distro={}-{}", vendor_slug, dv)
+            format!("&distro={vendor_slug}-{dv}")
         }
         _ => String::new(),
     };

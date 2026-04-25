@@ -112,7 +112,7 @@ fn resolve_pypi(hostname: &str, path: &str) -> Option<Purl> {
     let (name, version) = split_pypi_name_version(stem)?;
 
     // Normalize: PEP 503 — replace hyphens/dots with underscores, lowercase.
-    let normalized_name = name.replace('-', "_").replace('.', "_").to_lowercase();
+    let normalized_name = name.replace(['-', '.'], "_").to_lowercase();
 
     let purl_str = format!(
         "pkg:pypi/{}@{}",
@@ -207,7 +207,7 @@ fn resolve_npm(hostname: &str, path: &str) -> Option<Purl> {
         let purl_str = format!(
             "pkg:npm/{}@{}",
             encode_purl_segment(name),
-            encode_purl_segment(&version),
+            encode_purl_segment(version),
         );
         let purl = Purl::new(&purl_str).ok()?;
         tracing::debug!("npm URL match: {purl_str}");
@@ -253,7 +253,7 @@ fn resolve_golang(hostname: &str, path: &str) -> Option<Purl> {
     let purl_str = format!(
         "pkg:golang/{}@{}",
         encode_purl_segment(&module),
-        encode_purl_segment(&version),
+        encode_purl_segment(version),
     );
     let purl = Purl::new(&purl_str).ok()?;
     tracing::debug!("golang URL match: {purl_str}");
@@ -446,14 +446,7 @@ fn guess_deb_codename(namespace: &str, path: &str) -> Option<&'static str> {
     };
 
     let path_lower = path.to_ascii_lowercase();
-    for &cn in codenames {
-        if path_lower.contains(cn) {
-            return Some(cn);
-        }
-    }
-
-    // Default codenames when we can't determine from URL.
-    None
+    codenames.iter().find(|&&cn| path_lower.contains(cn)).copied()
 }
 
 #[cfg(test)]

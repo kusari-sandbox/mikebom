@@ -229,7 +229,7 @@ impl EventAggregator {
                         .as_ref()
                         .and_then(|r| r.host_header.clone())
                         .or_else(|| conn.tls_sni.clone())
-                        .or_else(|| fragment_host);
+                        .or(fragment_host);
                 }
             }
             NetworkEventType::TlsRead => {

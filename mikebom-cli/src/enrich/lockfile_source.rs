@@ -117,7 +117,7 @@ impl LockfileSource {
 
     /// Build PURL for a Cargo package.
     fn cargo_purl(name: &str, version: &str) -> String {
-        format!("pkg:cargo/{}@{}", name, version)
+        format!("pkg:cargo/{name}@{version}")
     }
 }
 
@@ -275,7 +275,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "#;
 
     fn make_component(name: &str, version: &str) -> ResolvedComponent {
-        let purl_str = format!("pkg:cargo/{}@{}", name, version);
+        let purl_str = format!("pkg:cargo/{name}@{version}");
         ResolvedComponent {
             purl: Purl::new(&purl_str).expect("valid purl"),
             name: name.to_string(),

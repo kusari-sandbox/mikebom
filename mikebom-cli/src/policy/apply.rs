@@ -164,7 +164,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEvsP5gU5pY6n7JT7jz3L3J9wQ8vRm\n\
         )
         .unwrap();
         let env = envelope_signed_by(SAMPLE_PUB_PEM);
-        assert!(verify_against_layout(&serde_json::to_value(&minimal_stmt()).unwrap(), &env, &layout).is_ok());
+        assert!(verify_against_layout(&serde_json::to_value(minimal_stmt()).unwrap(), &env, &layout).is_ok());
     }
 
     #[test]
@@ -178,7 +178,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEvsP5gU5pY6n7JT7jz3L3J9wQ8vRm\n\
         )
         .unwrap();
         let env = envelope_signed_by(OTHER_PUB_PEM);
-        match verify_against_layout(&serde_json::to_value(&minimal_stmt()).unwrap(), &env, &layout) {
+        match verify_against_layout(&serde_json::to_value(minimal_stmt()).unwrap(), &env, &layout) {
             Err(FailureMode::LayoutViolation) => {}
             other => panic!("expected LayoutViolation, got {other:?}"),
         }
@@ -196,7 +196,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEvsP5gU5pY6n7JT7jz3L3J9wQ8vRm\n\
         };
         let env = envelope_signed_by(SAMPLE_PUB_PEM);
         assert!(matches!(
-            verify_against_layout(&serde_json::to_value(&minimal_stmt()).unwrap(), &env, &layout),
+            verify_against_layout(&serde_json::to_value(minimal_stmt()).unwrap(), &env, &layout),
             Err(FailureMode::LayoutViolation)
         ));
     }

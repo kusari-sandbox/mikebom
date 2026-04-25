@@ -1630,7 +1630,7 @@ pub(crate) fn jar_has_main_class_manifest(archive_path: &Path) -> bool {
         let lower = line.to_ascii_lowercase();
         if lower.starts_with("main-class:") {
             // Value must be non-empty after the colon.
-            if line.splitn(2, ':').nth(1).is_some_and(|v| !v.trim().is_empty()) {
+            if line.split_once(':').map(|x| x.1).is_some_and(|v| !v.trim().is_empty()) {
                 return true;
             }
         }

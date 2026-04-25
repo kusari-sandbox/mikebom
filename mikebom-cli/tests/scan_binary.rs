@@ -665,7 +665,7 @@ fn python_collapse_catches_unversioned_symlink() {
             .filter(|c| {
                 let p = c["purl"].as_str().unwrap_or("");
                 p.contains("file-sha256=")
-                    && p.starts_with(&format!("pkg:generic/{}", name))
+                    && p.starts_with(&format!("pkg:generic/{name}"))
             })
             .count();
         assert_eq!(
@@ -1221,8 +1221,7 @@ fn debian_rootfs_stamps_debian_n_qualifier() {
         let purl = c["purl"].as_str().unwrap();
         assert!(
             purl.contains("&distro=debian-12") || purl.contains("?distro=debian-12"),
-            "expected distro=debian-12 on {}",
-            purl
+            "expected distro=debian-12 on {purl}"
         );
     }
 }
@@ -1244,13 +1243,11 @@ fn ubuntu_rootfs_emits_ubuntu_namespace() {
         let purl = c["purl"].as_str().unwrap();
         assert!(
             purl.starts_with("pkg:deb/ubuntu/"),
-            "expected pkg:deb/ubuntu/ namespace, got {}",
-            purl
+            "expected pkg:deb/ubuntu/ namespace, got {purl}"
         );
         assert!(
             purl.contains("distro=ubuntu-24.04"),
-            "expected distro=ubuntu-24.04 on {}",
-            purl
+            "expected distro=ubuntu-24.04 on {purl}"
         );
     }
 }
@@ -1277,8 +1274,7 @@ fn missing_os_release_emits_diagnostic_metadata_property() {
     let value = missing["value"].as_str().expect("value is string");
     assert!(
         value.contains("ID") && value.contains("VERSION_ID"),
-        "expected property value to name both ID and VERSION_ID; got {}",
-        value
+        "expected property value to name both ID and VERSION_ID; got {value}"
     );
 }
 
@@ -1327,8 +1323,7 @@ fn path_scan_emits_no_npm_role_property() {
         .collect();
     assert!(
         offending.is_empty(),
-        "--path scans must not emit mikebom:npm-role; got {:?}",
-        offending
+        "--path scans must not emit mikebom:npm-role; got {offending:?}"
     );
     // Sanity: the legitimate app dep must still be present.
     let names: Vec<&str> = components
@@ -1337,7 +1332,6 @@ fn path_scan_emits_no_npm_role_property() {
         .collect();
     assert!(
         names.contains(&"lodash"),
-        "lodash (the app dep) must still appear; got {:?}",
-        names
+        "lodash (the app dep) must still appear; got {names:?}"
     );
 }

@@ -205,7 +205,7 @@ fn compute_merkle_root(occurrences: &[FileOccurrence]) -> Option<ContentHash> {
         hasher.update(b"\n");
     }
     let bytes = hasher.finalize();
-    let hex = bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    let hex = bytes.iter().map(|b| format!("{b:02x}")).collect::<String>();
     ContentHash::sha256(&hex).ok()
 }
 
@@ -260,7 +260,7 @@ mod tests {
     fn md5_like_string(bytes: &[u8]) -> String {
         let mut h = String::new();
         for b in bytes.iter().take(16) {
-            h.push_str(&format!("{:02x}", b));
+            h.push_str(&format!("{b:02x}"));
         }
         while h.len() < 32 {
             h.push('0');

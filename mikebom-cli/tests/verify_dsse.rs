@@ -260,7 +260,7 @@ fn cli_subject_flag_produces_real_sha256_in_envelope() {
     let expected_hex: String = hasher
         .finalize()
         .iter()
-        .map(|b| format!("{:02x}", b))
+        .map(|b| format!("{b:02x}"))
         .collect();
 
     // Minimal statement with the resolver-produced subject.
@@ -327,7 +327,7 @@ fn cli_subject_array_can_hold_multiple_artifacts() {
     fn sha_hex(bytes: &[u8]) -> String {
         let mut h = Sha256::new();
         h.update(bytes);
-        h.finalize().iter().map(|b| format!("{:02x}", b)).collect()
+        h.finalize().iter().map(|b| format!("{b:02x}")).collect()
     }
 
     // Two artifact files with known contents.

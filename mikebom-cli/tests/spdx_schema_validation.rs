@@ -154,8 +154,7 @@ fn assert_valid(case: &EcosystemCase) {
 fn reference_example_baseline_probe() {
     let baseline = reference_baseline_categories();
     eprintln!(
-        "SPDX 2.3 reference-example validator categories (baseline): {:?}",
-        baseline
+        "SPDX 2.3 reference-example validator categories (baseline): {baseline:?}"
     );
     // No assertion — purely informational. Captures the baseline into
     // test output so a CI reader can see what the ceiling is.

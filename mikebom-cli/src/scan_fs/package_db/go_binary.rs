@@ -113,7 +113,7 @@ pub fn detect_is_go(path: &Path) -> DetectResult {
         return DetectResult::AmbiguousError;
     };
     let size = meta.len();
-    if size < MIN_BINARY_SIZE_BYTES || size > MAX_BINARY_SIZE_BYTES {
+    if !(MIN_BINARY_SIZE_BYTES..=MAX_BINARY_SIZE_BYTES).contains(&size) {
         return DetectResult::NotGoBinary;
     }
     let Ok(bytes) = std::fs::read(path) else {
@@ -368,7 +368,7 @@ pub fn read_binary(path: &Path) -> (BuildInfoStatus, Option<GoBinaryInfo>) {
         Err(_) => return (BuildInfoStatus::NotGoBinary, None),
     };
     let size = meta.len();
-    if size < MIN_BINARY_SIZE_BYTES || size > MAX_BINARY_SIZE_BYTES {
+    if !(MIN_BINARY_SIZE_BYTES..=MAX_BINARY_SIZE_BYTES).contains(&size) {
         return (BuildInfoStatus::NotGoBinary, None);
     }
     let bytes = match std::fs::read(path) {

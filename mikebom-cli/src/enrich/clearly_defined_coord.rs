@@ -161,7 +161,7 @@ fn url_encode(s: &str) -> String {
             out.push(c);
         } else {
             for b in c.to_string().as_bytes() {
-                out.push_str(&format!("%{:02X}", b));
+                out.push_str(&format!("%{b:02X}"));
             }
         }
     }
@@ -316,8 +316,7 @@ mod tests {
             let c = make_component(purl);
             assert!(
                 cd_coord_for(&c).is_none(),
-                "{} should not have a CD coord",
-                purl
+                "{purl} should not have a CD coord"
             );
         }
     }

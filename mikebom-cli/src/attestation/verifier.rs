@@ -343,8 +343,7 @@ pub fn verify_subjects(
             return Err(VerificationError::failed(
                 FailureMode::SubjectDigestMismatch,
                 format!(
-                    "on-disk SHA-256 {} of {:?} does not match any attestation subject",
-                    hex, path
+                    "on-disk SHA-256 {hex} of {path:?} does not match any attestation subject"
                 ),
             ));
         }
@@ -364,7 +363,7 @@ fn hex_encode(bytes: &[u8]) -> String {
     let mut out = String::with_capacity(bytes.len() * 2);
     for b in bytes {
         use std::fmt::Write;
-        let _ = write!(out, "{:02x}", b);
+        let _ = write!(out, "{b:02x}");
     }
     out
 }
@@ -416,8 +415,7 @@ pub fn match_identity(cert_pem: &str, pattern: &str) -> Result<String, Verificat
     Err(VerificationError::failed(
         FailureMode::IdentityMismatch,
         format!(
-            "cert SAN(s) {:?} do not match expected identity {:?}",
-            sans, pattern
+            "cert SAN(s) {sans:?} do not match expected identity {pattern:?}"
         ),
     ))
 }
@@ -603,8 +601,7 @@ fn public_keys_match(expected_pem: &str, envelope_pem: &str) -> bool {
     let norm = |s: &str| {
         s.trim()
             .replace("\r\n", "\n")
-            .replace('\n', "")
-            .replace(' ', "")
+            .replace(['\n', ' '], "")
     };
     norm(expected_pem) == norm(envelope_pem)
 }

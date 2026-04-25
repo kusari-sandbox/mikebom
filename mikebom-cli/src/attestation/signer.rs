@@ -254,7 +254,7 @@ fn keyid_for_pem(pem: &str) -> String {
     out.push_str("sha256:");
     for b in digest {
         use std::fmt::Write;
-        let _ = write!(out, "{:02x}", b);
+        let _ = write!(out, "{b:02x}");
     }
     out
 }

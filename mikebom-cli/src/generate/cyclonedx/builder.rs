@@ -82,7 +82,7 @@ impl CycloneDxBuilder {
     ) -> anyhow::Result<serde_json::Value> {
         let serial_number = format!("urn:uuid:{}", Uuid::new_v4());
         let target_version = "0.0.0"; // Derived from build metadata when available
-        let target_ref = format!("{}@{}", target_name, target_version);
+        let target_ref = format!("{target_name}@{target_version}");
 
         let metadata = build_metadata(
             target_name,
@@ -418,12 +418,11 @@ impl CycloneDxBuilder {
                             | "python-stdlib-collapsed"
                             | "jdk-runtime-collapsed"
                     ),
-                    "mikebom:evidence-kind value '{}' is not in the canonical \
+                    "mikebom:evidence-kind value '{kind}' is not in the canonical \
                      enum (rpm-file | rpmdb-sqlite | rpmdb-bdb | \
                      dynamic-linkage | elf-note-package | \
                      embedded-version-string | python-stdlib-collapsed | \
-                     jdk-runtime-collapsed)",
-                    kind
+                     jdk-runtime-collapsed)"
                 );
                 properties.push(json!({
                     "name": "mikebom:evidence-kind",
@@ -576,14 +575,14 @@ fn try_split_or_compound(expr: &str) -> Option<Vec<String>> {
         return None;
     }
     let tokens: Vec<&str> = trimmed.split_whitespace().collect();
-    if tokens.iter().any(|&t| t == "WITH") {
+    if tokens.contains(&"WITH") {
         return None;
     }
     // Pick a single top-level operator. Mixed operators (e.g.
     // `A AND B OR C`) require parens for unambiguous parsing, so
     // bail — let the single-expression fallback handle them.
-    let has_or = tokens.iter().any(|&t| t == "OR");
-    let has_and = tokens.iter().any(|&t| t == "AND");
+    let has_or = tokens.contains(&"OR");
+    let has_and = tokens.contains(&"AND");
     let separator = match (has_or, has_and) {
         (true, false) => " OR ",
         (false, true) => " AND ",
@@ -650,7 +649,7 @@ mod tests {
     }
 
     fn make_component(name: &str, version: &str) -> ResolvedComponent {
-        let purl_str = format!("pkg:cargo/{}@{}", name, version);
+        let purl_str = format!("pkg:cargo/{name}@{version}");
         ResolvedComponent {
             purl: Purl::new(&purl_str).expect("valid purl"),
             name: name.to_string(),

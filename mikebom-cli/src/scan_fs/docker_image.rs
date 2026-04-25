@@ -390,7 +390,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
     let out = hasher.finalize();
     let mut s = String::with_capacity(64);
     for b in out {
-        s.push_str(&format!("{:02x}", b));
+        s.push_str(&format!("{b:02x}"));
     }
     s
 }

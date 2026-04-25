@@ -51,7 +51,7 @@ pub fn attestation_sha256(path: &Path) -> Result<String, EnrichmentError> {
     let mut out = String::with_capacity(64);
     for b in digest {
         use std::fmt::Write;
-        let _ = write!(out, "{:02x}", b);
+        let _ = write!(out, "{b:02x}");
     }
     Ok(out)
 }
@@ -268,7 +268,7 @@ mod tests {
         let mut expected = String::new();
         for b in hasher.finalize() {
             use std::fmt::Write;
-            let _ = write!(expected, "{:02x}", b);
+            let _ = write!(expected, "{b:02x}");
         }
         assert_eq!(hex, expected);
     }

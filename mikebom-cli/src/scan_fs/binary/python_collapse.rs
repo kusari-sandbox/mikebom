@@ -211,9 +211,8 @@ fn extract_version_from_python_source_tree(rel: &str) -> Option<String> {
     let tail = &rel[idx + "Python-".len()..];
     let (ver, rest) = parse_major_minor(tail)?;
     // Accept optional `.<patch>` segment (Python-3.11.4 vs Python-3.11).
-    let rest = if rest.starts_with('.') {
+    let rest = if let Some(after_dot) = rest.strip_prefix('.') {
         // Skip over `.<digits>` if present.
-        let after_dot = &rest[1..];
         let digit_end = after_dot
             .bytes()
             .position(|b| !b.is_ascii_digit())

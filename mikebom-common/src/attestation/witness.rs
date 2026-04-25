@@ -263,7 +263,7 @@ pub struct NetworkSummary {
 
 /// Network-trace attestor config. Mirrors
 /// `attestation/networktrace/types/config.go:25-38`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct NetworkConfig {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub observe_pids: Vec<u32>,
@@ -279,36 +279,13 @@ pub struct NetworkConfig {
 
 /// Payload-recording config. Mirrors
 /// `attestation/networktrace/types/types.go:27-36`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct PayloadConfig {
     pub record_payload: bool,
     pub record_payload_hash: bool,
     pub max_payload_size: u64,
 }
 
-impl Default for PayloadConfig {
-    fn default() -> Self {
-        Self {
-            record_payload: false,
-            record_payload_hash: false,
-            max_payload_size: 0,
-        }
-    }
-}
-
-impl Default for NetworkConfig {
-    fn default() -> Self {
-        Self {
-            observe_pids: Vec::new(),
-            observe_cgroups: Vec::new(),
-            observe_commands: Vec::new(),
-            observe_child_tree: false,
-            proxy_port: 0,
-            proxy_bind_ipv4: String::new(),
-            payload: PayloadConfig::default(),
-        }
-    }
-}
 
 // ---------------------------------------------------------------------
 // Helpers
