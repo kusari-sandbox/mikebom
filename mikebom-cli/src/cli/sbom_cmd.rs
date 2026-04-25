@@ -4,6 +4,7 @@ use std::process::ExitCode;
 
 use super::enrich::EnrichArgs;
 use super::generate::GenerateArgs;
+use super::parity_cmd::ParityCheckArgs;
 use super::scan_cmd::ScanArgs;
 use super::verify::VerifyArgs;
 
@@ -26,6 +27,10 @@ pub enum SbomSubcommand {
     /// an SBOM from the package artifacts on disk. No eBPF required —
     /// runs anywhere Rust runs.
     Scan(ScanArgs),
+    /// Run a per-datum × per-format coverage check against three
+    /// already-emitted format outputs and report any parity gaps.
+    /// Drives the milestone-013 user-facing diagnostic.
+    ParityCheck(ParityCheckArgs),
 }
 
 pub async fn execute(
@@ -56,5 +61,6 @@ pub async fn execute(
             .await?;
             Ok(ExitCode::from(0))
         }
+        SbomSubcommand::ParityCheck(args) => super::parity_cmd::execute(args).await,
     }
 }

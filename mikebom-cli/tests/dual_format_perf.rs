@@ -30,16 +30,23 @@ fn bin() -> &'static str {
 }
 
 /// One file inside the synthetic image's inner layer tar.
-struct ImageFile {
-    path: &'static str,
-    content: Vec<u8>,
+///
+/// `pub(crate)` since milestone 013: `tests/holistic_parity.rs`
+/// reuses `build_benchmark_fixture` for its synthetic-container-
+/// image test case, which in turn needs this struct visible
+/// across test files in the same integration-test crate.
+pub(crate) struct ImageFile {
+    pub(crate) path: &'static str,
+    pub(crate) content: Vec<u8>,
 }
 
 /// Build a docker-save-format tarball with `files` placed in the
 /// rootfs at their declared paths. Returns the path to the
 /// persistent tarball (kept alive by the returned `TempDir`).
 /// Mirrors the pattern in `tests/scan_image.rs`.
-fn build_synthetic_image(files: &[ImageFile]) -> (tempfile::TempDir, PathBuf) {
+///
+/// `pub(crate)` since milestone 013 — see `ImageFile` doc above.
+pub(crate) fn build_synthetic_image(files: &[ImageFile]) -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::tempdir().expect("tempdir");
     let mut layer_bytes = Vec::new();
     {
@@ -104,7 +111,12 @@ fn build_synthetic_image(files: &[ImageFile]) -> (tempfile::TempDir, PathBuf) {
 /// (dpkg reader's per-stanza parse loop). At ~6 MB of
 /// package.json content alone, this is a plausible lower bound
 /// for a real container image's npm + deb footprint.
-fn build_benchmark_fixture() -> (tempfile::TempDir, PathBuf) {
+///
+/// `pub(crate)` since milestone 013 — `tests/holistic_parity.rs`
+/// reuses this fixture for its synthetic-container-image parity
+/// test case (research.md §R2: scale-realism coverage without
+/// checking a 60 MB image tarball into git).
+pub(crate) fn build_benchmark_fixture() -> (tempfile::TempDir, PathBuf) {
     let mut files: Vec<ImageFile> = Vec::new();
 
     files.push(ImageFile {
