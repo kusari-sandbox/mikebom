@@ -14,7 +14,7 @@
 set -euo pipefail
 
 steps=(
-    "cargo +stable clippy --workspace --all-targets"
+    "cargo +stable clippy --workspace --all-targets -- -D warnings"
     "cargo +stable test --workspace"
 )
 
