@@ -8,18 +8,11 @@
 //! against a fresh tempdir; HOME / package-cache env vars are
 //! isolated per the cross-host-goldens convention.
 
-use std::path::PathBuf;
 use std::process::Command;
 
 
 mod common;
-use common::bin;
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}
+use common::{bin, workspace_root};
 
 
 /// Produce the three format outputs for the npm fixture into

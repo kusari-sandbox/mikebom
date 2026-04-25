@@ -45,6 +45,10 @@ a subset, BOTH:
 1. `cargo +stable clippy --workspace --all-targets` — zero errors
 2. `cargo +stable test --workspace` — every suite `ok. N passed; 0 failed`
 
+`./scripts/pre-pr.sh` runs both in order and exits non-zero on the
+first failure — preferred over invoking them by hand so the flag
+set stays aligned with CI.
+
 These are the exact commands CI runs (`.github/workflows/ci.yml`).
 `cargo test -p mikebom` alone is insufficient: it does not run clippy,
 and clippy's `--all-targets` enforces `clippy::unwrap_used` inside

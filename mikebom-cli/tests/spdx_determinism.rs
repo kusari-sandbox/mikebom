@@ -8,15 +8,10 @@
 //! masking only `created`; every other field — `documentNamespace`,
 //! SPDXIDs, package / relationship ordering — must match exactly.
 
-use std::path::PathBuf;
 use std::process::Command;
 
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}
+mod common;
+use common::workspace_root;
 
 fn scan_to_spdx_json(fixture: &std::path::Path) -> serde_json::Value {
     let tmp = tempfile::tempdir().expect("tempdir");

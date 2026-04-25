@@ -23,18 +23,13 @@
 //! One test per ecosystem so a failure names the offender.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::PathBuf;
 use std::process::Command;
 
 
 mod common;
-use common::{EcosystemCase, CASES};
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}struct Scan {
+use common::{workspace_root, EcosystemCase, CASES};
+
+struct Scan {
     spdx23: serde_json::Value,
     spdx3: serde_json::Value,
 }
