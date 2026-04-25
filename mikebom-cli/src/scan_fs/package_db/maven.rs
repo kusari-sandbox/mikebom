@@ -691,10 +691,7 @@ pub(crate) fn resolve_maven_property(
         return MavenVersion::Resolved(raw.to_string());
     }
     let mut result = raw.to_string();
-    loop {
-        let Some(open) = result.find("${") else {
-            break;
-        };
+    while let Some(open) = result.find("${") {
         let Some(close) = result[open..].find('}') else {
             break;
         };

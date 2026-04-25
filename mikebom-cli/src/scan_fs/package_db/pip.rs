@@ -578,36 +578,12 @@ pub(crate) fn parse_metadata_text(text: &str) -> PipDistInfoEntry {
             match key.as_str() {
                 "Name" => out.name = v,
                 "Version" => out.version = v,
-                "License" => {
-                    if !v.is_empty() {
-                        out.license_raw = Some(v);
-                    }
-                }
-                "License-Expression" => {
-                    if !v.is_empty() {
-                        out.license_expression = Some(v);
-                    }
-                }
-                "Classifier" => {
-                    if !v.is_empty() {
-                        out.classifiers.push(v);
-                    }
-                }
-                "Requires-Dist" => {
-                    if !v.is_empty() {
-                        out.requires_dist.push(v);
-                    }
-                }
-                "Author" => {
-                    if !v.is_empty() {
-                        out.author = Some(v);
-                    }
-                }
-                "Author-email" => {
-                    if !v.is_empty() {
-                        out.author_email = Some(v);
-                    }
-                }
+                "License" if !v.is_empty() => out.license_raw = Some(v),
+                "License-Expression" if !v.is_empty() => out.license_expression = Some(v),
+                "Classifier" if !v.is_empty() => out.classifiers.push(v),
+                "Requires-Dist" if !v.is_empty() => out.requires_dist.push(v),
+                "Author" if !v.is_empty() => out.author = Some(v),
+                "Author-email" if !v.is_empty() => out.author_email = Some(v),
                 _ => {}
             }
         }

@@ -161,7 +161,7 @@ fn system_to_purl(system: &str, name: &str, version: &str) -> Option<String> {
 
 /// Decode a hex string into bytes.
 fn hex_to_bytes(hex: &str) -> anyhow::Result<Vec<u8>> {
-    if hex.len() % 2 != 0 {
+    if !hex.len().is_multiple_of(2) {
         anyhow::bail!("hex string has odd length");
     }
     let mut bytes = Vec::with_capacity(hex.len() / 2);

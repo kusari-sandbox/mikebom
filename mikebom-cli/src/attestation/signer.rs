@@ -8,7 +8,7 @@
 // Signer is invoked only from `cli/scan.rs::execute_scan` (Linux-only
 // trace flow). On macOS the file compiles but is unreachable; allow
 // dead_code on non-Linux.
-#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
 

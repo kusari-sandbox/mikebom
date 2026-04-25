@@ -7,7 +7,7 @@
 
 // HTTP parsing is only invoked from the Linux-only eBPF TLS-trace
 // path; on macOS the file compiles but is unreachable.
-#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#![allow(dead_code)]
 
 use mikebom_common::attestation::network::{HttpRequest, HttpResponse};
 

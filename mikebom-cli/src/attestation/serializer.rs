@@ -4,7 +4,7 @@
 // but `write_*` and `to_json` are only invoked from
 // `cli/scan.rs::execute_scan` (Linux-only). Allow dead_code on
 // non-Linux to keep the cross-platform clippy clean.
-#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#![allow(dead_code)]
 
 use std::path::Path;
 

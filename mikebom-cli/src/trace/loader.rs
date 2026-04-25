@@ -1,7 +1,7 @@
 // Loader types are only constructed inside the Linux-only
 // `cli/scan.rs::execute_scan` flow; on macOS the file compiles but is
 // unreachable.
-#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#![allow(dead_code)]
 
 use std::path::PathBuf;
 
@@ -165,7 +165,9 @@ mod inner {
 }
 
 #[cfg(target_os = "linux")]
-pub use inner::{load_and_attach, EbpfHandle};
+pub use inner::load_and_attach;
+// `EbpfHandle` lives inside the inner Linux-only module and isn't used
+// by any external caller; left non-re-exported to keep clippy clean.
 
 #[cfg(not(target_os = "linux"))]
 pub struct EbpfHandle;

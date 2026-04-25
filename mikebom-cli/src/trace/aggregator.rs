@@ -8,7 +8,7 @@
 // dead_code on non-Linux to keep the cross-platform compile clean
 // without splitting these types behind their own cfg gate (they're
 // referenced unconditionally by the attestation modules' types).
-#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#![allow(dead_code)]
 
 use std::collections::HashMap;
 

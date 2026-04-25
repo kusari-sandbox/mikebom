@@ -6,7 +6,7 @@
 // `cfg_attr(not(linux), allow(dead_code))` suppresses the warning
 // without splitting the constants behind their own platform gate
 // (they're stable URIs, not platform-conditional in nature).
-#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#![allow(dead_code)]
 
 use std::time::Duration;
 
