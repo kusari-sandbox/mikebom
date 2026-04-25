@@ -324,3 +324,81 @@ fn per_format_override_writes_to_named_path() {
     // Default filename must not have also been written.
     assert!(!tmp.path().join("mikebom.cdx.json").exists());
 }
+
+// ---- Milestone 011 US3 dispatch surface --------------------------
+
+#[test]
+fn both_spdx_3_identifiers_dispatch_and_emit_the_same_default_filename() {
+    // Post-US3 state (research.md §R6 / contract §4):
+    // `spdx-3-json` and `spdx-3-json-experimental` both dispatch
+    // through the registry, both emit `mikebom.spdx3.json` as the
+    // default filename, both route through the same emitter so
+    // output bytes are byte-identical. The alias additionally
+    // prints a stderr deprecation notice.
+    for (format, should_emit_notice) in [
+        ("spdx-3-json", false),
+        ("spdx-3-json-experimental", true),
+    ] {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let out = run_scan_in(tmp.path(), &["--format", format]);
+        assert!(
+            out.status.success(),
+            "`--format {format}` must dispatch successfully; stderr={}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let default_file = tmp.path().join("mikebom.spdx3.json");
+        assert!(
+            default_file.exists(),
+            "`--format {format}` must emit `mikebom.spdx3.json` at the default location"
+        );
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        let has_notice = stderr.contains("is deprecated");
+        assert_eq!(
+            has_notice, should_emit_notice,
+            "`--format {format}`: expected deprecation-notice emission \
+             = {should_emit_notice}, got {has_notice}. stderr=\n{stderr}"
+        );
+    }
+}
+
+#[test]
+fn spdx_3_alias_bytes_are_byte_identical_to_stable_identifier() {
+    // End-to-end byte-identity — the last defense against the
+    // alias drifting away from the stable emitter.
+    let tmp_stable = tempfile::tempdir().expect("tempdir");
+    let tmp_alias = tempfile::tempdir().expect("tempdir");
+    let stable_path = tmp_stable.path().join("stable.spdx3.json");
+    let alias_path = tmp_alias.path().join("alias.spdx3.json");
+
+    let stable = run_scan_in(
+        tmp_stable.path(),
+        &[
+            "--format",
+            "spdx-3-json",
+            "--output",
+            &format!("spdx-3-json={}", stable_path.to_string_lossy()),
+        ],
+    );
+    let alias = run_scan_in(
+        tmp_alias.path(),
+        &[
+            "--format",
+            "spdx-3-json-experimental",
+            "--output",
+            &format!(
+                "spdx-3-json-experimental={}",
+                alias_path.to_string_lossy()
+            ),
+        ],
+    );
+    assert!(stable.status.success());
+    assert!(alias.status.success());
+
+    let stable_bytes = std::fs::read(&stable_path).expect("stable output");
+    let alias_bytes = std::fs::read(&alias_path).expect("alias output");
+    assert_eq!(
+        stable_bytes, alias_bytes,
+        "alias must emit byte-identical output to the stable identifier \
+         per research.md §R6 / contract §4"
+    );
+}
