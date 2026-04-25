@@ -99,7 +99,9 @@ pub struct ScanArgs {
 impl ScanArgs {
     /// Build a [`SigningIdentity`] from the current flag combination.
     /// Returns an error when `--require-signing` is set but no identity
-    /// was configured.
+    /// was configured. Only invoked from the Linux-only
+    /// `execute_scan` block; gate the method itself.
+    #[cfg(target_os = "linux")]
     pub fn build_signing_identity(
         &self,
     ) -> anyhow::Result<crate::attestation::signer::SigningIdentity> {
@@ -151,7 +153,9 @@ pub async fn execute(args: ScanArgs) -> anyhow::Result<()> {
 
 /// Derive a human-readable `Collection.name` from the traced command.
 /// Uses `argv[0]` basename — matches the convention `go-witness` uses
-/// when you pass `--step <name>`, but auto-derived.
+/// when you pass `--step <name>`, but auto-derived. Only invoked from
+/// the Linux-only execute_scan block.
+#[cfg(target_os = "linux")]
 fn default_collection_name(cmd: &str) -> String {
     cmd.split_whitespace()
         .next()

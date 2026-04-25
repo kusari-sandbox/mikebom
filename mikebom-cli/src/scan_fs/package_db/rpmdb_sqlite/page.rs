@@ -2,8 +2,8 @@
 //!
 //! Pages are either interior (0x02 index / 0x05 table) or leaf (0x0a
 //! index / 0x0d table). RHEL rpmdbs in practice use 0x05 interior table
-//! + 0x0d leaf table pages for the `Packages` table. Index pages live
-//! in a separate B-tree rooted elsewhere in sqlite_schema.
+//! plus 0x0d leaf table pages for the `Packages` table. Index pages
+//! live in a separate B-tree rooted elsewhere in sqlite_schema.
 //!
 //! This decoder supports only the subset mikebom needs:
 //! - Leaf-table (0x0d): cell = [payload_len varint, rowid varint, payload bytes].
@@ -11,6 +11,8 @@
 //!
 //! Overflow pages are NOT supported. If a cell declares a payload longer
 //! than fits in the page, we surface an error.
+
+#![allow(dead_code)] // wire-shape fields populated by the binary decoder; not all are consumed downstream.
 
 use super::RpmdbSqliteError;
 

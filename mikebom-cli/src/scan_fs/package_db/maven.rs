@@ -691,10 +691,7 @@ pub(crate) fn resolve_maven_property(
         return MavenVersion::Resolved(raw.to_string());
     }
     let mut result = raw.to_string();
-    loop {
-        let Some(open) = result.find("${") else {
-            break;
-        };
+    while let Some(open) = result.find("${") {
         let Some(close) = result[open..].find('}') else {
             break;
         };
@@ -1001,6 +998,7 @@ pub(crate) fn resolve_dep_group(dep: &PomDependency, eff: &EffectivePom) -> Opti
 ///   1. Substituting properties into the inline `<version>` (if any),
 ///   2. Falling back to the effective `<dependencyManagement>` entry
 ///      for `(group, artifact)`.
+///
 /// Returns `None` when both paths fail — caller drops the edge.
 pub(crate) fn resolve_dep_version(dep: &PomDependency, eff: &EffectivePom) -> Option<String> {
     if let Some(ref raw) = dep.version {
@@ -1357,23 +1355,20 @@ pub(crate) fn parse_dependencies_file(bytes: &[u8]) -> Vec<ShadeAncestor> {
 /// isn't there, producing false positives for vulnerability
 /// scanners matching against mikebom's output.
 ///
-/// Detection:
-/// 1. Enumerate every `.class` path in the JAR once.
-/// 2. For each ancestor, check for bytecode evidence:
-///    (a) UNSHADED — any class at the ancestor's original group
-///        path (`org.apache.commons.compress` → any class starting
-///        with `org/apache/commons/compress/`). Only trusted when
-///        the ancestor's group namespace is disjoint from the
-///        enclosing JAR's primary group_id; otherwise we cannot
-///        distinguish ancestor bytecode from the primary's own
-///        classes that live under the same reactor namespace
-///        (e.g. `maven-surefire-common` has classes at
-///        `org/apache/maven/surefire/...` — but so do its sibling
-///        artifacts `surefire-api`, `surefire-booter`, etc.).
-///    (b) SHADED — any class whose path contains the ancestor's
-///        DISTINCTIVE leaf group-segment wrapped in slashes
-///        (e.g. `/compress/`, `/lang3/`, `/qdox/`).
-/// 3. Generic-leaf guard: a leaf from [`GENERIC_SHADE_LEAVES`]
+/// Detection: (1) enumerate every `.class` path in the JAR once;
+/// (2) for each ancestor, check for bytecode evidence — an UNSHADED
+/// hit is any class at the ancestor's original group path
+/// (`org.apache.commons.compress` → any class starting with
+/// `org/apache/commons/compress/`), only trusted when the ancestor's
+/// group namespace is disjoint from the enclosing JAR's primary
+/// group_id (otherwise we cannot distinguish ancestor bytecode from
+/// the primary's own classes that live under the same reactor
+/// namespace — e.g., `maven-surefire-common` has classes at
+/// `org/apache/maven/surefire/...` but so do its sibling artifacts
+/// `surefire-api`, `surefire-booter`, etc.); a SHADED hit is any
+/// class whose path contains the ancestor's DISTINCTIVE leaf
+/// group-segment wrapped in slashes (e.g., `/compress/`, `/lang3/`,
+/// `/qdox/`). (3) Generic-leaf guard: a leaf from [`GENERIC_SHADE_LEAVES`]
 ///    (`io`, `api`, `util`, `core`, etc.) isn't specific enough
 ///    for (b) — too many unrelated classes match. For such
 ///    ancestors, ONLY the UNSHADED check applies.

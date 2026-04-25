@@ -1,3 +1,13 @@
+// Tool-name / tool-version / in-toto type URIs are referenced from
+// `attestation/builder.rs`, which is gated behind `cfg(target_os =
+// "linux")` because the attestation flow runs only inside the Linux-
+// only `cli/scan.rs::execute_scan` trace path. On macOS the constants
+// have no callers and clippy flags them dead. The
+// `cfg_attr(not(linux), allow(dead_code))` suppresses the warning
+// without splitting the constants behind their own platform gate
+// (they're stable URIs, not platform-conditional in nature).
+#![allow(dead_code)]
+
 use std::time::Duration;
 
 /// Default output path for attestation files.
@@ -23,32 +33,3 @@ pub const INTOTO_STATEMENT_TYPE: &str = "https://in-toto.io/Statement/v1";
 
 /// mikebom build-trace predicate type URI.
 pub const PREDICATE_TYPE: &str = "https://mikebom.dev/attestation/build-trace/v1";
-
-/// Supported SBOM output formats.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum OutputFormat {
-    CycloneDxJson,
-    CycloneDxXml,
-    SpdxJson,
-}
-
-impl OutputFormat {
-    pub fn from_str_arg(s: &str) -> Result<Self, String> {
-        match s {
-            "cyclonedx-json" => Ok(Self::CycloneDxJson),
-            "cyclonedx-xml" => Ok(Self::CycloneDxXml),
-            "spdx-json" => Ok(Self::SpdxJson),
-            other => Err(format!(
-                "unsupported format '{other}': expected cyclonedx-json, cyclonedx-xml, or spdx-json"
-            )),
-        }
-    }
-
-    pub fn default_extension(&self) -> &str {
-        match self {
-            Self::CycloneDxJson => ".cdx.json",
-            Self::CycloneDxXml => ".cdx.xml",
-            Self::SpdxJson => ".spdx.json",
-        }
-    }
-}

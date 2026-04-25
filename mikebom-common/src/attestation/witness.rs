@@ -1,7 +1,7 @@
 //! Witness-compatible attestation types.
 //!
 //! Mirrors the wire format produced by [`go-witness`](https://github.com/in-toto/go-witness)
-//! + the network-trace attestor from the Vyom-Yadav fork
+//! plus the network-trace attestor from the Vyom-Yadav fork
 //! (branch `add-networktrace-attestor` @ `23a67367`). Emitting this
 //! shape makes mikebom attestations directly consumable by
 //! `sbomit generate` and any other witness-aware tool.

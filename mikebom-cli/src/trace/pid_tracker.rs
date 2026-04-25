@@ -5,6 +5,11 @@
 //! events are also captured. On Linux, this reads the process tree from
 //! `/proc/<pid>/task/<tid>/children`. On non-Linux, a stub is provided.
 
+// Tracker is only constructed inside the Linux-only
+// `cli/scan.rs::execute_scan` flow; on macOS the file compiles but is
+// unreachable.
+#![allow(dead_code)]
+
 use std::collections::HashSet;
 
 /// Tracks the set of PIDs in the target process tree.

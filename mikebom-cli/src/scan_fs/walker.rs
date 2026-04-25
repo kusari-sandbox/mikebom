@@ -27,6 +27,7 @@ pub const DEFAULT_SIZE_CAP_BYTES: u64 = 256 * 1024 * 1024;
 
 /// A single artifact the walker found: absolute path, size on disk,
 /// SHA-256 content hash, and file modification time.
+#[allow(dead_code)] // size + mtime are diagnostic fields populated for downstream use; not consumed by the current trace flow.
 #[derive(Clone, Debug)]
 pub struct HashedArtifact {
     pub path: PathBuf,

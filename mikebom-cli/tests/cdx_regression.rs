@@ -150,19 +150,19 @@ fn run_scan(case: &EcosystemCase) -> String {
 ///    `<WORKSPACE>` placeholder in both golden and produced output
 ///    before byte-comparing.
 /// 4. Per-component `hashes[]` arrays — for several ecosystems the
-///    scanner derives hashes from local package caches:
-///      - Maven JARs from `~/.m2/repository/<coord>/<ver>/<jar>`,
-///      - Go module zips from `~/go/pkg/mod/cache/download/...`.
-///    That state varies by host: on my dev machine I happen to have
-///    some JARs cached (so `commons-lang3` gets `{SHA-1, SHA-256}`
-///    while `guava` gets nothing); on CI the cache starts empty so
-///    no component gets hashes. This isn't an emitter bug — it's
-///    "what do we actually know about the bytes on *this* host?" —
-///    so we strip `hashes[]` from every component (top-level and
-///    nested) before byte-comparing. Hash-set parity between CDX
-///    and SPDX within a single scan is still guarded by
-///    `spdx_cdx_parity.rs` (in-memory, same host, same moment), so
-///    this doesn't lose the cross-format invariant.
+///    scanner derives hashes from local package caches: Maven JARs
+///    from `~/.m2/repository/<coord>/<ver>/<jar>`, Go module zips
+///    from `~/go/pkg/mod/cache/download/...`. That state varies by
+///    host: on my dev machine I happen to have some JARs cached (so
+///    `commons-lang3` gets `{SHA-1, SHA-256}` while `guava` gets
+///    nothing); on CI the cache starts empty so no component gets
+///    hashes. This isn't an emitter bug — it's "what do we actually
+///    know about the bytes on *this* host?" — so we strip `hashes[]`
+///    from every component (top-level and nested) before
+///    byte-comparing. Hash-set parity between CDX and SPDX within a
+///    single scan is still guarded by `spdx_cdx_parity.rs`
+///    (in-memory, same host, same moment), so this doesn't lose the
+///    cross-format invariant.
 ///
 /// Any OTHER difference (component order, property keys, license
 /// shape, added/removed fields) surfaces as a regression — those are

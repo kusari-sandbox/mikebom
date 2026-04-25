@@ -43,14 +43,6 @@ impl ClearlyDefinedSource {
         }
     }
 
-    /// Construct with a custom client (used by tests with a mock server).
-    pub fn with_client(client: ClearlyDefinedClient, offline: bool) -> Self {
-        Self {
-            client,
-            offline,
-            cache: Mutex::new(HashMap::new()),
-        }
-    }
 
     async fn fetch_definition(&self, coord: &CdCoord) -> Option<CdDefinition> {
         if let Some(cached) = self

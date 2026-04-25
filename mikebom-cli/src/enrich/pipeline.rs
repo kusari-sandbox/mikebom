@@ -35,7 +35,7 @@ impl EnrichmentPipeline {
     /// the component set are filtered out.
     pub fn enrich(
         &self,
-        components: &mut Vec<ResolvedComponent>,
+        components: &mut [ResolvedComponent],
     ) -> anyhow::Result<Vec<Relationship>> {
         let mut all_relationships = Vec::new();
 

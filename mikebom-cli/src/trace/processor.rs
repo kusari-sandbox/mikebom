@@ -7,6 +7,11 @@
 //! On non-Linux platforms, a stub implementation is provided that
 //! immediately returns an error.
 
+// Stats / processor types are only constructed inside the Linux-only
+// `cli/scan.rs::execute_scan` flow; on macOS the file compiles but is
+// unreachable. Allow dead_code on non-Linux.
+#![allow(dead_code)]
+
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Statistics collected during a trace session.
@@ -65,7 +70,7 @@ mod inner {
     use std::sync::atomic::Ordering;
     use std::sync::Arc;
 
-    use anyhow::{Context, Result};
+    use anyhow::Result;
     use aya::maps::RingBuf;
     use tokio::sync::mpsc;
     use tracing::{debug, trace, warn};

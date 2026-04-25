@@ -59,6 +59,7 @@ pub enum BuildInfoStatus {
 }
 
 /// What a successful BuildInfo extraction yields.
+#[allow(dead_code)] // main_package + go_version are diagnostic / logging-only fields populated by the BuildInfo parser.
 #[derive(Clone, Debug)]
 pub struct GoBinaryInfo {
     /// Path of the binary we read (absolute, in rootfs coordinates).
@@ -76,6 +77,7 @@ pub struct GoBinaryInfo {
 /// Errors the binary reader can produce. The public `read` path
 /// swallows these into `BuildInfoStatus` variants — they're only useful
 /// to the unit tests.
+#[allow(dead_code)] // FileTooLarge / FileTooSmall / NotGoBinary are constructed only inside the parser and reported via Debug formatting in tests; the public API collapses them into a status enum.
 #[derive(Debug, thiserror::Error)]
 pub enum GoBinaryError {
     #[error("io error: {0}")]

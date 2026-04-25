@@ -27,6 +27,7 @@ use crate::generate::ScanArtifacts;
 /// added as new ecosystems or US2 annotations demand them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[allow(dead_code)] // ContainedBy is the symmetric inverse of Contains, included for spec completeness against the SPDX 2.3 relationshipType enum.
 pub enum SpdxRelationshipType {
     Describes,
     DependsOn,

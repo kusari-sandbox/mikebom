@@ -15,6 +15,15 @@
 //! See `specs/003-multi-ecosystem-expansion/research.md` R6 for the
 //! feature matrix that drove this scope.
 
+// Several internal types in this submodule have fields populated by
+// the SQLite-format decoder (page header offsets, serial types, rowid)
+// but only some are read by downstream consumers. They're intentionally
+// preserved as documentation of the wire shape per
+// `specs/003-multi-ecosystem-expansion/research.md` R6, even when the
+// current decoder doesn't consume them. Allow dead_code at the
+// submodule level to avoid annotating each struct individually.
+#![allow(dead_code)]
+
 pub mod page;
 pub mod record;
 pub mod rpm_header;

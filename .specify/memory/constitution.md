@@ -2,24 +2,32 @@
   ============================================================
   SYNC IMPACT REPORT
   ============================================================
-  Version change: 1.2.1 → 1.3.0
-  Bump rationale: MINOR — Principle V (Specification Compliance)
-  materially expanded. The SPDX bullet now permits both SPDX 2.3
-  and SPDX 3.x (instead of pinning SPDX 3.1, which is currently
-  rc1). Adds a new normative requirement: experimental / opt-in
-  SPDX 3 emitters MUST be visibly labeled in CLI help, output
-  filename, and document creator metadata. Prompted by milestone
-  010 (SPDX Output Support), which ships SPDX 2.3 as the primary
-  output and an opt-in SPDX 3.0.1 stub.
+  Version change: 1.3.0 → 1.3.1
+  Bump rationale: PATCH — pre-PR Verification table updated to
+  reflect the post-milestone-016 zero-warnings baseline. The
+  clippy invocation now carries `-- -D warnings`; the passing
+  condition becomes "Zero errors and zero warnings." A new
+  paragraph immediately after the table clarifies the deliberate
+  divergence with the Build & Test Commands quick-reference at
+  line 346 (`--all-targets --all-features` for thorough local
+  linting vs. `--workspace --all-targets` matching CI exactly) so
+  future contributors don't mistake the two for redundant copies.
 
   Modified sections:
-    - Principle V → SPDX bullet rewritten; rationale extended
-      with deployed-ecosystem context.
+    - Pre-PR Verification table: clippy command + passing condition.
+    - One new explanatory paragraph after the table.
 
   Added sections: none
   Removed sections: none
 
   Previous SYNC IMPACT history:
+    - 1.2.1 → 1.3.0: MINOR — Principle V (Specification Compliance)
+      materially expanded. The SPDX bullet now permits both SPDX 2.3
+      and SPDX 3.x (instead of pinning SPDX 3.1, which is currently
+      rc1). Adds a new normative requirement: experimental / opt-in
+      SPDX 3 emitters MUST be visibly labeled in CLI help, output
+      filename, and document creator metadata. Prompted by milestone
+      010 (SPDX Output Support).
     - 1.2.0 → 1.2.1: PATCH — codified pre-PR verification.
     - 1.1.0 → 1.2.0: MINOR — new principle XII (External Data
       Source Enrichment); principle II + strict boundary #1
@@ -356,10 +364,18 @@ one, not a subset, BOTH:
 
 | Step | Command | Passing condition |
 |------|---------|-------------------|
-| 1 | `cargo +stable clippy --workspace --all-targets` | Zero errors |
+| 1 | `cargo +stable clippy --workspace --all-targets -- -D warnings` | Zero errors and zero warnings |
 | 2 | `cargo +stable test --workspace` | Every suite reports `ok. N passed; 0 failed` |
 
 These are the exact commands CI executes (`.github/workflows/ci.yml`).
+Note that the Build & Test Commands quick-reference at line 346 above
+documents a related-but-not-identical clippy invocation
+(`cargo clippy --all-targets --all-features -- -D warnings`) intended
+for thorough local linting that exercises feature-gated code. Both
+must pass for a PR to merge cleanly; the flag-set difference
+(`--all-features` vs `--workspace`) is intentional. Do not
+"harmonize" the two commands without updating both this table and the
+quick-reference together.
 `cargo test -p <crate>` alone is INSUFFICIENT because it skips clippy
 and skips cross-crate targets. Specifically, the `clippy::unwrap_used`
 deny at the `mikebom-cli` crate root (Principle IV) is enforced by
@@ -414,4 +430,4 @@ changes do not violate any principle. Violations require
 either a code fix or a constitution amendment — never silent
 deviation.
 
-**Version**: 1.3.0 | **Ratified**: 2026-04-15 | **Last Amended**: 2026-04-23
+**Version**: 1.3.1 | **Ratified**: 2026-04-15 | **Last Amended**: 2026-04-25

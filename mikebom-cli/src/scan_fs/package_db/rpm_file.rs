@@ -411,20 +411,6 @@ fn percent_encode_purl_segment(s: &str) -> String {
     out
 }
 
-fn percent_encode_purl_version(s: &str) -> String {
-    // Version segment preserves `:` for epoch and `-` for release per
-    // packageurl-python canonical form.
-    let mut out = String::with_capacity(s.len());
-    for b in s.bytes() {
-        if is_purl_version_safe(b) {
-            out.push(b as char);
-        } else {
-            out.push_str(&format!("%{b:02X}"));
-        }
-    }
-    out
-}
-
 fn percent_encode_purl_qualifier(s: &str) -> String {
     // Qualifier values are similar to segment but allow `.`, `_`.
     percent_encode_purl_segment(s)
@@ -432,11 +418,6 @@ fn percent_encode_purl_qualifier(s: &str) -> String {
 
 fn is_purl_segment_safe(b: u8) -> bool {
     b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~')
-}
-
-fn is_purl_version_safe(b: u8) -> bool {
-    // Allow `:` and `-` in version segment (epoch + release).
-    is_purl_segment_safe(b) || matches!(b, b':' | b'-' | b'+')
 }
 
 #[cfg(test)]

@@ -1,4 +1,5 @@
 //! Selective RPM header-blob tag reader.
+#![allow(dead_code)] // wire-shape variants for the RPM header decoder.
 //!
 //! RPM headers ship as a flat binary record inside rpmdb.sqlite's
 //! Packages.blob column. On-wire format:

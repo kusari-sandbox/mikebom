@@ -649,6 +649,10 @@ fn read_node_modules(
 /// `node_modules` → `npm` → `node_modules` anywhere, with `npm` as a
 /// directory whose immediate parent is named `node_modules`. This is
 /// the canonical layout npm v7+ installs.
+///
+/// Currently only exercised by unit tests; the npm walker handles the
+/// internal-path filter inline today. Kept for the test surface.
+#[allow(dead_code)]
 pub(crate) fn is_npm_internal_path(path: &Path) -> bool {
     let comps: Vec<&str> = path
         .components()

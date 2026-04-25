@@ -100,6 +100,7 @@ pub struct ScanResult {
 ///   occurrences. When false, fall back to a microsecond-cost hash of
 ///   the dpkg-provided `.md5sums` file content (no per-file detail).
 ///   Ignored when `read_package_db` is false.
+#[allow(clippy::too_many_arguments)] // entry-point flag bundle; keeps caller-side wiring shape stable across milestones.
 pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_package_db: bool, deep_hash: bool, include_dev: bool, include_legacy_rpmdb: bool, scan_mode: ScanMode, include_declared_deps: bool, scan_target_name: Option<&str>) -> Result<ScanResult, ScanError> {
     // Canonicalize the rootfs once at entry so downstream path
     // comparisons use a consistent base. Without this, macOS's
@@ -538,6 +539,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
 /// - **deb / apk / everything else** — lowercase. Debian and Alpine
 ///   treat names case-insensitively in practice; the installed db
 ///   stores them lowercase anyway but we stay tolerant.
+///
 /// Feature 008 US2 (G6): drop `pkg:golang` analyzed-tier components
 /// whose source files are exclusively under `/go/pkg/mod/cache/download/`
 /// when a non-cache analyzed-tier Go entry (from a binary's BuildInfo)

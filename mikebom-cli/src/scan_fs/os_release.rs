@@ -101,6 +101,12 @@ pub fn read_distro_tag_from_rootfs(rootfs: &Path) -> Option<String> {
 /// `ID=` key. Empty values are also treated as absent. The returned
 /// string preserves the raw casing from the file; per the os-release
 /// spec (`man os-release`), IDs are already lowercase-only.
+///
+/// Production callers go through `read_id_from_rootfs` (which handles
+/// the `<rootfs>/etc/os-release` ↔ `<rootfs>/usr/lib/os-release` fallback);
+/// this naked-path entry stays for unit tests that point at a specific
+/// fixture file.
+#[allow(dead_code)]
 pub fn read_id(os_release_path: &Path) -> Option<String> {
     let text = std::fs::read_to_string(os_release_path).ok()?;
     parse_id(&text)
@@ -111,7 +117,10 @@ pub fn read_id(os_release_path: &Path) -> Option<String> {
 /// stamp `distro=alpine-<VERSION_ID>` onto apk PURLs per the PURL spec.
 ///
 /// Returns `None` when the file is absent, unreadable, or the key is
-/// missing / empty.
+/// missing / empty. Production callers use `read_version_id_from_rootfs`
+/// (with the rootfs fallback); this naked-path entry stays for unit
+/// tests.
+#[allow(dead_code)]
 pub fn read_version_id(os_release_path: &Path) -> Option<String> {
     let text = std::fs::read_to_string(os_release_path).ok()?;
     parse_version_id(&text)

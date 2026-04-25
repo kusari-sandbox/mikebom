@@ -50,12 +50,6 @@ impl ClearlyDefinedClient {
         }
     }
 
-    /// Use a non-default base URL (test mock servers).
-    pub fn with_base_url(mut self, base_url: String) -> Self {
-        self.base_url = base_url;
-        self
-    }
-
     /// Fetch the curated definition for one CD coord. Returns `Ok(None)`
     /// when CD answered 404 (CD doesn't have the package yet) so the
     /// caller can cache the miss; returns `Err` for transient failures

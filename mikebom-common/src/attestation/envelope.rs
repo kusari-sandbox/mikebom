@@ -178,9 +178,7 @@ fn sort_value(value: serde_json::Value) -> serde_json::Value {
 
 /// DSSE Pre-Authenticated Encoding per the DSSE v1 spec.
 ///
-/// The encoding is `"DSSEv1 " + len(payload_type) + " " + payload_type
-/// + " " + len(payload) + " " + payload` where `len` is ASCII decimal.
-/// Signers sign — and verifiers verify — these exact bytes.
+/// The encoding is `"DSSEv1 " + len(payload_type) + " " + payload_type + " " + len(payload) + " " + payload` where `len` is ASCII decimal. Signers sign — and verifiers verify — these exact bytes.
 pub fn dsse_pae(payload_type: &str, payload: &[u8]) -> Vec<u8> {
     let pt_bytes = payload_type.as_bytes();
     let mut out = Vec::with_capacity(

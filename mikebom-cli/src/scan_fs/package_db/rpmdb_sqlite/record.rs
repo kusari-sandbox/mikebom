@@ -1,4 +1,5 @@
 //! SQLite record-format decoder — serial types 0..13+ (UTF-8 only).
+#![allow(dead_code)] // wire-shape fields populated by the binary decoder.
 //!
 //! Record layout:
 //!
