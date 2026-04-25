@@ -8,6 +8,18 @@ license.workspace = true
 name = "mikebom"
 path = "src/main.rs"
 
+# Milestone 013 — minimal library crate exposing the cross-format
+# parity catalog parser + extractor table at `mikebom::parity::*`.
+# The library is consumed by the binary's `cli/parity_cmd.rs` AND
+# by integration tests under `tests/`. Only `pub mod parity;` is
+# exported today; nothing else from `src/` is intentionally
+# library-public — the binary remains the canonical surface for
+# every other module (cli, generate, resolve, etc.) per the
+# three-crate architecture (Constitution Principle VI).
+[lib]
+name = "mikebom"
+path = "src/lib.rs"
+
 [dependencies]
 mikebom-common = { path = "../mikebom-common", features = ["std", "aya-user"] }
 
@@ -26,6 +38,16 @@ base64 = "0.22"
 # Constitution Principle VI "no new runtime crates" (not new —
 # already in the lockfile).
 data-encoding = "2"
+
+# Milestone 013 — regex parser for the canonical SBOM-format-mapping
+# datum catalog (`docs/reference/sbom-format-mapping.md`).
+# `parity::catalog::parse_mapping_doc` uses three small patterns to
+# extract row IDs, property names, and path segments. Already
+# present as a transitive dep via `jsonschema`; promoted here per
+# Constitution Principle VI "no new runtime crates" (not new —
+# already in the lockfile). Plan.md / spec Primary Dependencies
+# explicitly names regex.
+regex = "1"
 
 # Milestone 003 — pure-Rust-only deps. See specs/003-multi-ecosystem-expansion/
 # tasks.md T001 for the feature-pinning rationale (Principle I: zero C).

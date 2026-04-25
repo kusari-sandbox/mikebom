@@ -6,6 +6,7 @@ pub mod trace_cmd;
 pub mod auto_dirs;
 pub mod enrich;
 pub mod generate;
+pub mod parity_cmd;
 pub mod policy;
 pub mod run;
 pub mod scan;
