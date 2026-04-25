@@ -19,7 +19,8 @@ use std::process::Command;
 
 
 mod common;
-use common::{EcosystemCase, CASES};
+use common::{workspace_root, EcosystemCase, CASES};
+
 /// Deterministic placeholders used in both the pinned golden files
 /// and the normalized freshly-produced output. The field values
 /// themselves are guaranteed-volatile per the CycloneDX spec (a v4
@@ -33,12 +34,7 @@ const TIMESTAMP_PLACEHOLDER: &str = "1970-01-01T00:00:00Z";
 /// Macs emit `/Users/<user>/Projects/mikebom/...`; CI Linux emits
 /// `/home/runner/work/mikebom/mikebom/...`; both rewrite to
 /// `<WORKSPACE>` for cross-host byte comparison.
-const WORKSPACE_PLACEHOLDER: &str = "<WORKSPACE>";fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}
+const WORKSPACE_PLACEHOLDER: &str = "<WORKSPACE>";
 
 fn fixture_path(subpath: &str) -> PathBuf {
     workspace_root().join("tests/fixtures").join(subpath)

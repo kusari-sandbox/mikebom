@@ -25,37 +25,11 @@
 //! "same info?" question for the whole surface.
 
 use std::collections::{BTreeSet, HashMap};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}
-
-#[derive(Clone, Copy)]
-struct EcosystemCase {
-    label: &'static str,
-    fixture_subpath: &'static str,
-    deb_codename: Option<&'static str>,
-}
-
-// Same 9 cases the Phase 2 cdx_regression and Phase 3
-// spdx_schema_validation tests use. Kept inline per the plan's
-// "don't extract a shared helper for just three call sites" note.
-const CASES: &[EcosystemCase] = &[
-    EcosystemCase { label: "apk",    fixture_subpath: "apk/synthetic",     deb_codename: None },
-    EcosystemCase { label: "cargo",  fixture_subpath: "cargo/lockfile-v3", deb_codename: None },
-    EcosystemCase { label: "deb",    fixture_subpath: "deb/synthetic",     deb_codename: Some("bookworm") },
-    EcosystemCase { label: "gem",    fixture_subpath: "gem/simple-bundle", deb_codename: None },
-    EcosystemCase { label: "golang", fixture_subpath: "go/simple-module",  deb_codename: None },
-    EcosystemCase { label: "maven",  fixture_subpath: "maven/pom-three-deps", deb_codename: None },
-    EcosystemCase { label: "npm",    fixture_subpath: "npm/node-modules-walk", deb_codename: None },
-    EcosystemCase { label: "pip",    fixture_subpath: "python/simple-venv", deb_codename: None },
-    EcosystemCase { label: "rpm",    fixture_subpath: "rpm/bdb-only",      deb_codename: None },
-];
+mod common;
+use common::{workspace_root, EcosystemCase, CASES};
 
 struct Scan {
     cdx: serde_json::Value,

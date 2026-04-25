@@ -40,12 +40,8 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::process::Command;
 
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}
+mod common;
+use common::workspace_root;
 
 // ---------- scenario 1: format-neutral internal types -------------
 

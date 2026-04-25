@@ -13,13 +13,7 @@ use std::process::Command;
 
 
 mod common;
-use common::bin;
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}
+use common::{bin, workspace_root};
 
 /// Canonical cargo fixture — small, offline-friendly, and already
 /// pinned by `cdx_regression.rs`. Choosing one fixture keeps these

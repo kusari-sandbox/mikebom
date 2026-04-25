@@ -23,18 +23,13 @@
 //! to any CDX component; they're excluded from the reverse walk.
 
 use std::collections::{BTreeSet, HashMap};
-use std::path::PathBuf;
 use std::process::Command;
 
 
 mod common;
-use common::{EcosystemCase, CASES};
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}struct Scan {
+use common::{workspace_root, EcosystemCase, CASES};
+
+struct Scan {
     cdx: serde_json::Value,
     spdx3: serde_json::Value,
 }

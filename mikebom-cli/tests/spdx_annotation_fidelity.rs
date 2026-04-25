@@ -18,18 +18,14 @@
 //! actually shows up as annotations in SPDX for the same scan."
 
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 
 mod common;
-use common::{EcosystemCase, CASES};
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}struct DualScan {
+use common::{workspace_root, EcosystemCase, CASES};
+
+struct DualScan {
     cdx: serde_json::Value,
     spdx: serde_json::Value,
 }

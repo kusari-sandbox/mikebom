@@ -19,13 +19,7 @@ use std::sync::OnceLock;
 
 
 mod common;
-use common::{EcosystemCase, CASES};
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("workspace root")
-        .to_path_buf()
-}
+use common::{workspace_root, EcosystemCase, CASES};
 
 fn schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

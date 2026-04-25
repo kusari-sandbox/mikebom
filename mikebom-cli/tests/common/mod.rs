@@ -24,13 +24,21 @@
 //!   integration-test machinery. Before this module, ~10 files
 //!   had a private `fn bin() -> &'static str { env!("CARGO_BIN_EXE_mikebom") }`.
 //!
+//! * [`workspace_root`] — the absolute path to the workspace root
+//!   (the parent of `mikebom-cli/`). Used by tests that need to
+//!   locate `tests/fixtures/` from the workspace root rather than
+//!   from the test crate's own `CARGO_MANIFEST_DIR`. Before this
+//!   module, 21 files carried byte-identical copies.
+//!
 //! Tests that don't need either helper don't need `mod common;`.
-//! Tests that need only one of the two still cost nothing: the
+//! Tests that need only one of the three still cost nothing: the
 //! `#[allow(dead_code)]` annotations below silence the per-test-file
 //! "this item is unused" warnings that would otherwise fire when
 //! a test imports `common` but uses (e.g.) only `bin()`.
 
 #![allow(dead_code)]
+
+use std::path::PathBuf;
 
 /// One row of the cross-format-test fixture matrix. `label` names
 /// the golden file or test report; `fixture_subpath` is appended to
@@ -66,4 +74,20 @@ pub const CASES: &[EcosystemCase] = &[
 /// `Command::new(common::bin())`.
 pub fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_mikebom")
+}
+
+/// Absolute path to the workspace root — the parent of
+/// `mikebom-cli/`, where `tests/fixtures/` lives. Tests that need to
+/// locate fixtures, goldens, or sibling crates start here.
+///
+/// `CARGO_MANIFEST_DIR` for an integration test resolves to the
+/// containing crate's manifest dir (`mikebom-cli/`); the workspace
+/// root is one level up. The `.parent()` lookup is infallible for any
+/// crate that lives in a workspace; tests panicking here would mean a
+/// truly broken cargo invocation.
+pub fn workspace_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("workspace root")
+        .to_path_buf()
 }
