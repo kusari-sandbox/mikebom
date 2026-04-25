@@ -23,7 +23,7 @@ PR #38 (Tier 1) finished the test-helper dedup so all SPDX acceptance tests now 
 
 As a maintainer reviewing a PR that touches SPDX emission code (a new annotation, a license-handling fix, a relationship-graph change), I want a deterministic byte-level diff against pinned reference output so that any unintended drift in SPDX 2.3 or SPDX 3 output for any of the 9 supported ecosystems is caught at the pre-PR gate.
 
-**Why this priority**: This is the load-bearing equivalent of the CDX FR-022 guarantee from milestone 010. Without it, SPDX output can drift silently while passing the existing per-run determinism tests. Closing this gap brings SPDX coverage to parity with CDX *before* Tier 3-6 work touches the emitters further.
+**Why this priority**: This is the load-bearing equivalent of the CDX FR-022 guarantee from milestone 010. Without it, SPDX output can drift silently while passing the existing per-run determinism tests. Closing this gap brings SPDX coverage to parity with CDX *before* Tier 3-6 work touches the emitters further. The MVP bundles US2 (the shared helper module) by necessity — without it, this story's tests would duplicate the inline normalize logic from `cdx_regression.rs`, recreating the very fragmentation US2 is meant to prevent. P1 and P2 here are *implementation phases*, not separable shipping units.
 
 **Independent Test**: After this story ships:
 
@@ -44,6 +44,8 @@ As a maintainer reviewing a PR that touches SPDX emission code (a new annotation
 As a contributor adding a new SPDX-touching acceptance test, I want one place to import the cross-host normalization utilities (workspace-path masking, UUID/timestamp/document-IRI masking, hash stripping, fake-HOME setup) so that I don't accidentally normalize half the fields and ship a flaky test.
 
 **Why this priority**: Today the discipline lives inline in `cdx_regression.rs` and is applied nowhere else. Extracting it makes the next acceptance test (or a developer fixing a fragility regression in an existing test) trivial to write. Without this helper, every new test gets it slightly wrong — exactly the failure mode the user's `feedback_cross_host_goldens` memory was tagged for ("rewrite workspace path, strip hashes, isolate HOME, mask serial/timestamp ALL AT ONCE").
+
+**Dependency note**: US2 is a hard prerequisite for US1's implementation, not an independent shipping unit. The P2 label reflects user-visible value (developer ergonomics for *future* test additions) — but in this milestone's execution US2 lands first as Phase 2 of `tasks.md` because Phase 3 cannot start without it.
 
 **Independent Test**: After this story ships:
 

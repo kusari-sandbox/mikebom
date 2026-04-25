@@ -59,10 +59,12 @@ Single Rust workspace; this milestone touches `mikebom-cli/tests/common/`, `mike
 - [ ] T007 [US1] Implement `normalize_spdx23_for_golden(doc: serde_json::Value, workspace: &Path) -> serde_json::Value` in `tests/common/normalize.rs`. Per `data-model.md` "Placeholder catalog" SPDX 2.3 rows: mask `creationInfo.created` to `1970-01-01T00:00:00Z`; strip `packages[].checksums[]`. Workspace-path string-replace runs on the raw output before parsing — caller's responsibility (mirrored from CDX). Add the module-doc bullets covering SPDX 2.3 masked fields with rationale.
 - [ ] T008 [P] [US1] Create `mikebom-cli/tests/spdx_regression.rs` by copying `cdx_regression.rs`'s post-T005 shape. Adjust: `--format spdx-2.3-json`, golden path `tests/fixtures/golden/spdx-2.3/{label}.spdx.json`, env var `MIKEBOM_UPDATE_SPDX_GOLDENS`, normalize call to `normalize_spdx23_for_golden`. 9 `#[test]` named `<ecosystem>_byte_identity` per `research.md` R7. The test body uses `common::apply_fake_home_env` from T003.
 - [ ] T009 [US1] Generate the 9 SPDX 2.3 goldens. Create the directory: `mkdir -p mikebom-cli/tests/fixtures/golden/spdx-2.3`. Run `MIKEBOM_UPDATE_SPDX_GOLDENS=1 cargo +stable test -p mikebom --test spdx_regression`. Verify the 9 files exist with non-trivial content. Empirical leak-vector sweep per `research.md` R3: `rg '/Users/[^"]*' mikebom-cli/tests/fixtures/golden/spdx-2.3/` MUST return empty. If non-empty, augment `normalize_spdx23_for_golden`'s string-replace pass with the discovered prefix, regen, re-sweep until empty.
+- [ ] T009b [US1] **(contingent on T009)** Inspect the freshly-regenerated SPDX 2.3 goldens for non-conformance with the SPDX 2.3 JSON schema or the per-row contract in `docs/reference/sbom-format-mapping.md`. Examples: a field that should be sorted but isn't, a property mentioned in the catalog but missing from output, a field whose value violates Constitution V (Specification Compliance). If any non-conformance is found, fix the emitter in `mikebom-cli/src/generate/spdx/` in this same PR; rerun T009; confirm the goldens stabilize. Update the PR description with a "Production-code changes" sub-section listing each emitter fix and its rationale. **If no bug is surfaced**, mark this task complete with the explicit note "no emitter changes required" in the PR description — making the absence of changes auditable.
 - [ ] T010 [US1] Run `cargo +stable test -p mikebom --test spdx_regression` (no env vars) — expect 9/9 pass. The goldens are now load-bearing.
 - [ ] T011 [US1] Implement `normalize_spdx3_for_golden(doc: serde_json::Value, workspace: &Path) -> serde_json::Value` in `tests/common/normalize.rs`. Per `data-model.md`: walk `@graph[]`, mask `created` on every element with `type == "CreationInfo"`; on every element with `type == "Package"`, strip `verifiedUsing[]`. Document IRI is content-derived (host-stable per `spdx3_determinism.rs:11-13`) so left alone. Add the module-doc bullets.
 - [ ] T012 [P] [US1] Create `mikebom-cli/tests/spdx3_regression.rs` by copying `spdx_regression.rs`'s shape. Adjust: `--format spdx-3-json`, golden path `tests/fixtures/golden/spdx-3/{label}.spdx3.json`, env var `MIKEBOM_UPDATE_SPDX3_GOLDENS`, normalize call to `normalize_spdx3_for_golden`. 9 `#[test]` named `<ecosystem>_byte_identity`.
 - [ ] T013 [US1] Generate the 9 SPDX 3 goldens. `mkdir -p mikebom-cli/tests/fixtures/golden/spdx-3`. Run `MIKEBOM_UPDATE_SPDX3_GOLDENS=1 cargo +stable test -p mikebom --test spdx3_regression`. Empirical leak-vector sweep: `rg '/Users/[^"]*' mikebom-cli/tests/fixtures/golden/spdx-3/` MUST return empty. Iterate normalize + regen until clean.
+- [ ] T013b [US1] **(contingent on T013)** Same shape as T009b but for SPDX 3.0.1 — inspect freshly-regenerated goldens against the SPDX 3.0.1 JSON schema and per-row catalog. If non-conformance is found, fix the emitter in `mikebom-cli/src/generate/spdx_3/` in this PR; rerun T013; confirm stabilization. Update PR description's "Production-code changes" sub-section. **If no bug is surfaced**, mark complete with explicit "no emitter changes required" note.
 - [ ] T014 [US1] Run `cargo +stable test -p mikebom --test spdx3_regression` — expect 9/9 pass.
 - [ ] T015 [US1] Verify zero-warnings for the new test code. Run `cargo +stable clippy --workspace --all-targets`. Expected: zero warnings (post-016 baseline holds). If warnings appear, fix in-place. **Depends on T002–T014.**
 
@@ -114,8 +116,8 @@ T001 (snapshot)
       └─ T004 (normalize_cdx)
          └─ T005 (cdx_regression migration)
             └─ T006 (CDX byte-identity gate) ← Phase 2 done
-               ├─ T007 (normalize_spdx23) → T008 (spdx_regression test) → T009 (regen + leak sweep) → T010 (assert path)
-               └─ T011 (normalize_spdx3)  → T012 (spdx3_regression test) → T013 (regen + leak sweep) → T014 (assert path)
+               ├─ T007 (normalize_spdx23) → T008 (spdx_regression test) → T009 (regen + leak sweep) → T009b (contingent emitter fix) → T010 (assert path)
+               └─ T011 (normalize_spdx3)  → T012 (spdx3_regression test) → T013 (regen + leak sweep) → T013b (contingent emitter fix) → T014 (assert path)
                   └─ T015 (clippy gate) ← Phase 3 done
                      ├─ T016 / T017 / T018 / T019 (parallel migrations)
                      │  └─ T020 (FR-008 grep gate) ← Phase 4 done
@@ -133,7 +135,7 @@ T007/T008/T009/T010 vs. T011/T012/T013/T014 are independent (parallel-safe per P
 |---|---|---|
 | Phase 1 (Setup) | 15 min | Mechanical scaffolding. |
 | Phase 2 (CDX migration) | 1-2 hr | The byte-identity verification (T006) is the slow gate; if it diverges, debugging adds time. |
-| Phase 3 (SPDX targets + goldens) | 3-5 hr | Empirical leak-vector sweep (T009, T013) is the wildcard; if SPDX has many more leak points than CDX, expect more iteration. |
+| Phase 3 (SPDX targets + goldens) | 3-5 hr (10+ hr if T009b/T013b surface emitter bugs) | Empirical leak-vector sweep (T009, T013) is the wildcard; if SPDX has many more leak points than CDX, expect more iteration. T009b/T013b are contingent — typically zero work, but if a non-conforming field is surfaced, the emitter fix expands scope materially. |
 | Phase 4 (fake-HOME sweep) | 2 hr | ~25 mechanical edits + verify. |
 | Phase 5 (polish + PR) | 30 min | If CI is green on first push. |
 | **Total** | **6-10 hr** | One focused day or two half-days. |
