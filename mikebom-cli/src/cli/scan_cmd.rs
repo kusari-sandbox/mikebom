@@ -77,13 +77,16 @@ pub struct ScanArgs {
     ///   `mikebom.cdx.json`).
     /// - `spdx-2.3-json` — SPDX 2.3 JSON (default filename
     ///   `mikebom.spdx.json`).
-    /// - `spdx-3-json` [EXPERIMENTAL until milestone-011 US3 flips
-    ///   it stable] — SPDX 3.0.1 JSON-LD. Default filename:
-    ///   `mikebom.spdx3.json`. Full ecosystem coverage.
-    /// - `spdx-3-json-experimental` [EXPERIMENTAL, deprecated
-    ///   alias] — routes through the same emitter as
-    ///   `spdx-3-json`. Retained for one release cycle so existing
-    ///   pipelines keep working; use `spdx-3-json` for new ones.
+    /// - `spdx-3-json` — SPDX 3.0.1 JSON-LD (default filename
+    ///   `mikebom.spdx3.json`). Full ecosystem coverage; production-
+    ///   grade output with native-field + annotation parity vs.
+    ///   CycloneDX and SPDX 2.3.
+    /// - `spdx-3-json-experimental` [DEPRECATED] — deprecation alias
+    ///   for `spdx-3-json`. Byte-identical output; prints a stderr
+    ///   deprecation notice. Accepted through milestone 012;
+    ///   removed in milestone 013. Set
+    ///   `MIKEBOM_NO_DEPRECATION_NOTICE=1` to suppress the warning
+    ///   in CI logs during a controlled migration.
     #[arg(
         long,
         action = clap::ArgAction::Append,
@@ -323,18 +326,34 @@ fn resolve_dispatch(
     Ok(DispatchPlan { formats, overrides })
 }
 
-/// Format the registered-id list for user-facing text, appending
+/// The SPDX 3 deprecation-alias format id (milestone 011 US3).
+/// Kept as a named constant so the notice-emission path in
+/// `execute()` and the help-list labeling in [`format_help_list`]
+/// reference the same string.
+const SPDX_3_DEPRECATED_ALIAS: &str = "spdx-3-json-experimental";
+
+/// Environment override to suppress the
+/// `spdx-3-json-experimental` deprecation notice. Set to any
+/// non-empty value to silence the stderr warning during a
+/// controlled migration; document bytes are unaffected either way.
+const NO_DEPRECATION_NOTICE_ENV: &str = "MIKEBOM_NO_DEPRECATION_NOTICE";
+
+/// Format the registered-id list for user-facing text. Appends
 /// ` [EXPERIMENTAL]` to any serializer where
-/// [`SbomSerializer::experimental`] is true (FR-019b). Used by the
-/// unknown-format error path — surfaces the experimental status at
-/// the exact moment a user encounters the set of accepted format
-/// identifiers.
+/// [`SbomSerializer::experimental`] is true (Constitution Principle
+/// V), and ` [DEPRECATED]` to the
+/// `spdx-3-json-experimental` alias (milestone 011 US3 / research.md
+/// §R2). Used by the unknown-format error path — surfaces the
+/// status at the exact moment a user encounters the set of
+/// accepted format identifiers.
 fn format_help_list(registry: &SerializerRegistry) -> Vec<String> {
     registry
         .ids()
         .map(|id| {
             let ser = registry.get(id).expect("id from registry.ids()");
-            if ser.experimental() {
+            if id == SPDX_3_DEPRECATED_ALIAS {
+                format!("{id} [DEPRECATED]")
+            } else if ser.experimental() {
                 format!("{id} [EXPERIMENTAL]")
             } else {
                 id.to_string()
@@ -377,6 +396,24 @@ pub async fn execute(
     // abort without having paid for a scan.
     let registry = SerializerRegistry::with_defaults();
     let plan = resolve_dispatch(&registry, &args.format, &args.output)?;
+
+    // FR-002 / research.md §R2: when the deprecated SPDX 3 alias is
+    // in the resolved format list, print a two-line stderr notice
+    // (deprecation directive + shape-change advisory) exactly once
+    // per invocation. Suppress with
+    // `MIKEBOM_NO_DEPRECATION_NOTICE=<anything>` so CI logs of
+    // pipelines on a controlled migration don't drown in repeats.
+    // Bytes emitted are unaffected by this flag.
+    if plan.formats.iter().any(|f| f == SPDX_3_DEPRECATED_ALIAS)
+        && std::env::var_os(NO_DEPRECATION_NOTICE_ENV).is_none()
+    {
+        eprintln!(
+            "warning: --format {SPDX_3_DEPRECATED_ALIAS} is deprecated; use --format spdx-3-json instead."
+        );
+        eprintln!(
+            "note: in this release the alias produces full-coverage SPDX 3 output across all 9 ecosystems — pre-011 releases of this alias emitted an npm-only stub. If your pipeline asserted byte-equality against the milestone-010 stub shape, those assertions will need updating."
+        );
+    }
 
     // `--image` dispatches to Docker-tarball extraction, then falls
     // through into the same scan path. Keeping both modes on one code

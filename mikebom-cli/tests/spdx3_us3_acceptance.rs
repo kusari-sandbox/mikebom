@@ -314,3 +314,116 @@ fn scenario_5_opt_in_not_selected_produces_no_spdx3_artifact() {
     );
     assert!(tmp.path().join("mikebom.cdx.json").exists());
 }
+
+// ---------- milestone 011 US3: alias-deprecation semantics --------
+//
+// Three scenarios from the milestone-011 spec's US3 + research.md
+// §R2 + contract §4:
+//   (6) alias exits zero + prints the two-line stderr deprecation
+//       notice exactly once per invocation
+//   (7) alias bytes are byte-identical to the stable identifier's
+//       bytes for the same scan (research.md §R6)
+//   (8) MIKEBOM_NO_DEPRECATION_NOTICE=1 suppresses the stderr
+//       warning without changing the document bytes
+
+/// Helper: run mikebom against the npm fixture with the given
+/// format identifier and optional env override. Returns
+/// (document_bytes, stderr_text).
+fn run_scan_with_format(
+    format: &str,
+    extra_env: &[(&str, &str)],
+) -> (Vec<u8>, String) {
+    let fx = workspace_root().join("tests/fixtures/npm/node-modules-walk");
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let fake_home = tempfile::tempdir().expect("fake-home tempdir");
+    let out_path = tmp.path().join("out.spdx3.json");
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_mikebom"));
+    cmd.env("HOME", fake_home.path())
+        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
+        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
+        .env("GOPATH", fake_home.path().join("no-gopath"))
+        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
+        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"));
+    for (k, v) in extra_env {
+        cmd.env(k, v);
+    }
+    let out = cmd
+        .arg("--offline")
+        .arg("sbom")
+        .arg("scan")
+        .arg("--path")
+        .arg(&fx)
+        .arg("--format")
+        .arg(format)
+        .arg("--output")
+        .arg(format!("{format}={}", out_path.to_string_lossy()))
+        .arg("--no-deep-hash")
+        .output()
+        .expect("mikebom runs");
+    assert!(
+        out.status.success(),
+        "scan failed for {format}: stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let bytes = std::fs::read(&out_path).expect("output written");
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    (bytes, stderr)
+}
+
+#[test]
+fn scenario_6_alias_emits_two_line_deprecation_notice_once_per_invocation() {
+    let (_bytes, stderr) = run_scan_with_format("spdx-3-json-experimental", &[]);
+    assert!(
+        stderr.contains("warning: --format spdx-3-json-experimental is deprecated"),
+        "alias must emit the deprecation directive on stderr; got:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("pre-011 releases of this alias emitted an npm-only stub"),
+        "deprecation notice must carry the shape-change advisory per research.md §R2; got:\n{stderr}"
+    );
+    // Exactly once per invocation — two-line notice, not four
+    // (would indicate double-emission).
+    let warning_count = stderr.matches("warning: --format").count();
+    assert_eq!(
+        warning_count, 1,
+        "deprecation notice must emit exactly once, got {warning_count} occurrences:\n{stderr}"
+    );
+}
+
+#[test]
+fn scenario_7_alias_bytes_are_byte_identical_to_stable_identifier() {
+    let (alias_bytes, _) = run_scan_with_format("spdx-3-json-experimental", &[]);
+    let (stable_bytes, stable_stderr) = run_scan_with_format("spdx-3-json", &[]);
+    assert_eq!(
+        alias_bytes, stable_bytes,
+        "alias output must be byte-identical to stable per research.md §R6 / contract §4"
+    );
+    // Stable identifier must NOT emit a deprecation notice.
+    assert!(
+        !stable_stderr.contains("deprecated"),
+        "stable identifier must not emit deprecation notice; got:\n{stable_stderr}"
+    );
+}
+
+#[test]
+fn scenario_8_mikebom_no_deprecation_notice_env_suppresses_stderr_warning() {
+    let (bytes_with_notice, stderr_with) =
+        run_scan_with_format("spdx-3-json-experimental", &[]);
+    let (bytes_without_notice, stderr_without) = run_scan_with_format(
+        "spdx-3-json-experimental",
+        &[("MIKEBOM_NO_DEPRECATION_NOTICE", "1")],
+    );
+    assert!(
+        stderr_with.contains("deprecated"),
+        "baseline invocation should emit the notice; got:\n{stderr_with}"
+    );
+    assert!(
+        !stderr_without.contains("deprecated"),
+        "MIKEBOM_NO_DEPRECATION_NOTICE=1 must suppress the warning; got:\n{stderr_without}"
+    );
+    // Document bytes are unaffected by the env flag.
+    assert_eq!(
+        bytes_with_notice, bytes_without_notice,
+        "suppressing the notice must not change the emitted document bytes"
+    );
+}

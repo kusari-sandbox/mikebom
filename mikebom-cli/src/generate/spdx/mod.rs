@@ -1,15 +1,25 @@
-//! SPDX output serializers (milestone 010).
+//! SPDX output serializers (milestones 010 + 011).
 //!
-//! Two user-facing formats live here:
+//! Two stable user-facing formats live here plus one deprecated
+//! alias:
 //!
 //! * `spdx-2.3-json` — stable, covers all ecosystems supported by the
 //!   CycloneDX path. See [`document`], [`packages`], [`relationships`].
-//! * `spdx-3-json-experimental` — opt-in stub covering one ecosystem
-//!   (npm); targets SPDX 3.0.1 JSON-LD. See [`v3_stub`].
+//! * `spdx-3-json` — stable SPDX 3.0.1 JSON-LD emitter, full ecosystem
+//!   coverage with mikebom-specific signal fidelity vs. the SPDX 2.3
+//!   path. See [`v3_document`], [`v3_packages`], [`v3_relationships`],
+//!   [`v3_licenses`], [`v3_agents`], [`v3_external_ids`],
+//!   [`v3_annotations`].
+//! * `spdx-3-json-experimental` — deprecated alias (milestone 010
+//!   legacy). Delegates verbatim to the stable `spdx-3-json`
+//!   serializer; byte-identical output; removed in milestone 013 per
+//!   research.md §R2. Prints a stderr deprecation notice at
+//!   invocation time via the CLI layer in `cli/scan_cmd.rs`.
 //!
-//! Mikebom-specific data without a native SPDX 2.3 home is preserved
-//! losslessly via [`annotations`] with a versioned JSON envelope per
-//! `contracts/mikebom-annotation.schema.json`.
+//! Mikebom-specific data without a native SPDX 2.3 / 3.0.1 home is
+//! preserved losslessly via [`annotations`] (SPDX 2.3) and
+//! [`v3_annotations`] (SPDX 3) using the same versioned JSON envelope
+//! per `contracts/mikebom-annotation.schema.json`.
 //!
 //! The data-placement map in `docs/reference/sbom-format-mapping.md`
 //! is the authoritative cross-format contract these serializers honor.
@@ -26,7 +36,6 @@ pub mod v3_external_ids;
 pub mod v3_licenses;
 pub mod v3_packages;
 pub mod v3_relationships;
-pub mod v3_stub;
 
 use std::path::PathBuf;
 
@@ -43,7 +52,7 @@ use super::{EmittedArtifact, OutputConfig, SbomSerializer, ScanArtifacts};
 /// `Utc::now()` / `Uuid::new_v4()` inside the serialization path.
 pub struct Spdx2_3JsonSerializer;
 
-/// SPDX 3.0.1 stable serializer (milestone 011 US1+US2).
+/// SPDX 3.0.1 stable serializer (milestone 011).
 ///
 /// Full coverage across all 9 ecosystems mikebom supports
 /// (apk, cargo, deb, gem, go, maven, npm, pip, rpm); produces a
@@ -53,11 +62,8 @@ pub struct Spdx2_3JsonSerializer;
 /// signal fidelity vs. the SPDX 2.3 serializer (every `mikebom:*`
 /// field reaches SPDX 3 either as a typed native property or as
 /// an `Annotation` element under the Q2 strict-match rule).
-///
-/// During milestone-011 Phase 2 (foundational), `experimental()`
-/// returns `true` so CLI help still labels the format experimental
-/// — the flag flips to `false` in US3 (T029) once US1+US2's
-/// acceptance tests pass and the emitter is at parity with SPDX 2.3.
+/// `experimental()` returns `false` — this is a first-class
+/// production-grade output format.
 pub struct Spdx3JsonSerializer;
 
 impl SbomSerializer for Spdx3JsonSerializer {
@@ -70,8 +76,7 @@ impl SbomSerializer for Spdx3JsonSerializer {
     }
 
     fn experimental(&self) -> bool {
-        // Flips to `false` in US3 (T029) once full parity lands.
-        true
+        false
     }
 
     fn serialize(
@@ -113,21 +118,23 @@ impl SbomSerializer for Spdx3JsonSerializer {
 /// milestone 011 alias).
 ///
 /// Per spec FR-002 + research.md §R6: this identifier was the
-/// milestone-010 experimental stub (`spdx-3-json-experimental`).
-/// Milestone 011 retains the identifier as a deprecation alias
-/// that delegates to [`Spdx3JsonSerializer::serialize`] verbatim
-/// — byte-identical output, same `mikebom.spdx3.json` default
-/// filename, no comment-marker injection. The deprecation signal
-/// is carried by the stderr notice (emitted by the CLI dispatch
-/// layer in `cli/scan_cmd.rs`) plus the help-text "(deprecated)"
-/// annotation, **not** by a per-document marker.
+/// milestone-010 experimental stub. Milestone 011 retains it as a
+/// deprecation alias that delegates to [`Spdx3JsonSerializer::serialize`]
+/// verbatim — byte-identical output, same `mikebom.spdx3.json`
+/// default filename, no comment-marker injection.
+///
+/// The deprecation signal is carried by the stderr notice (emitted
+/// by the CLI dispatch layer in `cli/scan_cmd.rs`) plus the
+/// help-text "[DEPRECATED]" annotation (via the
+/// [`crate::generate::SbomSerializer`]-adjacent rendering in
+/// `format_help_list`). `experimental()` returns `false` — the
+/// alias output is production-grade (same bytes as the stable
+/// emitter), it's the *identifier* that's on a deprecation path,
+/// not the output quality.
 ///
 /// Lifecycle: alias accepted through milestone 012; removed in
 /// milestone 013 unless usage signals say otherwise (research.md
-/// §R2). `experimental()` returns `true` during Phase 2 so help
-/// text still flags it; flips to `false` in T030 once the
-/// Phase-3/4 implementation work lands and the alias becomes a
-/// pure deprecation track to a stable emitter.
+/// §R2).
 pub struct Spdx3JsonExperimentalSerializer;
 
 impl SbomSerializer for Spdx3JsonExperimentalSerializer {
@@ -144,10 +151,13 @@ impl SbomSerializer for Spdx3JsonExperimentalSerializer {
     }
 
     fn experimental(&self) -> bool {
-        // Flips to `false` in US3 (T030) — alias becomes a pure
-        // deprecation track to the stable emitter, no longer
-        // experimental quality.
-        true
+        // False — the alias's output is byte-identical to the
+        // stable emitter (production-grade), so the constitution's
+        // experimental-labeling clause doesn't apply. The
+        // lifecycle signal (deprecation) is carried by the help
+        // text + stderr notice, NOT by the `experimental` trait
+        // flag.
+        false
     }
 
     fn serialize(

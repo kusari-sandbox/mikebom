@@ -1,21 +1,14 @@
-//! SPDX 3 CLI-surface labeling tests.
+//! SPDX 3 CLI-surface labeling tests (milestone 011 US3 / T027).
 //!
-//! Scoped across milestone 010 → milestone 011 Phase 3 → US3:
-//!
-//!   * Milestone 010 (the experimental stub): `--help` text marks
-//!     `spdx-3-json-experimental` with `[EXPERIMENTAL]`. Typo
-//!     `spdx-3-json` (no suffix) rejected with a "did you mean"
-//!     hint. All three assertions live here.
-//!   * Milestone 011 Phase 3 (this state): `spdx-3-json` is now a
-//!     first-class identifier, routing through the
-//!     full-ecosystem-coverage emitter, still labeled
-//!     `[EXPERIMENTAL]` pending US3's flip. `spdx-3-json-experimental`
-//!     is the deprecated alias, also labeled `[EXPERIMENTAL]`.
-//!     "Did you mean" test is retired (the typo is no longer a
-//!     typo).
-//!   * Milestone 011 US3 (T027 rewrites this file): stable
-//!     identifier loses `[EXPERIMENTAL]` in help; alias gets
-//!     `[DEPRECATED]` instead.
+//! Post-US3 state:
+//!   * `spdx-3-json` appears in `--help` with **no** `[EXPERIMENTAL]`
+//!     annotation — it's a first-class production format.
+//!   * `spdx-3-json-experimental` still accepted but labeled
+//!     `[DEPRECATED]` in the unknown-format-error known-id list
+//!     (surface-level signal to pick a different id).
+//!   * The bare `spdx-3-json` form is a valid registered identifier
+//!     (regression guard for the milestone-010 typo-guard
+//!     retirement).
 
 use std::process::Command;
 
@@ -24,7 +17,7 @@ fn bin() -> &'static str {
 }
 
 #[test]
-fn help_text_labels_spdx_3_as_experimental() {
+fn help_text_lists_both_spdx_3_identifiers_without_experimental_label() {
     let output = Command::new(bin())
         .arg("sbom")
         .arg("scan")
@@ -35,15 +28,22 @@ fn help_text_labels_spdx_3_as_experimental() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
         stdout.contains("spdx-3-json"),
-        "--help text should mention the spdx-3-json format id, got:\n{stdout}"
+        "--help text should mention the stable identifier, got:\n{stdout}"
     );
     assert!(
         stdout.contains("spdx-3-json-experimental"),
         "--help text should still mention the deprecated alias, got:\n{stdout}"
     );
+    // [EXPERIMENTAL] must not appear in help — neither SPDX 3
+    // identifier carries the label after US3 (research.md §R6).
     assert!(
-        stdout.contains("[EXPERIMENTAL"),
-        "--help text should label the SPDX 3 entries as [EXPERIMENTAL] (during milestone-011 Phase 3 both identifiers carry the label; US3 T029 retires it for the stable one), got:\n{stdout}"
+        !stdout.contains("[EXPERIMENTAL"),
+        "--help text must not carry [EXPERIMENTAL] after US3 flip; got:\n{stdout}"
+    );
+    // The deprecation signal is surfaced in the doc comment text.
+    assert!(
+        stdout.contains("DEPRECATED"),
+        "--help text should mark the alias as deprecated; got:\n{stdout}"
     );
 }
 
@@ -90,10 +90,16 @@ fn spdx_3_json_is_a_first_class_format() {
         "spdx-3-json invocation should have written {}",
         out_path.display()
     );
+    // No stderr deprecation notice when invoking the stable id.
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("deprecated"),
+        "stable identifier must not emit a deprecation notice; stderr=\n{stderr}"
+    );
 }
 
 #[test]
-fn unknown_format_error_includes_experimental_label_in_known_list() {
+fn unknown_format_error_labels_alias_as_deprecated_in_known_list() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let output = Command::new(bin())
@@ -115,12 +121,15 @@ fn unknown_format_error_includes_experimental_label_in_known_list() {
         .expect("mikebom runs");
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    // The error lists every registered id; SPDX 3 entries should
-    // carry their label so the reader sees what's stable vs not
-    // when picking from the list.
+    // Post-US3: the unknown-format-error known-id list labels the
+    // alias `[DEPRECATED]` instead of `[EXPERIMENTAL]`. The stable
+    // `spdx-3-json` carries no label.
     assert!(
-        stderr.contains("spdx-3-json-experimental [EXPERIMENTAL]"),
-        "unknown-format error's known-id list should label experimental \
-         formats, got:\n{stderr}"
+        stderr.contains("spdx-3-json-experimental [DEPRECATED]"),
+        "unknown-format error should label the alias as deprecated, got:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("spdx-3-json-experimental [EXPERIMENTAL]"),
+        "US3 retired the [EXPERIMENTAL] label on the alias, got:\n{stderr}"
     );
 }
