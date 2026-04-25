@@ -387,29 +387,41 @@ impl EventAggregator {
             })
             .collect();
 
-        // Build summaries
-        let unique_hosts: Vec<String> = {
-            let mut hosts: Vec<String> = connections
-                .iter()
-                .filter_map(|c| c.destination.hostname.clone())
-                .collect();
-            hosts.sort();
-            hosts.dedup();
-            hosts
-        };
-        let unique_ips: Vec<String> = {
-            let mut ips: Vec<String> = connections.iter().map(|c| c.destination.ip.clone()).collect();
-            ips.sort();
-            ips.dedup();
-            ips
-        };
+        // Build summaries.
+        //
+        // For unique_hosts / unique_ips: dedupe via BTreeSet<&str>
+        // (one `as_deref` / `as_str` borrow per connection, zero
+        // clones), then materialize Strings only for the unique
+        // entries that survive. Pre-cleanup pattern was
+        // `clone-into-Vec → sort → dedup`, which cloned every
+        // hostname/IP that appeared, including duplicates — wasted
+        // ~one String allocation per redundant connection on
+        // duplicate-heavy traces.
+        let unique_hosts: Vec<String> = connections
+            .iter()
+            .filter_map(|c| c.destination.hostname.as_deref())
+            .collect::<std::collections::BTreeSet<&str>>()
+            .into_iter()
+            .map(String::from)
+            .collect();
+        let unique_ips: Vec<String> = connections
+            .iter()
+            .map(|c| c.destination.ip.as_str())
+            .collect::<std::collections::BTreeSet<&str>>()
+            .into_iter()
+            .map(String::from)
+            .collect();
+        // Avoid `serde_json::to_string(&conn.protocol)` here —
+        // serializing a unit-variant enum to JSON allocates a
+        // writer, formats `"Tcp"` with quotes, then we trim them
+        // back off and `.to_string()` again. A static-str match is
+        // ~one to two orders of magnitude cheaper per iteration
+        // and produces the same wire shape.
         let mut protocol_counts = std::collections::BTreeMap::new();
         for conn in &connections {
-            let key = serde_json::to_string(&conn.protocol)
-                .unwrap_or_else(|_| "unknown".to_string())
-                .trim_matches('"')
-                .to_string();
-            *protocol_counts.entry(key).or_insert(0u64) += 1;
+            *protocol_counts
+                .entry(protocol_key(&conn.protocol).to_string())
+                .or_insert(0u64) += 1;
         }
         let total_bytes_received: u64 = connections.iter().map(|c| c.bytes_received).sum();
 
@@ -425,21 +437,24 @@ impl EventAggregator {
             },
         };
 
-        // File access summary
+        // File access summary. Same trick as protocol_counts above:
+        // a static-str match replaces the JSON-serialize-then-trim-
+        // quotes round-trip per iteration.
         let mut ops_by_type = std::collections::BTreeMap::new();
         for op in &self.file_ops {
-            let key = serde_json::to_string(&op.operation)
-                .unwrap_or_else(|_| "unknown".to_string())
-                .trim_matches('"')
-                .to_string();
-            *ops_by_type.entry(key).or_insert(0u64) += 1;
+            *ops_by_type
+                .entry(file_op_key(&op.operation).to_string())
+                .or_insert(0u64) += 1;
         }
-        let unique_paths = {
-            let mut paths: Vec<&str> = self.file_ops.iter().map(|o| o.path.as_str()).collect();
-            paths.sort();
-            paths.dedup();
-            paths.len() as u64
-        };
+        // Count distinct paths via BTreeSet<&str> in one pass —
+        // no Vec, no sort, no dedup. Same complexity, fewer
+        // intermediates.
+        let unique_paths = self
+            .file_ops
+            .iter()
+            .map(|o| o.path.as_str())
+            .collect::<std::collections::BTreeSet<&str>>()
+            .len() as u64;
 
         let total_file_ops = self.file_ops.len() as u64;
         let file_access = FileAccess {
@@ -472,6 +487,31 @@ impl EventAggregator {
 fn comm_to_string(comm: &[u8; 16]) -> String {
     let len = comm.iter().position(|&b| b == 0).unwrap_or(16);
     String::from_utf8_lossy(&comm[..len]).to_string()
+}
+
+/// String form of a `Protocol` enum variant, matching the wire shape
+/// the previous `serde_json::to_string + trim_matches('"')` round-trip
+/// produced. Used as the key in `NetworkSummary::protocol_counts`.
+/// Keep these strings byte-identical to serde's output for backward
+/// compatibility with consumers parsing existing attestations.
+fn protocol_key(p: &Protocol) -> &'static str {
+    match p {
+        Protocol::Tcp => "Tcp",
+        Protocol::Http => "Http",
+        Protocol::Https => "Https",
+    }
+}
+
+/// String form of a `FileOpType` enum variant, matching the wire
+/// shape the previous `serde_json::to_string + trim_matches('"')`
+/// round-trip produced. Used as the key in
+/// `FileAccessSummary::operations_by_type`.
+fn file_op_key(op: &FileOpType) -> &'static str {
+    match op {
+        FileOpType::Read => "Read",
+        FileOpType::Write => "Write",
+        FileOpType::Create => "Create",
+    }
 }
 
 /// Known package-registry hostnames. Matched as substrings of TLS plaintext
