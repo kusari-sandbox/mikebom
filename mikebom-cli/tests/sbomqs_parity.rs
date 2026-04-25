@@ -100,11 +100,12 @@ const NATIVE_FEATURES: &[&str] = &[
 fn produce_sboms(
     case: &EcosystemCase,
     tmp: &std::path::Path,
-) -> (PathBuf, PathBuf) {
+) -> (PathBuf, PathBuf, PathBuf) {
     let fx = workspace_root().join("tests/fixtures").join(case.fixture_subpath);
     let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let cdx = tmp.join("out.cdx.json");
     let spdx = tmp.join("out.spdx.json");
+    let spdx3 = tmp.join("out.spdx3.json");
     let bin = env!("CARGO_BIN_EXE_mikebom");
     let mut cmd = Command::new(bin);
     cmd.env("HOME", fake_home.path())
@@ -119,11 +120,13 @@ fn produce_sboms(
         .arg("--path")
         .arg(&fx)
         .arg("--format")
-        .arg("cyclonedx-json,spdx-2.3-json")
+        .arg("cyclonedx-json,spdx-2.3-json,spdx-3-json")
         .arg("--output")
         .arg(format!("cyclonedx-json={}", cdx.to_string_lossy()))
         .arg("--output")
         .arg(format!("spdx-2.3-json={}", spdx.to_string_lossy()))
+        .arg("--output")
+        .arg(format!("spdx-3-json={}", spdx3.to_string_lossy()))
         .arg("--no-deep-hash");
     if let Some(code) = case.deb_codename {
         cmd.arg("--deb-codename").arg(code);
@@ -135,25 +138,50 @@ fn produce_sboms(
         case.label,
         String::from_utf8_lossy(&final_out.stderr)
     );
-    (cdx, spdx)
+    (cdx, spdx, spdx3)
+}
+
+/// Return value of [`sbomqs_feature_scores`]. The `Unsupported`
+/// variant lets callers distinguish "sbomqs doesn't recognize this
+/// format" (SPDX 3.0.1 as of sbomqs v2.0.6) from "sbomqs scored the
+/// format and these are the keys it graded."
+enum SbomqsScoreResult {
+    Scored(std::collections::BTreeMap<String, f64>),
+    /// sbomqs rejected the document with "Unsupported SBOM
+    /// specification" (e.g., SPDX 3 under sbomqs v2.0.6) — the
+    /// caller treats this as a graceful skip.
+    Unsupported,
 }
 
 fn sbomqs_feature_scores(
     sbomqs: &std::path::Path,
     doc: &std::path::Path,
-) -> std::collections::BTreeMap<String, f64> {
+) -> SbomqsScoreResult {
     let out = Command::new(sbomqs)
         .arg("score")
         .arg("--json")
         .arg(doc)
         .output()
         .expect("sbomqs runs");
-    assert!(
-        out.status.success(),
-        "sbomqs score failed for {}: stderr={}",
-        doc.display(),
-        String::from_utf8_lossy(&out.stderr)
-    );
+    if !out.status.success() {
+        // sbomqs v2.0.6 prints `Unsupported SBOM specification`
+        // and exits non-zero when it doesn't recognize the format
+        // (e.g., SPDX 3.0.1). Detect that shape and report back
+        // as Unsupported rather than failing the test — SPDX 3
+        // scoring starts working automatically when upstream
+        // sbomqs adds a reader.
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        if stderr.contains("Unsupported SBOM specification")
+            || stderr.contains("unsupported sbom format")
+            || stderr.contains("no valid SBOM files processed")
+        {
+            return SbomqsScoreResult::Unsupported;
+        }
+        panic!(
+            "sbomqs score failed for {}: stderr={stderr}",
+            doc.display(),
+        );
+    }
     let body: serde_json::Value =
         serde_json::from_slice(&out.stdout).expect("sbomqs emits JSON");
     // sbomqs v2 JSON shape:
@@ -166,7 +194,7 @@ fn sbomqs_feature_scores(
         .pointer("/files/0/comprehenssive")
         .and_then(|v| v.as_array())
     else {
-        return scores;
+        return SbomqsScoreResult::Scored(scores);
     };
     for cat in categories {
         let Some(features) = cat["features"].as_array() else {
@@ -182,20 +210,39 @@ fn sbomqs_feature_scores(
             scores.insert(key.to_string(), score);
         }
     }
-    scores
+    SbomqsScoreResult::Scored(scores)
 }
 
 fn run_case(sbomqs: &std::path::Path, case: &EcosystemCase) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let (cdx_path, spdx_path) = produce_sboms(case, tmp.path());
-    let cdx_scores = sbomqs_feature_scores(sbomqs, &cdx_path);
-    let spdx_scores = sbomqs_feature_scores(sbomqs, &spdx_path);
+    let (cdx_path, spdx_path, spdx3_path) = produce_sboms(case, tmp.path());
+    let cdx_scores = match sbomqs_feature_scores(sbomqs, &cdx_path) {
+        SbomqsScoreResult::Scored(m) => m,
+        SbomqsScoreResult::Unsupported => panic!(
+            "{}: sbomqs can't parse mikebom's CycloneDX output — that's a \
+             real regression",
+            case.label
+        ),
+    };
+    let spdx_scores = match sbomqs_feature_scores(sbomqs, &spdx_path) {
+        SbomqsScoreResult::Scored(m) => m,
+        SbomqsScoreResult::Unsupported => panic!(
+            "{}: sbomqs can't parse mikebom's SPDX 2.3 output — that's a \
+             real regression",
+            case.label
+        ),
+    };
+    // SPDX 3 is tri-state: Scored (upstream supports it — score it),
+    // Unsupported (upstream doesn't yet — graceful skip with a
+    // visible diagnostic).
+    let spdx3_scores = sbomqs_feature_scores(sbomqs, &spdx3_path);
 
     // For every NATIVE_FEATURES entry sbomqs scored on CDX, the
-    // SPDX score must be ≥ CDX. Features absent from CDX are a
-    // silent pass (sbomqs doesn't grade what the scan didn't
-    // produce). Features absent from SPDX but present in CDX are
-    // a hard fail — that's real data-placement regression.
+    // SPDX 2.3 and SPDX 3 scores must each be ≥ CDX. Features
+    // absent from CDX are a silent pass (sbomqs doesn't grade
+    // what the scan didn't produce). Features absent from SPDX
+    // but present in CDX are a hard fail — real data-placement
+    // regression. Milestone 011 SC-001 extends this to SPDX 3.
     let mut regressions: Vec<String> = Vec::new();
     for feat in NATIVE_FEATURES {
         let Some(&cdx_score) = cdx_scores.get(*feat) else {
@@ -204,9 +251,31 @@ fn run_case(sbomqs: &std::path::Path, case: &EcosystemCase) {
         let spdx_score = spdx_scores.get(*feat).copied().unwrap_or(0.0);
         if spdx_score < cdx_score {
             regressions.push(format!(
-                "  {feat:<30}  CDX={cdx_score:>4.1}  SPDX={spdx_score:>4.1}"
+                "  [SPDX 2.3] {feat:<30}  CDX={cdx_score:>4.1}  SPDX={spdx_score:>4.1}"
             ));
         }
+        if let SbomqsScoreResult::Scored(ref spdx3) = spdx3_scores {
+            let spdx3_score = spdx3.get(*feat).copied().unwrap_or(0.0);
+            if spdx3_score < cdx_score {
+                regressions.push(format!(
+                    "  [SPDX 3  ] {feat:<30}  CDX={cdx_score:>4.1}  SPDX3={spdx3_score:>4.1}"
+                ));
+            }
+        }
+    }
+    if matches!(spdx3_scores, SbomqsScoreResult::Unsupported) {
+        // Visible diagnostic so a reader of the test log sees
+        // why SPDX 3 coverage was skipped. When sbomqs adds SPDX
+        // 3 support, the skip path disappears and SC-001
+        // enforcement starts firing for SPDX 3 automatically.
+        eprintln!(
+            "[sbomqs_parity] {}: SPDX 3 scoring skipped — sbomqs does not \
+             yet parse SPDX 3.0.1 JSON-LD (v2.0.6 reports 'unsupported \
+             sbom format'). SC-001 enforcement for SPDX 3 will activate \
+             automatically once upstream sbomqs adds a reader; until \
+             then, CDX ↔ SPDX 2.3 parity remains enforced.",
+            case.label
+        );
     }
     assert!(
         regressions.is_empty(),
