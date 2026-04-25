@@ -30,6 +30,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Don't write the auto-provisioned GITHUB_TOKEN into the
+          # checked-out repo's `.git/config`. The CI flow doesn't push
+          # back to GitHub, so the token isn't needed post-checkout;
+          # leaving it out closes a potential leakage path if a
+          # future step ever ends up uploading the working directory
+          # as an artifact. Best-practice per OWASP CI/CD top-10
+          # CICD-SEC-1 + Kusari Inspector hardening guidance.
+          persist-credentials: false
 
       - name: Install eBPF build deps
         run: |
@@ -119,6 +128,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false  # see lint-and-test job for rationale
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable (2026-04-25)
