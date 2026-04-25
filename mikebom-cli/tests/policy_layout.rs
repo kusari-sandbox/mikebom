@@ -26,10 +26,10 @@ use mikebom_common::attestation::statement::{
 use mikebom_common::types::timestamp::Timestamp;
 use sigstore::crypto::SigningScheme;
 
-fn bin() -> &'static str {
-    env!("CARGO_BIN_EXE_mikebom")
-}
 
+
+mod common;
+use common::bin;
 fn minimal_statement() -> InTotoStatement {
     let mut digest = std::collections::BTreeMap::new();
     digest.insert("sha256".to_string(), "a".repeat(64));

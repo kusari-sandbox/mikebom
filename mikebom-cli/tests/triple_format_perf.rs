@@ -34,10 +34,10 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-fn bin() -> &'static str {
-    env!("CARGO_BIN_EXE_mikebom")
-}
 
+
+mod common;
+use common::bin;
 struct ImageFile {
     path: &'static str,
     content: Vec<u8>,

@@ -12,10 +12,10 @@
 
 use std::process::Command;
 
-fn bin() -> &'static str {
-    env!("CARGO_BIN_EXE_mikebom")
-}
 
+
+mod common;
+use common::bin;
 #[test]
 fn help_text_lists_both_spdx_3_identifiers_without_experimental_label() {
     let output = Command::new(bin())

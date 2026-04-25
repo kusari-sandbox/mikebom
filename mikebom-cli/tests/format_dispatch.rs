@@ -11,6 +11,9 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+
+mod common;
+use common::bin;
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -25,9 +28,6 @@ fn cargo_fixture() -> PathBuf {
     workspace_root().join("tests/fixtures/cargo/lockfile-v3")
 }
 
-fn bin() -> &'static str {
-    env!("CARGO_BIN_EXE_mikebom")
-}
 
 /// Run `mikebom sbom scan` with the given extra args, returning the
 /// completed process output. The caller chooses the working

@@ -11,6 +11,9 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+
+mod common;
+use common::bin;
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -18,9 +21,6 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-fn bin() -> &'static str {
-    env!("CARGO_BIN_EXE_mikebom")
-}
 
 /// Produce the three format outputs for the npm fixture into
 /// `<dir>/mikebom.cdx.json` etc.

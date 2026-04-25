@@ -5,10 +5,10 @@
 use std::path::Path;
 use std::process::Command;
 
-fn bin() -> &'static str {
-    env!("CARGO_BIN_EXE_mikebom")
-}
 
+
+mod common;
+use common::bin;
 fn sample_sbom() -> serde_json::Value {
     serde_json::json!({
         "bomFormat": "CycloneDX",
