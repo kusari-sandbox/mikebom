@@ -163,8 +163,43 @@ pub struct SpdxDocument {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub external_document_refs: Vec<SpdxExternalDocumentRef>,
+    /// Document-level `hasExtractedLicensingInfos[]` array (SPDX 2.3
+    /// §10.1) — holds one entry per distinct `LicenseRef-<hash>`
+    /// referenced by any Package's `licenseDeclared` /
+    /// `licenseConcluded`. Emitted by milestone 012 US3 when any
+    /// CycloneDX license expression fails SPDX canonicalization
+    /// (per the all-or-nothing rule, clarification Q1).
+    /// `skip_serializing_if = "Vec::is_empty"` keeps existing scans
+    /// byte-identical — a scan producing only canonicalizable
+    /// licenses emits no `hasExtractedLicensingInfos` key at all.
+    #[serde(
+        rename = "hasExtractedLicensingInfos",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub has_extracted_licensing_infos: Vec<SpdxExtractedLicensingInfo>,
     #[serde(rename = "documentDescribes")]
     pub document_describes: Vec<SpdxId>,
+}
+
+/// SPDX 2.3 §10 `hasExtractedLicensingInfos[]` entry. Emitted when
+/// the source CycloneDX `licenses[]` carries a term that SPDX's
+/// expression grammar can't canonicalize (e.g. `"GNU General Public"`
+/// — common free-text strings that lack an SPDX list ID).
+///
+/// Milestone 012 US3: the `license_id` is a deterministic content-
+/// addressed `LicenseRef-<16-char-base32-sha256-prefix>` (derived
+/// via `SpdxId::for_license_ref`); `extracted_text` is the raw
+/// CycloneDX entries joined by ` AND ` verbatim (lossless); `name`
+/// is the fixed literal `"mikebom-extracted-license"` (SPDX §10.4
+/// requires `name` non-empty but the value is not consumer-
+/// significant).
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SpdxExtractedLicensingInfo {
+    #[serde(rename = "licenseId")]
+    pub license_id: String,
+    #[serde(rename = "extractedText")]
+    pub extracted_text: String,
+    pub name: String,
 }
 
 /// Assemble the SPDX 2.3 document envelope from a scan.
@@ -196,7 +231,7 @@ pub fn build_document(
         .created
         .to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
 
-    let packages =
+    let (packages, has_extracted_licensing_infos) =
         super::packages::build_packages(artifacts, &annotator, &date);
 
     // Root selection: deterministic single-root algorithm.
@@ -279,6 +314,7 @@ pub fn build_document(
         relationships,
         annotations,
         external_document_refs: Vec::new(),
+        has_extracted_licensing_infos,
         document_describes: vec![root_id],
     }
 }

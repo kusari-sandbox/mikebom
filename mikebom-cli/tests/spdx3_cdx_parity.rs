@@ -243,6 +243,36 @@ fn assert_parity(case: &EcosystemCase) {
             "{}: checksum-set drift for {purl}:\n  CDX: {cdx_checksums:?}\n  SPDX 3: {spdx3_checksums:?}",
             case.label
         );
+
+        // Milestone 012 US1 / T003: per-Package CPE presence check.
+        // If CDX emits a `component.cpe` value, that exact string
+        // MUST appear as a `cpe23` ExternalIdentifier on the matching
+        // SPDX 3 Package. SPDX 3 may carry MORE cpe23 entries (per
+        // FR-003 — every fully-resolved candidate); we only enforce
+        // the directional containment here.
+        if let Some(cdx_cpe) = c.get("cpe").and_then(|v| v.as_str()) {
+            let pkg_cpes: BTreeSet<String> = pkg
+                .get("externalIdentifier")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter(|e| {
+                            e.get("externalIdentifierType").and_then(|v| v.as_str())
+                                == Some("cpe23")
+                        })
+                        .filter_map(|e| {
+                            e.get("identifier").and_then(|v| v.as_str()).map(String::from)
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            assert!(
+                pkg_cpes.contains(cdx_cpe),
+                "{}: CDX CPE {cdx_cpe} for component {purl} has no matching \
+                 cpe23 ExternalIdentifier on SPDX 3 Package. Package's cpe23 set: {pkg_cpes:?}",
+                case.label
+            );
+        }
     }
 
     // (1, reverse): every SPDX 3 Package (that isn't the synthetic

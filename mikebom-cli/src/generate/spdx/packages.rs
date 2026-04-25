@@ -67,6 +67,13 @@ pub enum SpdxLicenseField {
     /// for upstream sources that explicitly assert "no license."
     #[allow(dead_code)]
     None,
+    /// SPDX 2.3 §10.1 `LicenseRef-<hash>` reference. Emitted when
+    /// the source CycloneDX `licenses[]` contained any term that
+    /// fails `spdx::Expression::try_canonical` — the all-or-nothing
+    /// rule per milestone-012 clarification Q1. The document-level
+    /// `hasExtractedLicensingInfos[]` array carries the matching
+    /// entry with `extractedText` holding the raw expression.
+    LicenseRef(String),
 }
 
 impl serde::Serialize for SpdxLicenseField {
@@ -75,6 +82,9 @@ impl serde::Serialize for SpdxLicenseField {
             Self::Expression(s) => ser.serialize_str(s),
             Self::NoAssertion => ser.serialize_str("NOASSERTION"),
             Self::None => ser.serialize_str("NONE"),
+            // Emits a bare string like `"LicenseRef-ABC123…"` so the
+            // output shape matches the canonical `Expression(s)` arm.
+            Self::LicenseRef(s) => ser.serialize_str(s),
         }
     }
 }
@@ -140,41 +150,63 @@ pub struct SpdxPackage {
     pub annotations: Vec<SpdxAnnotation>,
 }
 
-/// Canonicalize an `SpdxExpression` via the `spdx` crate. If the
-/// expression fails to parse we emit `NOASSERTION` per the spec's
-/// "License data mikebom cannot parse" edge case (spec.md Edge
-/// Cases + FR-009). The raw text is not lost — US2 preserves it
-/// via an annotation when it lands; US1 just refuses to fabricate
-/// a legal-but-wrong expression.
-fn canonicalize_license(expr: &SpdxExpression) -> SpdxLicenseField {
-    match SpdxExpression::try_canonical(expr.as_str()) {
-        Ok(canon) => SpdxLicenseField::Expression(canon.as_str().to_string()),
-        Err(_) => SpdxLicenseField::NoAssertion,
-    }
-}
-
-/// Reduce a `Vec<SpdxExpression>` to a single SPDX license field.
+/// Reduce a `Vec<SpdxExpression>` to an SPDX license field plus
+/// (when a LicenseRef path fires) the matching document-level
+/// `hasExtractedLicensingInfos[]` entry.
 ///
 /// SPDX 2.3 `licenseDeclared` / `licenseConcluded` are single-valued,
-/// unlike CycloneDX's array form. When a component has multiple
-/// declared expressions (rare — a package manifest that asserted both
-/// "MIT" and "Apache-2.0"), we join them with ` AND ` before
-/// canonicalizing; that preserves all values when every token is a
-/// valid SPDX id and falls back to NOASSERTION otherwise.
-fn reduce_license_vec(items: &[SpdxExpression]) -> SpdxLicenseField {
-    match items.len() {
-        0 => SpdxLicenseField::NoAssertion,
-        1 => canonicalize_license(&items[0]),
-        _ => {
-            let joined = items
-                .iter()
-                .map(|e| e.as_str())
-                .collect::<Vec<_>>()
-                .join(" AND ");
-            match SpdxExpression::try_canonical(&joined) {
-                Ok(canon) => SpdxLicenseField::Expression(canon.as_str().to_string()),
-                Err(_) => SpdxLicenseField::NoAssertion,
-            }
+/// unlike CycloneDX's array form. The reduction rule per milestone-
+/// 012 FR-007 / FR-010 + clarification Q1 (all-or-nothing):
+///
+/// * empty input         → `(NoAssertion, None)`
+/// * all terms canonicalize → `(Expression(joined_canonical), None)`
+///   — byte-identical to pre-milestone-012 behavior (FR-008).
+/// * any term fails canon  → `(LicenseRef(id), Some(extracted_info))`
+///   where `id = SpdxId::for_license_ref(joined_raw).as_str()` and
+///   `extracted_info.extracted_text = joined_raw`. The Package's
+///   `licenseDeclared` gets the `LicenseRef-<hash>` string;
+///   document.rs collects and dedupes the extracted-info entries.
+///
+/// Per Q1 / FR-010: the rule is all-or-nothing — any non-
+/// canonicalizable term in a multi-term expression triggers the
+/// LicenseRef path for the whole expression. Mixed
+/// `licenseDeclared` of the form `"MIT AND LicenseRef-<x>"` is NOT
+/// emitted; the consumer recovers canonical terms from
+/// `extractedText` if they need them.
+fn reduce_license_vec(
+    items: &[SpdxExpression],
+) -> (
+    SpdxLicenseField,
+    Option<super::document::SpdxExtractedLicensingInfo>,
+) {
+    use super::document::SpdxExtractedLicensingInfo;
+    use super::ids::SpdxId;
+    if items.is_empty() {
+        return (SpdxLicenseField::NoAssertion, None);
+    }
+
+    // Join raw expressions verbatim by ` AND ` — this is the single
+    // string that either becomes the canonical `Expression` (if all
+    // terms canonicalize) or the `LicenseRef` + `extractedText`.
+    let joined_raw = items
+        .iter()
+        .map(|e| e.as_str())
+        .collect::<Vec<_>>()
+        .join(" AND ");
+
+    match SpdxExpression::try_canonical(&joined_raw) {
+        Ok(canon) => (
+            SpdxLicenseField::Expression(canon.as_str().to_string()),
+            None,
+        ),
+        Err(_) => {
+            let license_id = SpdxId::for_license_ref(&joined_raw).as_str().to_string();
+            let info = SpdxExtractedLicensingInfo {
+                license_id: license_id.clone(),
+                extracted_text: joined_raw,
+                name: "mikebom-extracted-license".to_string(),
+            };
+            (SpdxLicenseField::LicenseRef(license_id), Some(info))
         }
     }
 }
@@ -210,19 +242,36 @@ pub fn build_packages(
     artifacts: &ScanArtifacts<'_>,
     annotator: &str,
     date: &str,
-) -> Vec<SpdxPackage> {
+) -> (Vec<SpdxPackage>, Vec<super::document::SpdxExtractedLicensingInfo>) {
+    use std::collections::BTreeMap;
     let mut packages = Vec::with_capacity(artifacts.components.len());
+    // Dedup extracted-licensing-info entries by `license_id` —
+    // multiple components sharing the same raw license expression
+    // produce one document-level entry referenced many times.
+    let mut extracted_by_id: BTreeMap<String, super::document::SpdxExtractedLicensingInfo> =
+        BTreeMap::new();
     for c in artifacts.components {
-        packages.push(component_to_package(
+        let (pkg, decl_extracted, conc_extracted) = component_to_package(
             c,
             artifacts.include_hashes,
             artifacts.include_dev,
             artifacts.include_source_files,
             annotator,
             date,
-        ));
+        );
+        packages.push(pkg);
+        if let Some(info) = decl_extracted {
+            extracted_by_id.entry(info.license_id.clone()).or_insert(info);
+        }
+        if let Some(info) = conc_extracted {
+            extracted_by_id.entry(info.license_id.clone()).or_insert(info);
+        }
     }
-    packages
+    // BTreeMap iterates in license_id-sorted order, which gives
+    // deterministic document output (FR-009 / SC-007).
+    let extracted: Vec<super::document::SpdxExtractedLicensingInfo> =
+        extracted_by_id.into_values().collect();
+    (packages, extracted)
 }
 
 fn component_to_package(
@@ -232,7 +281,11 @@ fn component_to_package(
     include_source_files: bool,
     annotator: &str,
     date: &str,
-) -> SpdxPackage {
+) -> (
+    SpdxPackage,
+    Option<super::document::SpdxExtractedLicensingInfo>,
+    Option<super::document::SpdxExtractedLicensingInfo>,
+) {
     let spdx_id = SpdxId::for_purl(&c.purl);
     let checksums: Vec<SpdxChecksum> = if include_hashes {
         c.hashes
@@ -288,7 +341,9 @@ fn component_to_package(
         include_source_files,
     );
 
-    SpdxPackage {
+    let (license_declared, decl_extracted) = reduce_license_vec(&c.licenses);
+    let (license_concluded, conc_extracted) = reduce_license_vec(&c.concluded_licenses);
+    let pkg = SpdxPackage {
         spdx_id,
         name: c.name.clone(),
         version_info: c.version.clone(),
@@ -297,12 +352,13 @@ fn component_to_package(
         originator: None,
         files_analyzed: false,
         checksums,
-        license_declared: reduce_license_vec(&c.licenses),
-        license_concluded: reduce_license_vec(&c.concluded_licenses),
+        license_declared,
+        license_concluded,
         copyright_text: None,
         external_refs,
         annotations,
-    }
+    };
+    (pkg, decl_extracted, conc_extracted)
 }
 
 #[cfg(test)]
@@ -397,7 +453,7 @@ mod tests {
             mk_component("pkg:cargo/tokio@1.35.0", "tokio", "1.35.0"),
         ];
         let integ = empty_integrity();
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
+        let (pkgs, _extracted) = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert_eq!(pkgs.len(), 2);
     }
 
@@ -405,7 +461,7 @@ mod tests {
     fn package_carries_purl_external_ref() {
         let comps = vec![mk_component("pkg:cargo/serde@1.0.197", "serde", "1.0.197")];
         let integ = empty_integrity();
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
+        let (pkgs, _extracted) = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         let purl_ref = pkgs[0]
             .external_refs
             .iter()
@@ -424,7 +480,7 @@ mod tests {
         .unwrap()];
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
+        let (pkgs, _extracted) = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert_eq!(pkgs[0].checksums.len(), 1);
         assert_eq!(pkgs[0].checksums[0].algorithm, SpdxChecksumAlgorithm::SHA256);
     }
@@ -440,7 +496,7 @@ mod tests {
         let comps = [c];
         let mut artifacts = mk_artifacts("demo", &comps, &[], &integ);
         artifacts.include_hashes = false;
-        let pkgs = build_packages(&artifacts, "Tool: mikebom-test", "2026-01-01T00:00:00Z");
+        let (pkgs, _extracted) = build_packages(&artifacts, "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert!(pkgs[0].checksums.is_empty());
     }
 
@@ -453,7 +509,7 @@ mod tests {
         c.licenses = vec![SpdxExpression::new("MIT").unwrap()];
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
+        let (pkgs, _extracted) = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         match &pkgs[0].license_declared {
             SpdxLicenseField::Expression(s) => assert_eq!(s, "MIT"),
             other => panic!("expected Expression, got {other:?}"),
@@ -461,20 +517,82 @@ mod tests {
     }
 
     #[test]
-    fn unparseable_license_falls_back_to_noassertion() {
-        // The permissive `new()` accepts any non-empty, non-control
-        // string; only `try_canonical` is strict. A free-text license
-        // that can't be parsed must NOASSERTION — never fabricate a
-        // legal-but-wrong expression (FR-009 + spec.md Edge Cases).
+    fn unparseable_license_emits_license_ref_and_extracted_info() {
+        // Post-milestone-012 US3: the permissive `new()` accepts any
+        // non-empty, non-control string; only `try_canonical` is
+        // strict. A free-text license that can't be canonicalized
+        // flows to the LicenseRef-<hash> path with the raw string
+        // preserved in `hasExtractedLicensingInfos[]`. Pre-US3 this
+        // dropped to NOASSERTION (silent data loss); post-US3 it's
+        // preserved verbatim.
         let mut c = mk_component("pkg:cargo/x@1", "x", "1");
         c.licenses = vec![SpdxExpression::new("Some Free-Text License").unwrap()];
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
-        assert!(matches!(
-            pkgs[0].license_declared,
-            SpdxLicenseField::NoAssertion
-        ));
+        let (pkgs, extracted) = build_packages(
+            &mk_artifacts("demo", &comps, &[], &integ),
+            "Tool: mikebom-test",
+            "2026-01-01T00:00:00Z",
+        );
+        // licenseDeclared is a LicenseRef-<hash> reference.
+        let license_id = match &pkgs[0].license_declared {
+            SpdxLicenseField::LicenseRef(id) => id.clone(),
+            other => panic!("expected LicenseRef, got {other:?}"),
+        };
+        assert!(license_id.starts_with("LicenseRef-"));
+        // hasExtractedLicensingInfos carries the matching entry.
+        assert_eq!(extracted.len(), 1);
+        assert_eq!(extracted[0].license_id, license_id);
+        assert_eq!(extracted[0].extracted_text, "Some Free-Text License");
+        assert_eq!(extracted[0].name, "mikebom-extracted-license");
+    }
+
+    #[test]
+    fn mixed_canonical_and_noncanonical_triggers_all_or_nothing_license_ref() {
+        // Clarification Q1 / FR-010: if ANY term in a multi-term
+        // expression fails canonicalization, the whole expression
+        // flows through the LicenseRef path. No mixed
+        // `licenseDeclared` of the form `"MIT AND LicenseRef-<x>"`.
+        let mut c = mk_component("pkg:cargo/x@1", "x", "1");
+        c.licenses = vec![
+            SpdxExpression::new("MIT").unwrap(),
+            SpdxExpression::new("GNU General Public").unwrap(),
+        ];
+        let integ = empty_integrity();
+        let comps = [c];
+        let (pkgs, extracted) = build_packages(
+            &mk_artifacts("demo", &comps, &[], &integ),
+            "Tool: mikebom-test",
+            "2026-01-01T00:00:00Z",
+        );
+        match &pkgs[0].license_declared {
+            SpdxLicenseField::LicenseRef(_) => {}
+            other => panic!("expected LicenseRef (all-or-nothing rule), got {other:?}"),
+        };
+        // Joined raw expression preserved verbatim in extractedText.
+        assert_eq!(extracted.len(), 1);
+        assert_eq!(
+            extracted[0].extracted_text,
+            "MIT AND GNU General Public"
+        );
+    }
+
+    #[test]
+    fn dedup_extracted_infos_when_same_expression_on_two_components() {
+        let mut c1 = mk_component("pkg:cargo/a@1", "a", "1");
+        let mut c2 = mk_component("pkg:cargo/b@1", "b", "1");
+        c1.licenses = vec![SpdxExpression::new("Some Free-Text License").unwrap()];
+        c2.licenses = vec![SpdxExpression::new("Some Free-Text License").unwrap()];
+        let integ = empty_integrity();
+        let comps = [c1, c2];
+        let (_pkgs, extracted) = build_packages(
+            &mk_artifacts("demo", &comps, &[], &integ),
+            "Tool: mikebom-test",
+            "2026-01-01T00:00:00Z",
+        );
+        // Document-level extracted-info is deduped by license_id —
+        // one entry referenced by both Package's licenseDeclared.
+        assert_eq!(extracted.len(), 1);
     }
 
     #[test]
@@ -483,7 +601,7 @@ mod tests {
         c.concluded_licenses = vec![SpdxExpression::new("Apache-2.0").unwrap()];
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
+        let (pkgs, _extracted) = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         match &pkgs[0].license_concluded {
             SpdxLicenseField::Expression(s) => assert_eq!(s, "Apache-2.0"),
             other => panic!("expected Expression, got {other:?}"),
@@ -495,7 +613,7 @@ mod tests {
         let c = mk_component("pkg:cargo/x@1", "x", "1");
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
+        let (pkgs, _extracted) = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert!(matches!(pkgs[0].license_declared, SpdxLicenseField::NoAssertion));
         assert!(matches!(pkgs[0].license_concluded, SpdxLicenseField::NoAssertion));
     }
@@ -506,7 +624,7 @@ mod tests {
         c.supplier = Some("Acme Corp".to_string());
         let integ = empty_integrity();
         let comps = [c];
-        let pkgs = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
+        let (pkgs, _extracted) = build_packages(&mk_artifacts("demo", &comps, &[], &integ), "Tool: mikebom-test", "2026-01-01T00:00:00Z");
         assert_eq!(pkgs[0].supplier.as_deref(), Some("Organization: Acme Corp"));
     }
 
