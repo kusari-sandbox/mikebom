@@ -21,6 +21,9 @@ use std::process::Command;
 
 
 mod common;
+use common::normalize::{
+    apply_fake_home_env, normalize_cdx_for_golden, normalize_spdx23_for_golden,
+};
 use common::{bin, workspace_root};
 
 
@@ -34,7 +37,9 @@ struct Scan {
 fn scan(fixture: &Path, formats: &[&str], extra_args: &[&str]) -> Scan {
     assert!(fixture.exists(), "fixture missing: {}", fixture.display());
     let tmp = tempfile::tempdir().expect("tempdir");
+    let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let mut cmd = Command::new(bin());
+    apply_fake_home_env(&mut cmd, fake_home.path());
     cmd.arg("--offline")
         .arg("sbom")
         .arg("scan")
@@ -290,63 +295,30 @@ fn scenario_4_determinism_cross_reference() {
 
 // ---------- scenario 5: single-invocation dual-format ---------------------
 
-/// Mask the three fields that are inherently volatile per invocation:
-///   * CDX `serialNumber` (v4 UUID, non-deterministic today)
-///   * CDX `metadata.timestamp` (`Utc::now()` inside CDX builder)
-///   * SPDX `creationInfo.created` (wall-clock timestamp)
-fn mask_volatile(cdx: &mut serde_json::Value, spdx: &mut serde_json::Value) {
-    if let Some(obj) = cdx.as_object_mut() {
-        if obj.contains_key("serialNumber") {
-            obj.insert(
-                "serialNumber".to_string(),
-                serde_json::Value::String("MASKED".to_string()),
-            );
-        }
-        if let Some(md) = obj.get_mut("metadata").and_then(|v| v.as_object_mut()) {
-            md.insert(
-                "timestamp".to_string(),
-                serde_json::Value::String("MASKED".to_string()),
-            );
-        }
-    }
-    if let Some(ci) = spdx
-        .as_object_mut()
-        .and_then(|o| o.get_mut("creationInfo"))
-        .and_then(|v| v.as_object_mut())
-    {
-        ci.insert(
-            "created".to_string(),
-            serde_json::Value::String("MASKED".to_string()),
-        );
-    }
-}
-
 #[test]
 fn scenario_5_single_invocation_produces_same_bytes_as_two_separate_invocations() {
     let fixture = workspace_root().join("tests/fixtures/cargo/lockfile-v3");
+    let workspace = workspace_root();
 
     // One invocation, both formats.
     let dual = scan(&fixture, &["cyclonedx-json", "spdx-2.3-json"], &[]);
-    let mut dual_cdx = dual.cdx.unwrap();
-    let mut dual_spdx = dual.spdx.unwrap();
+    let dual_cdx_raw = serde_json::to_string(&dual.cdx.unwrap()).unwrap();
+    let dual_spdx_raw = serde_json::to_string(&dual.spdx.unwrap()).unwrap();
 
     // Two separate invocations.
     let only_cdx = scan(&fixture, &["cyclonedx-json"], &[]);
     let only_spdx = scan(&fixture, &["spdx-2.3-json"], &[]);
-    let mut solo_cdx = only_cdx.cdx.unwrap();
-    let mut solo_spdx = only_spdx.spdx.unwrap();
-
-    mask_volatile(&mut dual_cdx, &mut dual_spdx);
-    mask_volatile(&mut solo_cdx, &mut solo_spdx);
+    let solo_cdx_raw = serde_json::to_string(&only_cdx.cdx.unwrap()).unwrap();
+    let solo_spdx_raw = serde_json::to_string(&only_spdx.spdx.unwrap()).unwrap();
 
     assert_eq!(
-        serde_json::to_string_pretty(&dual_cdx).unwrap(),
-        serde_json::to_string_pretty(&solo_cdx).unwrap(),
-        "dual-format CDX should match solo-CDX (post-masking)"
+        normalize_cdx_for_golden(&dual_cdx_raw, &workspace),
+        normalize_cdx_for_golden(&solo_cdx_raw, &workspace),
+        "dual-format CDX should match solo-CDX after canonical normalization"
     );
     assert_eq!(
-        serde_json::to_string_pretty(&dual_spdx).unwrap(),
-        serde_json::to_string_pretty(&solo_spdx).unwrap(),
-        "dual-format SPDX should match solo-SPDX (post-masking)"
+        normalize_spdx23_for_golden(&dual_spdx_raw, &workspace),
+        normalize_spdx23_for_golden(&solo_spdx_raw, &workspace),
+        "dual-format SPDX should match solo-SPDX after canonical normalization"
     );
 }
