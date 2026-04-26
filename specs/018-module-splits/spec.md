@@ -80,7 +80,11 @@ As a maintainer chasing a `pnpm-lock.yaml` regression, I want a `npm/pnpm_lock.r
 
 ---
 
-### User Story 3 — binary/mod.rs split into binary/ submodule (Priority: P3)
+### User Story 3 — binary/mod.rs split into binary/ submodule (Priority: P3) — **DEFERRED**
+
+**Status update (post-implementation, 2026-04-25)**: This story is **deferred from milestone 018**. Implementation revealed the binary/mod.rs split is materially more entangled than pip + npm: (a) `BinaryScan` and `is_path_claimed` types/fns are referenced by external crate callers (`linkage.rs`, `go_binary.rs`, `maven.rs`) via `crate::scan_fs::binary::*` paths, requiring careful re-export design; (b) the production code is non-contiguous (file-level component synthesis + entry conversion + scan helpers interleave with the orchestrator's `read()` loop); (c) shared module imports (`super::elf`, `super::packer`, `super::version_strings`) need re-routing through every new submodule. Deferring to a follow-up milestone where it can get its own focused design pass — same precedent as `maven.rs` per spec clarification.
+
+
 
 As a maintainer adding support for a new binary format (or fixing a Mach-O fat-binary edge case), I want `binary/scan.rs` and `binary/discover.rs` separated so that the scan-one-file logic is independent of the find-binaries-in-a-tree logic.
 
