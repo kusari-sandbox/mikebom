@@ -18,6 +18,7 @@ use std::collections::BTreeSet;
 
 use serde_json::Value;
 
+mod cdx;
 mod common;
 
 pub use common::{
@@ -25,20 +26,19 @@ pub use common::{
     walk_spdx3_packages, Directionality, ParityExtractor,
 };
 
-use common::{
-    canonicalize_atomic_values, decode_envelope, empty, normalize_alg, spdx_relationship_edges,
+use cdx::{
+    c10_cdx, c11_cdx, c12_cdx, c13_cdx, c14_cdx, c15_cdx, c16_cdx, c17_cdx, c18_cdx, c19_cdx,
+    c1_cdx, c20_cdx, c21_cdx, c22_cdx, c23_cdx, c2_cdx, c3_cdx, c4_cdx, c5_cdx, c6_cdx, c7_cdx,
+    c8_cdx, c9_cdx, cdx_containment, cdx_cpe, cdx_dev_deps, cdx_distribution, cdx_hashes,
+    cdx_homepage, cdx_licenses_concluded, cdx_licenses_declared, cdx_name, cdx_purl, cdx_root,
+    cdx_runtime_deps, cdx_supplier, cdx_vcs, cdx_version, d1_cdx, d2_cdx, e1_cdx, f1_cdx, g1_cdx,
 };
+use common::{decode_envelope, empty, normalize_alg, spdx_relationship_edges};
 
 // ============================================================
-// Section A — Core identity (A1–A12)
+// Section A — Core identity (A1–A12) — SPDX sides only
+// (CDX moved to extractors/cdx.rs in milestone 022 commit 2)
 // ============================================================
-
-fn cdx_purl(doc: &Value) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .filter_map(|c| c.get("purl").and_then(|v| v.as_str()).map(String::from))
-        .collect()
-}
 
 fn spdx23_purl(doc: &Value) -> BTreeSet<String> {
     walk_spdx23_packages(doc)
@@ -70,13 +70,6 @@ fn spdx3_purl(doc: &Value) -> BTreeSet<String> {
         .collect()
 }
 
-fn cdx_name(doc: &Value) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .filter_map(|c| c.get("name").and_then(|v| v.as_str()).map(String::from))
-        .collect()
-}
-
 fn spdx23_name(doc: &Value) -> BTreeSet<String> {
     walk_spdx23_packages(doc)
         .iter()
@@ -88,13 +81,6 @@ fn spdx3_name(doc: &Value) -> BTreeSet<String> {
     walk_spdx3_packages(doc)
         .iter()
         .filter_map(|p| p.get("name").and_then(|v| v.as_str()).map(String::from))
-        .collect()
-}
-
-fn cdx_version(doc: &Value) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .filter_map(|c| c.get("version").and_then(|v| v.as_str()).map(String::from))
         .collect()
 }
 
@@ -116,24 +102,6 @@ fn spdx3_version(doc: &Value) -> BTreeSet<String> {
             p.get("software_packageVersion")
                 .and_then(|v| v.as_str())
                 .map(String::from)
-        })
-        .collect()
-}
-
-fn cdx_hashes(doc: &Value) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .flat_map(|c| {
-            c.get("hashes")
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.as_slice())
-                .unwrap_or(&[])
-                .iter()
-                .filter_map(|h| {
-                    let alg = h.get("alg").and_then(|v| v.as_str())?;
-                    let content = h.get("content").and_then(|v| v.as_str())?;
-                    Some(format!("{}:{}", normalize_alg(alg), content))
-                })
         })
         .collect()
 }
@@ -172,33 +140,6 @@ fn spdx3_hashes(doc: &Value) -> BTreeSet<String> {
                 })
         })
         .collect()
-}
-
-fn cdx_external_ref_by_type(doc: &Value, ref_type: &str) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .flat_map(|c| {
-            c.get("externalReferences")
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.as_slice())
-                .unwrap_or(&[])
-                .iter()
-                .filter(|r| r.get("type").and_then(|v| v.as_str()) == Some(ref_type))
-                .filter_map(|r| r.get("url").and_then(|v| v.as_str()).map(String::from))
-        })
-        .collect()
-}
-
-fn cdx_homepage(doc: &Value) -> BTreeSet<String> {
-    let mut out = cdx_external_ref_by_type(doc, "website");
-    out.extend(cdx_external_ref_by_type(doc, "homepage"));
-    out
-}
-fn cdx_vcs(doc: &Value) -> BTreeSet<String> {
-    cdx_external_ref_by_type(doc, "vcs")
-}
-fn cdx_distribution(doc: &Value) -> BTreeSet<String> {
-    cdx_external_ref_by_type(doc, "distribution")
 }
 
 fn spdx23_external_ref_by_type(doc: &Value, ref_type: &str) -> BTreeSet<String> {
@@ -273,12 +214,6 @@ fn spdx3_distribution(doc: &Value) -> BTreeSet<String> {
         .collect()
 }
 
-fn cdx_cpe(doc: &Value) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .filter_map(|c| c.get("cpe").and_then(|v| v.as_str()).map(String::from))
-        .collect()
-}
 fn spdx23_cpe(doc: &Value) -> BTreeSet<String> {
     walk_spdx23_packages(doc)
         .iter()
@@ -326,56 +261,6 @@ fn spdx3_cpe(doc: &Value) -> BTreeSet<String> {
 // extractedText for round-trip). For SPDX 3, walk the
 // simplelicensing_LicenseExpression elements + their hasDeclared/
 // hasConcludedLicense Relationships.
-fn cdx_licenses_typed(doc: &Value, ack: &str) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .flat_map(|c| {
-            c.get("licenses")
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.as_slice())
-                .unwrap_or(&[])
-                .iter()
-                .filter(|l| {
-                    // CDX 1.6 nests acknowledgement inside the
-                    // `license` object for {license: {id, name,
-                    // acknowledgement}}, and at the top of the
-                    // entry for {expression, acknowledgement}.
-                    let nested = l
-                        .get("license")
-                        .and_then(|li| li.get("acknowledgement"))
-                        .and_then(|v| v.as_str());
-                    let top = l.get("acknowledgement").and_then(|v| v.as_str());
-                    nested == Some(ack) || top == Some(ack)
-                })
-                .filter_map(|l| {
-                    if let Some(id) = l.get("license")
-                        .and_then(|li| li.get("id"))
-                        .and_then(|v| v.as_str())
-                    {
-                        return Some(id.to_string());
-                    }
-                    if let Some(name) = l
-                        .get("license")
-                        .and_then(|li| li.get("name"))
-                        .and_then(|v| v.as_str())
-                    {
-                        return Some(name.to_string());
-                    }
-                    if let Some(expr) = l.get("expression").and_then(|v| v.as_str()) {
-                        return Some(expr.to_string());
-                    }
-                    None
-                })
-        })
-        .collect()
-}
-fn cdx_licenses_declared(doc: &Value) -> BTreeSet<String> {
-    cdx_licenses_typed(doc, "declared")
-}
-fn cdx_licenses_concluded(doc: &Value) -> BTreeSet<String> {
-    cdx_licenses_typed(doc, "concluded")
-}
-
 fn spdx23_licenses_field(doc: &Value, field: &str) -> BTreeSet<String> {
     walk_spdx23_packages(doc)
         .iter()
@@ -469,17 +354,6 @@ fn spdx3_licenses_concluded(doc: &Value) -> BTreeSet<String> {
 // Supplier (A4) — present in CDX (component.supplier.name) and
 // SPDX 2.3 (`supplier: "Organization: <name>"` / "NOASSERTION");
 // SPDX 3 uses Organization elements + suppliedBy property.
-fn cdx_supplier(doc: &Value) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .filter_map(|c| {
-            c.get("supplier")
-                .and_then(|s| s.get("name"))
-                .and_then(|v| v.as_str())
-                .map(String::from)
-        })
-        .collect()
-}
 fn spdx23_supplier(doc: &Value) -> BTreeSet<String> {
     walk_spdx23_packages(doc)
         .iter()
@@ -532,60 +406,6 @@ fn spdx3_supplier(doc: &Value) -> BTreeSet<String> {
 /// by bom-ref. Filters to runtime edges (excludes dev edges
 /// marked via the `mikebom:dev-dependency` property on the source
 /// component).
-fn cdx_dependency_edges(doc: &Value, dev_only: bool) -> BTreeSet<String> {
-    // Build bom-ref → component lookup.
-    let mut comp_by_bomref: std::collections::BTreeMap<String, &Value> =
-        std::collections::BTreeMap::new();
-    for c in walk_cdx_components(doc) {
-        if let Some(bref) = c.get("bom-ref").and_then(|v| v.as_str()) {
-            comp_by_bomref.insert(bref.to_string(), c);
-        }
-    }
-    let mut out = BTreeSet::new();
-    let Some(deps) = doc.get("dependencies").and_then(|v| v.as_array()) else {
-        return out;
-    };
-    for d in deps {
-        let Some(from_ref) = d.get("ref").and_then(|v| v.as_str()) else {
-            continue;
-        };
-        let Some(from_comp) = comp_by_bomref.get(from_ref) else {
-            continue;
-        };
-        let from_purl = match from_comp.get("purl").and_then(|v| v.as_str()) {
-            Some(p) => p.to_string(),
-            None => continue,
-        };
-        let from_is_dev = from_comp
-            .get("properties")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter().any(|p| {
-                    p.get("name").and_then(|x| x.as_str()) == Some("mikebom:dev-dependency")
-                        && p.get("value").and_then(|x| x.as_str()) == Some("true")
-                })
-            })
-            .unwrap_or(false);
-        if dev_only != from_is_dev {
-            continue;
-        }
-        let Some(targets) = d.get("dependsOn").and_then(|v| v.as_array()) else {
-            continue;
-        };
-        for t in targets {
-            let Some(to_ref) = t.as_str() else { continue };
-            let Some(to_comp) = comp_by_bomref.get(to_ref) else {
-                continue;
-            };
-            let Some(to_purl) = to_comp.get("purl").and_then(|v| v.as_str()) else {
-                continue;
-            };
-            out.insert(format!("{from_purl}->{to_purl}"));
-        }
-    }
-    out
-}
-
 fn spdx23_runtime_deps(doc: &Value) -> BTreeSet<String> {
     spdx_relationship_edges(doc, "DEPENDS_ON", "")
 }
@@ -593,12 +413,6 @@ fn spdx3_runtime_deps(doc: &Value) -> BTreeSet<String> {
     spdx_relationship_edges(doc, "", "dependsOn")
 }
 
-fn cdx_runtime_deps(doc: &Value) -> BTreeSet<String> {
-    cdx_dependency_edges(doc, false)
-}
-fn cdx_dev_deps(doc: &Value) -> BTreeSet<String> {
-    cdx_dependency_edges(doc, true)
-}
 fn spdx23_dev_deps(doc: &Value) -> BTreeSet<String> {
     // Per milestone-011 B2 + milestone-012 mapping, SPDX 2.3
     // emits DEV_DEPENDENCY_OF (target-source swap). Reverse the
@@ -689,22 +503,6 @@ fn spdx3_dev_deps(doc: &Value) -> BTreeSet<String> {
 // returns set of (parent_purl, child_purl) pairs walked from the
 // nested structure. SPDX extractors return CONTAINS-edge
 // (parent_purl, child_purl) pairs.
-fn cdx_containment(doc: &Value) -> BTreeSet<String> {
-    fn recur<'a>(parent: Option<&'a str>, node: &'a Value, out: &mut BTreeSet<String>) {
-        if let Some(arr) = node.get("components").and_then(|v| v.as_array()) {
-            for c in arr {
-                let purl = c.get("purl").and_then(|v| v.as_str());
-                if let (Some(p), Some(child)) = (parent, purl) {
-                    out.insert(format!("{p}->{child}"));
-                }
-                recur(purl, c, out);
-            }
-        }
-    }
-    let mut out = BTreeSet::new();
-    recur(None, doc, &mut out);
-    out
-}
 fn spdx23_containment(doc: &Value) -> BTreeSet<String> {
     spdx_relationship_edges(doc, "CONTAINS", "")
 }
@@ -715,14 +513,6 @@ fn spdx3_containment(doc: &Value) -> BTreeSet<String> {
 // B4 root: CDX `metadata.component.purl` (singleton); SPDX 2.3
 // `documentDescribes[]` (resolved via SPDXID → PURL lookup);
 // SPDX 3 SpdxDocument.rootElement (resolved similarly).
-fn cdx_root(doc: &Value) -> BTreeSet<String> {
-    doc.get("metadata")
-        .and_then(|m| m.get("component"))
-        .and_then(|c| c.get("purl"))
-        .and_then(|v| v.as_str())
-        .map(|s| BTreeSet::from([s.to_string()]))
-        .unwrap_or_default()
-}
 fn spdx23_root(doc: &Value) -> BTreeSet<String> {
     let Some(describes) = doc.get("documentDescribes").and_then(|v| v.as_array()) else {
         return BTreeSet::new();
@@ -807,52 +597,17 @@ fn spdx3_root(doc: &Value) -> BTreeSet<String> {
 /// properties (`subject_is_document = false`) walks each
 /// component's `properties[]`; for document-level (`true`) walks
 /// `metadata.properties[]`.
-fn cdx_property_values(
-    doc: &Value,
-    field_name: &str,
-    subject_is_document: bool,
-) -> BTreeSet<String> {
-    let pools: Vec<&Value> = if subject_is_document {
-        doc.get("metadata")
-            .and_then(|m| m.get("properties"))
-            .into_iter()
-            .collect()
-    } else {
-        walk_cdx_components(doc)
-            .into_iter()
-            .filter_map(|c| c.get("properties"))
-            .collect()
-    };
-    let mut out = BTreeSet::new();
-    for pool in pools {
-        let Some(arr) = pool.as_array() else { continue };
-        for p in arr {
-            if p.get("name").and_then(|v| v.as_str()) != Some(field_name) {
-                continue;
-            }
-            let Some(value) = p.get("value") else { continue };
-            // Canonicalize via the same flatten-and-decode helper
-            // as the SPDX side so byte-equivalent atomic values
-            // collapse identically across formats — handles JSON-
-            // encoded scalars (`"true"` → `true`) and array values
-            // both inline (`[a,b]`) and split-per-property.
-            for v in canonicalize_atomic_values(value) {
-                out.insert(v);
-            }
-        }
-    }
-    out
-}
-
 // We can't store closures in a `static` table. Workaround:
 // generate concrete `fn` items per row via a macro. Since we
 // have ~30 annotation rows, a per-row macro keeps the table
 // human-readable and the code generated is ~3 lines per row.
+// SPDX-only annotation-stub generators. The CDX equivalents live in
+// `extractors/cdx.rs` as a single-format `cdx_anno!` macro per
+// milestone 022 commit 2; SPDX 2.3 + SPDX 3 still share these
+// because both call the same `extract_mikebom_annotation_values`
+// envelope decoder. Phases 3+4 will split them per-format too.
 macro_rules! component_anno_extractors {
-    ($cdx_fn:ident, $spdx23_fn:ident, $spdx3_fn:ident, $field:literal) => {
-        fn $cdx_fn(doc: &Value) -> BTreeSet<String> {
-            cdx_property_values(doc, $field, false)
-        }
+    ($spdx23_fn:ident, $spdx3_fn:ident, $field:literal) => {
         fn $spdx23_fn(doc: &Value) -> BTreeSet<String> {
             extract_mikebom_annotation_values(doc, $field, false)
         }
@@ -862,10 +617,7 @@ macro_rules! component_anno_extractors {
     };
 }
 macro_rules! document_anno_extractors {
-    ($cdx_fn:ident, $spdx23_fn:ident, $spdx3_fn:ident, $field:literal) => {
-        fn $cdx_fn(doc: &Value) -> BTreeSet<String> {
-            cdx_property_values(doc, $field, true)
-        }
+    ($spdx23_fn:ident, $spdx3_fn:ident, $field:literal) => {
         fn $spdx23_fn(doc: &Value) -> BTreeSet<String> {
             extract_mikebom_annotation_values(doc, $field, true)
         }
@@ -876,68 +628,48 @@ macro_rules! document_anno_extractors {
 }
 
 // C1-C20 (per-component mikebom signals).
-component_anno_extractors!(c1_cdx, c1_spdx23, c1_spdx3, "mikebom:source-type");
-component_anno_extractors!(c2_cdx, c2_spdx23, c2_spdx3, "mikebom:source-connection-ids");
-component_anno_extractors!(c3_cdx, c3_spdx23, c3_spdx3, "mikebom:deps-dev-match");
-component_anno_extractors!(c4_cdx, c4_spdx23, c4_spdx3, "mikebom:evidence-kind");
-component_anno_extractors!(c5_cdx, c5_spdx23, c5_spdx3, "mikebom:sbom-tier");
-component_anno_extractors!(c6_cdx, c6_spdx23, c6_spdx3, "mikebom:dev-dependency");
-component_anno_extractors!(c7_cdx, c7_spdx23, c7_spdx3, "mikebom:co-owned-by");
-component_anno_extractors!(c8_cdx, c8_spdx23, c8_spdx3, "mikebom:shade-relocation");
-component_anno_extractors!(c9_cdx, c9_spdx23, c9_spdx3, "mikebom:npm-role");
-component_anno_extractors!(c10_cdx, c10_spdx23, c10_spdx3, "mikebom:binary-class");
-component_anno_extractors!(c11_cdx, c11_spdx23, c11_spdx3, "mikebom:binary-stripped");
-component_anno_extractors!(c12_cdx, c12_spdx23, c12_spdx3, "mikebom:linkage-kind");
-component_anno_extractors!(c13_cdx, c13_spdx23, c13_spdx3, "mikebom:buildinfo-status");
-component_anno_extractors!(c14_cdx, c14_spdx23, c14_spdx3, "mikebom:detected-go");
-component_anno_extractors!(c15_cdx, c15_spdx23, c15_spdx3, "mikebom:binary-packed");
-component_anno_extractors!(c16_cdx, c16_spdx23, c16_spdx3, "mikebom:confidence");
-component_anno_extractors!(c17_cdx, c17_spdx23, c17_spdx3, "mikebom:raw-version");
-component_anno_extractors!(c18_cdx, c18_spdx23, c18_spdx3, "mikebom:source-files");
+component_anno_extractors!(c1_spdx23, c1_spdx3, "mikebom:source-type");
+component_anno_extractors!(c2_spdx23, c2_spdx3, "mikebom:source-connection-ids");
+component_anno_extractors!(c3_spdx23, c3_spdx3, "mikebom:deps-dev-match");
+component_anno_extractors!(c4_spdx23, c4_spdx3, "mikebom:evidence-kind");
+component_anno_extractors!(c5_spdx23, c5_spdx3, "mikebom:sbom-tier");
+component_anno_extractors!(c6_spdx23, c6_spdx3, "mikebom:dev-dependency");
+component_anno_extractors!(c7_spdx23, c7_spdx3, "mikebom:co-owned-by");
+component_anno_extractors!(c8_spdx23, c8_spdx3, "mikebom:shade-relocation");
+component_anno_extractors!(c9_spdx23, c9_spdx3, "mikebom:npm-role");
+component_anno_extractors!(c10_spdx23, c10_spdx3, "mikebom:binary-class");
+component_anno_extractors!(c11_spdx23, c11_spdx3, "mikebom:binary-stripped");
+component_anno_extractors!(c12_spdx23, c12_spdx3, "mikebom:linkage-kind");
+component_anno_extractors!(c13_spdx23, c13_spdx3, "mikebom:buildinfo-status");
+component_anno_extractors!(c14_spdx23, c14_spdx3, "mikebom:detected-go");
+component_anno_extractors!(c15_spdx23, c15_spdx3, "mikebom:binary-packed");
+component_anno_extractors!(c16_spdx23, c16_spdx3, "mikebom:confidence");
+component_anno_extractors!(c17_spdx23, c17_spdx3, "mikebom:raw-version");
+component_anno_extractors!(c18_spdx23, c18_spdx3, "mikebom:source-files");
 // C19 cpe-candidates: CDX serializes the candidate list as a
 // pipe-separated string per property (mikebom convention,
 // matching the CycloneDX `cpe` field's single-value cardinality);
 // SPDX emits each candidate as its own annotation. Split the CDX
 // pipe-string into atoms so the directional containment test
 // (`CDX ⊆ SPDX`) compares apples-to-apples atomic CPEs.
-fn c19_cdx(doc: &Value) -> BTreeSet<String> {
-    cdx_property_values(doc, "mikebom:cpe-candidates", false)
-        .into_iter()
-        .flat_map(|raw| {
-            // `cdx_property_values` JSON-encodes the string ⇒ the
-            // raw entry is `"cpe1 | cpe2"` (quotes-wrapped). Strip
-            // the outer quotes before splitting on the pipe
-            // delimiter, then re-encode each atom via `to_string`
-            // so the form matches the SPDX side
-            // (`"cpe1"` / `"cpe2"` post-canonicalization).
-            let unquoted = raw.trim_matches('"');
-            unquoted
-                .split(" | ")
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(|s| serde_json::to_string(s).unwrap_or_else(|_| s.to_string()))
-                .collect::<Vec<_>>()
-        })
-        .collect()
-}
 fn c19_spdx23(doc: &Value) -> BTreeSet<String> {
     extract_mikebom_annotation_values(doc, "mikebom:cpe-candidates", false)
 }
 fn c19_spdx3(doc: &Value) -> BTreeSet<String> {
     extract_mikebom_annotation_values(doc, "mikebom:cpe-candidates", false)
 }
-component_anno_extractors!(c20_cdx, c20_spdx23, c20_spdx3, "mikebom:requirement-range");
+component_anno_extractors!(c20_spdx23, c20_spdx3, "mikebom:requirement-range");
 
 // C21-C23 (document-level).
-document_anno_extractors!(c21_cdx, c21_spdx23, c21_spdx3, "mikebom:generation-context");
-document_anno_extractors!(c22_cdx, c22_spdx23, c22_spdx3, "mikebom:os-release-missing-fields");
+document_anno_extractors!(c21_spdx23, c21_spdx3, "mikebom:generation-context");
+document_anno_extractors!(c22_spdx23, c22_spdx3, "mikebom:os-release-missing-fields");
 // C23 actually expands into 4 sub-fields (ring-buffer-overflows,
 // events-dropped, uprobe-attach-failures, kprobe-attach-failures);
 // the parity test treats it as one row per the catalog. Use the
 // ring-buffer-overflows scalar as the canary; the other three
 // share the same emit path.
 document_anno_extractors!(
-    c23_cdx,
+
     c23_spdx23,
     c23_spdx3,
     "mikebom:trace-integrity-ring-buffer-overflows"
@@ -947,32 +679,11 @@ document_anno_extractors!(
 // `evidence.identity` / `evidence.occurrences` not a `mikebom:*`
 // prefix). CDX shape is different (native evidence model under
 // component.evidence) — use a custom CDX extractor.
-fn d1_cdx(doc: &Value) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .filter_map(|c| {
-            let id = c.get("evidence")?.get("identity")?;
-            // Match the SPDX-side serialized shape: an array of
-            // {technique, confidence}. CDX has the array under
-            // evidence.identity.
-            serde_json::to_string(id).ok()
-        })
-        .collect()
-}
 fn d1_spdx23(doc: &Value) -> BTreeSet<String> {
     extract_mikebom_annotation_values(doc, "evidence.identity", false)
 }
 fn d1_spdx3(doc: &Value) -> BTreeSet<String> {
     extract_mikebom_annotation_values(doc, "evidence.identity", false)
-}
-fn d2_cdx(doc: &Value) -> BTreeSet<String> {
-    walk_cdx_components(doc)
-        .iter()
-        .filter_map(|c| {
-            let occ = c.get("evidence")?.get("occurrences")?;
-            serde_json::to_string(occ).ok()
-        })
-        .collect()
 }
 fn d2_spdx23(doc: &Value) -> BTreeSet<String> {
     extract_mikebom_annotation_values(doc, "evidence.occurrences", false)
@@ -991,19 +702,6 @@ fn d2_spdx3(doc: &Value) -> BTreeSet<String> {
 // `aggregate == "complete"` entry — matching the SPDX semantics
 // and avoiding false-positive failures on incomplete-only
 // fixtures (e.g., rpm/bdb-only).
-fn e1_cdx(doc: &Value) -> BTreeSet<String> {
-    let Some(comps) = doc.get("compositions").and_then(|v| v.as_array()) else {
-        return BTreeSet::new();
-    };
-    let any_complete = comps
-        .iter()
-        .any(|c| c.get("aggregate").and_then(|v| v.as_str()) == Some("complete"));
-    if any_complete {
-        serde_json::to_string(comps).into_iter().collect()
-    } else {
-        BTreeSet::new()
-    }
-}
 fn e1_spdx23(doc: &Value) -> BTreeSet<String> {
     extract_mikebom_annotation_values(doc, "compositions", true)
 }
@@ -1019,12 +717,6 @@ fn e1_spdx3(doc: &Value) -> BTreeSet<String> {
 // `externalDocumentRefs[DocumentRef-OpenVEX]` absent; SPDX 3
 // `SpdxDocument.externalRef[*]` absent. Universal-parity row,
 // SymmetricEqual.
-fn f1_cdx(doc: &Value) -> BTreeSet<String> {
-    doc.get("vulnerabilities")
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.get("id")).filter_map(|v| v.as_str()).map(String::from).collect())
-        .unwrap_or_default()
-}
 fn f1_spdx23(doc: &Value) -> BTreeSet<String> {
     // The CDX vuln IDs (e.g. CVE-2024-XXXX) aren't echoed in
     // SPDX 2.3's externalDocumentRefs cross-reference. For
@@ -1094,18 +786,6 @@ fn f1_spdx3(doc: &Value) -> BTreeSet<String> {
 // they pass trivially. Cleaner: add G handling in a follow-up.
 // ============================================================
 
-fn g1_cdx(doc: &Value) -> BTreeSet<String> {
-    doc.get("metadata")
-        .and_then(|m| m.get("tools"))
-        .and_then(|t| t.get("components"))
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|c| c.get("name").and_then(|v| v.as_str()).map(String::from))
-                .collect()
-        })
-        .unwrap_or_default()
-}
 fn g1_spdx23(doc: &Value) -> BTreeSet<String> {
     doc.get("creationInfo")
         .and_then(|c| c.get("creators"))
