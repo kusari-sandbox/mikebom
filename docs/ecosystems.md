@@ -221,6 +221,18 @@ list but not module-to-module relationships.
 **Hashes:** the binary itself gets hashed (`ResolutionTechnique::FilePathPattern`
 at 0.70 confidence with file-level evidence); individual modules don't.
 
+**VCS metadata (milestone 025):** when the binary was built with
+`-buildvcs=true` (the Go default since 1.18), three additional
+annotations attach to the main-module entry: `mikebom:go-vcs-revision`
+(commit SHA from `vcs.revision`), `mikebom:go-vcs-time` (RFC 3339
+build timestamp from `vcs.time`), and `mikebom:go-vcs-modified`
+(dirty-tree boolean from `vcs.modified`, preserved as the literal
+`"true"` / `"false"` string per Go's wire format). Surfaced via the
+milestone-023 `extra_annotations` bag — same data `go version -m
+<binary>` shows. Dep entries don't carry VCS metadata; that's a
+main-module concern. Binaries built with `-buildvcs=false` or outside
+a VCS worktree emit no `mikebom:go-vcs-*` annotations.
+
 **Known limitations:**
 - Stripped binaries where BuildInfo extraction fails get
   `mikebom:buildinfo-status = missing` and emit only as a file-level

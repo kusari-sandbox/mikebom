@@ -264,12 +264,58 @@ canonical cross-format contract is
 added anywhere in the scan pipeline breaks the build until it's
 mapped.
 
+## Per-component generic annotation bag (milestone 023)
+
+`PackageDbEntry` and `ResolvedComponent` carry an
+`extra_annotations: BTreeMap<String, serde_json::Value>` field. Each
+entry is emitted at SBOM-generation time as a `mikebom:<key>`
+annotation across all three formats — a CycloneDX `properties[]`
+entry, a SPDX 2.3 `annotations[]` envelope, and a SPDX 3
+graph-element `Annotation`. The emission code in
+`generate/cyclonedx/builder.rs`, `generate/spdx/annotations.rs`, and
+`generate/spdx/v3_annotations.rs` iterates the bag deterministically
+(`BTreeMap`'s sorted-by-key order is what byte-identity goldens
+depend on).
+
+**Why a bag and not typed fields:** `PackageDbEntry` has 30+
+struct-literal init sites and no `Default` impl (`Purl` and
+`SpdxExpression` don't have meaningful defaults), so each new typed
+field forces 30+ manual `field: None,` additions per milestone. The
+bag amortizes that cost across all future per-binary-metadata
+milestones — a new key is one `entry.extra_annotations.insert(...)`
+call.
+
+**First two consumers:**
+- Milestone 023 — ELF identity (`mikebom:elf-build-id`,
+  `mikebom:elf-runpath`, `mikebom:elf-debuglink`) populated in
+  `binary/entry.rs::make_file_level_component`.
+- Milestone 025 — Go BuildInfo VCS metadata
+  (`mikebom:go-vcs-revision`, `mikebom:go-vcs-time`,
+  `mikebom:go-vcs-modified`) populated in
+  `package_db/go_binary.rs::build_vcs_annotations` on the main-module
+  entry.
+
+**Spec discipline:** typed fields stay typed. The bag is for NEW
+per-binary metadata; existing fields like `binary_class`,
+`evidence_kind`, `is_dev` don't migrate. If duplicate keys are
+inserted (a typed field's `mikebom:*` name and a bag entry with the
+same name), the parity matrix' `holistic_parity` test catches the
+double-emit at PR time.
+
+Future per-binary-metadata milestones inheriting the bag without
+schema churn: 024 Mach-O LC_UUID + codesign + min-OS, 026
+version-string library expansion (glibc, musl, GnuTLS, LibreSSL, V8,
+LLVM, OpenJDK), 027 container layer attribution
+(`mikebom:layer-id`), 028 PE Delay-Load + machine-type + subsystem.
+
 ## Relevant specs
 
 - `specs/001-build-trace-pipeline/` — original eBPF build-trace mode
 - `specs/002-python-npm-ecosystem/` — Python + npm ecosystem expansion
 - `specs/003-multi-ecosystem-expansion/` — Go / RPM / Maven / Cargo / Gem + foundational work
 - `specs/010-spdx-output-support/` — SPDX 2.3 + SPDX 3.0.1-experimental + OpenVEX sidecar + dual-format data-placement map
+- `specs/023-elf-binary-identity/` — ELF NT_GNU_BUILD_ID + RPATH/RUNPATH + .gnu_debuglink + per-component annotation bag
+- `specs/025-go-vcs-metadata/` — Go BuildInfo VCS metadata via the bag (first follow-on consumer)
 - `.specify/memory/constitution.md` — 12-principle constitution; notable constraints: no C dependencies, no `.unwrap()` in production, generation context always stamped, packageurl-python conformance
 
 ---

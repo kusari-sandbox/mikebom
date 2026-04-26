@@ -57,6 +57,21 @@ build a proper CycloneDX with:
   `packageurl-python` reference implementation (including
   `+` → `%2B` encoding across every ecosystem; `epoch=0` omission
   on RPM; lexicographic qualifier sort).
+- **Compiled-binary identity** for ELF — extracts NT_GNU_BUILD_ID,
+  DT_RPATH/DT_RUNPATH, and `.gnu_debuglink` reference for every Linux
+  binary scanned. Surfaced as `mikebom:elf-build-id` /
+  `mikebom:elf-runpath` / `mikebom:elf-debuglink` annotations across
+  CDX, SPDX 2.3, and SPDX 3 outputs. The build-id is the canonical
+  binary-identity field used by `eu-unstrip`, `coredumpctl`,
+  `debuginfod`, and `*-dbgsym` packaging — making cross-image binary
+  dedup and debug-symbol correlation a direct lookup.
+- **Go VCS provenance** — extracts `vcs.revision` (commit SHA),
+  `vcs.time` (RFC 3339 build timestamp), and `vcs.modified` (dirty-tree
+  flag) from every Go binary's BuildInfo. Surfaced as
+  `mikebom:go-vcs-revision` / `mikebom:go-vcs-time` /
+  `mikebom:go-vcs-modified` on the main-module entry. Same data
+  `go version -m` shows, baked into the SBOM so consumers don't have
+  to shell out.
 
 On top of scan-mode, mikebom adds:
 
