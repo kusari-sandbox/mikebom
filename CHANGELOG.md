@@ -8,6 +8,42 @@ adheres to [Semantic Versioning](https://semver.org/) once it exits
 ## [Unreleased]
 
 ### Added
+- **Milestone 025 — Go BuildInfo VCS metadata.** Every Go-binary scan
+  now surfaces the source-tree VCS state recorded at build time. The
+  main-module entry (`pkg:golang/<module>@<version>`) gains three new
+  annotations across CDX / SPDX 2.3 / SPDX 3:
+  `mikebom:go-vcs-revision` (commit SHA from `vcs.revision`),
+  `mikebom:go-vcs-time` (RFC 3339 commit timestamp from `vcs.time`),
+  `mikebom:go-vcs-modified` (dirty-tree boolean from `vcs.modified`,
+  preserved as the literal string `"true"` / `"false"` matching Go's
+  wire format). The data was already present in BuildInfo's vers_info
+  blob; pre-025 the parser read only the first line (Go version) and
+  discarded the rest. Dep modules don't carry VCS info — it's a
+  main-module concern. Surfaced via the milestone-023 generic
+  annotation bag, with zero PackageDbEntry-init churn or generate/
+  plumbing changes (the bag's amortization payoff). 4 atomic commits;
+  see `specs/025-go-vcs-metadata/spec.md` and catalog rows C27/C28/C29
+  in `docs/reference/sbom-format-mapping.md`.
+- **Milestone 023 — ELF binary identity + per-component generic
+  annotation bag.** Two cohorts in one milestone. (a) ELF identity:
+  every Linux-binary scan now surfaces `NT_GNU_BUILD_ID` (the
+  canonical Linux binary-identity hash used by `eu-unstrip`,
+  `coredumpctl`, `debuginfod`, `*-dbgsym` packaging), `DT_RPATH` /
+  `DT_RUNPATH` (embedded library search paths the dynamic loader
+  consults — `$ORIGIN` etc. recorded raw), and `.gnu_debuglink`
+  (pointer to the stripped-debug sibling file). Three new annotations
+  on the file-level binary component: `mikebom:elf-build-id`,
+  `mikebom:elf-runpath`, `mikebom:elf-debuglink`. SC-002 is satisfied
+  on Linux CI: `/bin/ls` scan emits a non-empty hex build-id (every
+  modern distro stamps build-ids by default). (b) Per-component
+  annotation bag: `extra_annotations: BTreeMap<String, Value>` on
+  `PackageDbEntry` and `ResolvedComponent` provides a generic per-
+  component annotation channel that future per-binary-metadata
+  milestones (024 Mach-O LC_UUID, 026 version-string library
+  expansion, 027 container layer attribution) can populate without
+  per-field schema migration. Determinism is preserved by `BTreeMap`
+  iteration order. Catalog rows C24/C25/C26.
+
 - **Milestone 010 — SPDX 2.3 output + OpenVEX sidecar + SPDX 3.0.1
   experimental stub.** SPDX 2.3 JSON is now a peer of CycloneDX across
   all 9 supported ecosystems. A single `mikebom sbom scan` invocation
