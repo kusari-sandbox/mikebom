@@ -103,7 +103,6 @@ pub struct DebuglinkEntry {
 ///
 /// Returns the build-id as lowercase hex. None on parse failure or
 /// empty desc (binary built with `-Wl,--build-id=none`).
-#[allow(dead_code)]
 pub fn parse_gnu_build_id(data: &[u8]) -> Option<String> {
     if data.len() < 12 {
         return None;
@@ -144,7 +143,6 @@ pub fn parse_gnu_build_id(data: &[u8]) -> Option<String> {
 ///
 /// Returns None on absent NUL terminator, non-UTF-8 filename, or
 /// truncated CRC32.
-#[allow(dead_code)]
 pub fn parse_debuglink(data: &[u8]) -> Option<DebuglinkEntry> {
     let nul_pos = data.iter().position(|&b| b == 0)?;
     let file = std::str::from_utf8(&data[..nul_pos]).ok()?.to_string();
@@ -173,7 +171,6 @@ pub fn parse_debuglink(data: &[u8]) -> Option<DebuglinkEntry> {
 /// expand `$ORIGIN`, `$LIB`, `$PLATFORM` — those substitutions are
 /// runtime-context-dependent and are recorded raw per spec
 /// clarification.
-#[allow(dead_code)]
 pub fn extract_runpath_entries(
     dynamic: &[u8],
     dynstr: &[u8],
