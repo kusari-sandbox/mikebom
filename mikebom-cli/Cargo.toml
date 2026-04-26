@@ -20,8 +20,30 @@ path = "src/main.rs"
 name = "mikebom"
 path = "src/lib.rs"
 
+[features]
+default = []
+
+# Enable user-space eBPF tracing for the `mikebom trace` subcommand.
+# Activates aya/aya-log/libc + the `aya-user` feature on mikebom-common,
+# all of which are otherwise dropped from the dependency graph.
+#
+# Requirements when active:
+#   - Linux host (the optional deps are also `target_os = "linux"`-gated).
+#   - Nightly Rust + bpf-linker for the kernel-side artifact built by
+#     `cargo run -p xtask -- ebpf` (separate target triple, separate crate).
+#
+# See specs/020-ebpf-feature-gate/contracts/feature-flag.md for the
+# formal contract. Default builds (Linux + macOS + CI default lane)
+# stay stable-only and do not pay the nightly + bpf-linker tax.
+ebpf-tracing = [
+    "dep:aya",
+    "dep:aya-log",
+    "dep:libc",
+    "mikebom-common/aya-user",
+]
+
 [dependencies]
-mikebom-common = { path = "../mikebom-common", features = ["std", "aya-user"] }
+mikebom-common = { path = "../mikebom-common", features = ["std"] }
 
 flate2 = "1"
 serde_yaml = "0.9"
@@ -101,6 +123,9 @@ tempfile = "3"
 jsonschema = { version = "0.46", default-features = false }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-aya = "0.13"
-aya-log = "0.2"
-libc = "0.2"
+# Activated by the `ebpf-tracing` feature. Combined with the target
+# predicate, these are pulled in only when the host is Linux AND the
+# feature is enabled. Dropped from default builds per milestone 020.
+aya = { version = "0.13", optional = true }
+aya-log = { version = "0.2", optional = true }
+libc = { version = "0.2", optional = true }

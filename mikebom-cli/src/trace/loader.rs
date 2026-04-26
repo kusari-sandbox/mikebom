@@ -13,7 +13,7 @@ pub struct LoaderConfig {
     pub ebpf_object: Option<PathBuf>,
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
 mod inner {
     use std::path::{Path, PathBuf};
 
@@ -176,15 +176,15 @@ mod inner {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
 pub use inner::load_and_attach;
 // `EbpfHandle` lives inside the inner Linux-only module and isn't used
 // by any external caller; left non-re-exported to keep clippy clean.
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(all(target_os = "linux", feature = "ebpf-tracing")))]
 pub struct EbpfHandle;
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(all(target_os = "linux", feature = "ebpf-tracing")))]
 pub fn load_and_attach(_: &LoaderConfig) -> anyhow::Result<EbpfHandle> {
     anyhow::bail!("eBPF tracing requires Linux.")
 }

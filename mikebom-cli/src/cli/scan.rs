@@ -101,7 +101,7 @@ impl ScanArgs {
     /// Returns an error when `--require-signing` is set but no identity
     /// was configured. Only invoked from the Linux-only
     /// `execute_scan` block; gate the method itself.
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
     pub fn build_signing_identity(
         &self,
     ) -> anyhow::Result<crate::attestation::signer::SigningIdentity> {
@@ -155,7 +155,7 @@ pub async fn execute(args: ScanArgs) -> anyhow::Result<()> {
 /// Uses `argv[0]` basename — matches the convention `go-witness` uses
 /// when you pass `--step <name>`, but auto-derived. Only invoked from
 /// the Linux-only execute_scan block.
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
 fn default_collection_name(cmd: &str) -> String {
     cmd.split_whitespace()
         .next()
@@ -166,7 +166,7 @@ fn default_collection_name(cmd: &str) -> String {
         .to_string()
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
 async fn execute_scan(args: ScanArgs) -> anyhow::Result<()> {
     use std::time::{Duration, Instant};
 
@@ -541,7 +541,7 @@ async fn execute_scan(args: ScanArgs) -> anyhow::Result<()> {
 /// The underlying directory walk + hash logic lives in
 /// [`crate::scan_fs::walker::walk_and_hash`] and is shared with the
 /// standalone `sbom scan` subcommand.
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
 fn scan_artifact_dirs(
     dirs: &[PathBuf],
     since: std::time::SystemTime,
@@ -574,7 +574,7 @@ fn scan_artifact_dirs(
 /// suffix, (b) still exists on disk, and (c) is under the size cap. Each
 /// hash is keyed by the exact path string the aggregator saw so
 /// `apply_file_hashes` can match it back.
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
 fn hash_captured_artifacts(
     agg: &crate::trace::aggregator::EventAggregator,
 ) -> std::collections::HashMap<String, mikebom_common::types::hash::ContentHash> {
@@ -609,7 +609,7 @@ fn hash_captured_artifacts(
 /// nanosecond timestamp (what `bpf_ktime_get_ns` returns) into a
 /// CLOCK_REALTIME Unix-epoch nanosecond timestamp. Returns 0 on error so
 /// callers still get a best-effort wall-clock rather than panicking.
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
 fn compute_boot_offset_ns() -> u64 {
     fn sample(clock: libc::clockid_t) -> Option<u64> {
         let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
@@ -629,7 +629,7 @@ fn compute_boot_offset_ns() -> u64 {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(all(target_os = "linux", feature = "ebpf-tracing")))]
 async fn execute_scan(_args: ScanArgs) -> anyhow::Result<()> {
     anyhow::bail!(
         "eBPF tracing requires Linux. Use a Lima VM for tracing.\n\
