@@ -675,7 +675,13 @@ fn emit_entries_from_info(
                     hashes: Vec::new(),
                     sbom_tier: Some("analyzed".to_string()),
                     shade_relocation: None,
-                    extra_annotations: Default::default(),
+                    // Milestone 025 — main-module entries carry the
+                    // VCS state recorded in the binary's BuildInfo.
+                    // Dep entries (the for-loop below) intentionally
+                    // do NOT carry these annotations: their VCS info
+                    // isn't in this binary's BuildInfo (their VCS is
+                    // their own go.mod / repo).
+                    extra_annotations: build_vcs_annotations(info),
                 });
             }
         }
@@ -766,6 +772,41 @@ fn emit_file_level_diagnostic(
         shade_relocation: None,
         extra_annotations: Default::default(),
     });
+}
+
+/// Milestone 025: translate the BuildInfo VCS metadata into bag
+/// annotations on the main-module Go entry. Each annotation is
+/// included only when the source field is `Some`, so binaries built
+/// with `-buildvcs=false` (or without enough VCS context for a given
+/// key) emit no empty annotations. Returns empty `BTreeMap` when no
+/// VCS metadata was recovered.
+fn build_vcs_annotations(
+    info: &GoBinaryInfo,
+) -> std::collections::BTreeMap<String, serde_json::Value> {
+    let mut bag = std::collections::BTreeMap::new();
+    let Some(ref vcs) = info.vcs else {
+        return bag;
+    };
+    if let Some(ref rev) = vcs.revision {
+        bag.insert(
+            "mikebom:go-vcs-revision".to_string(),
+            serde_json::Value::String(rev.clone()),
+        );
+    }
+    if let Some(ref t) = vcs.time {
+        bag.insert(
+            "mikebom:go-vcs-time".to_string(),
+            serde_json::Value::String(t.clone()),
+        );
+    }
+    if let Some(modified) = vcs.modified {
+        // Match Go's wire convention: literal "true" / "false" string.
+        bag.insert(
+            "mikebom:go-vcs-modified".to_string(),
+            serde_json::Value::String(if modified { "true" } else { "false" }.to_string()),
+        );
+    }
+    bag
 }
 
 fn build_golang_purl(module: &str, version: &str) -> Option<Purl> {
