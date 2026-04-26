@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use anyhow::Context;
 use clap::Args;
 
 use mikebom_common::attestation::integrity::TraceIntegrity;
@@ -534,7 +535,7 @@ pub async fn execute(
         // target identity" for rationale.
         Some(&target_name),
     )
-    .map_err(|e| anyhow::anyhow!("{e}"))?;
+    .with_context(|| format!("scan failed for {}", root_path.display()))?;
     tracing::info!(
         components = components.len(),
         relationships = relationships.len(),

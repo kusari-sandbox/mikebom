@@ -48,34 +48,46 @@ mod inner {
         let mut bpf = Ebpf::load(&data).context("failed to load eBPF bytecode")?;
 
         // Populate PID filter (even though kernel-side is disabled,
-        // keep the map populated for future use)
+        // keep the map populated for future use). Insertion failure
+        // is non-fatal here — the filter is defensive future-proofing —
+        // but log so operators can investigate if a future kernel-side
+        // change starts depending on it.
         {
             let mut pid_filter: aya::maps::HashMap<_, u32, u8> =
                 aya::maps::HashMap::try_from(
                     bpf.map_mut("PID_FILTER").context("PID_FILTER map not found")?,
                 )?;
-            pid_filter.insert(config.target_pid, 1, 0).ok();
+            if let Err(e) = pid_filter.insert(config.target_pid, 1, 0) {
+                warn!(error = %e, target_pid = config.target_pid,
+                    "PID_FILTER insert failed; eBPF map populate is best-effort");
+            }
         }
 
-        // Set runtime configuration
+        // Set runtime configuration. Failure here IS load-bearing —
+        // kernel-side eBPF reads tracer_pid / capture_file_content_hash /
+        // trace_children from this map; a silent failure means the
+        // kernel sees zeroed defaults and traces wrong / missing data.
+        // We currently propagate-as-best-effort to avoid breaking
+        // existing callers, but log loudly so the failure is visible.
         {
             let mut cfg_map: aya::maps::Array<_, TraceConfig> =
                 aya::maps::Array::try_from(
                     bpf.map_mut("CONFIG").context("CONFIG map not found")?,
                 )?;
-            cfg_map
-                .set(
-                    0,
-                    TraceConfig {
-                        max_payload_capture: 512,
-                        tracer_pid: std::process::id(),
-                        capture_file_content_hash: 1,
-                        trace_children: if config.trace_children { 1 } else { 0 },
-                        _padding: [0; 2],
-                    },
-                    0,
-                )
-                .ok();
+            if let Err(e) = cfg_map.set(
+                0,
+                TraceConfig {
+                    max_payload_capture: 512,
+                    tracer_pid: std::process::id(),
+                    capture_file_content_hash: 1,
+                    trace_children: if config.trace_children { 1 } else { 0 },
+                    _padding: [0; 2],
+                },
+                0,
+            ) {
+                warn!(error = %e,
+                    "CONFIG map set failed; kernel-side will see zeroed TraceConfig defaults");
+            }
         }
 
         // Attach uprobes to OpenSSL
