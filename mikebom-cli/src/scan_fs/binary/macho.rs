@@ -26,8 +26,6 @@
 //! in `binary/elf.rs`. Each parser returns an Option / Vec defensively
 //! and never panics.
 
-#![allow(dead_code)] // wired in commit 2 (024/wire-up-bag)
-
 /// Mach-O magic bytes — distinguish 32/64-bit + LE/BE encoding.
 const MH_MAGIC_64: u32 = 0xfeedfacf; // native-endian 64-bit
 const MH_CIGAM_64: u32 = 0xcffaedfe; // byte-swapped 64-bit
@@ -57,8 +55,6 @@ const PLATFORM_XROS: u32 = 11;
 
 /// Detected Mach-O wire format. Returned by `decode_header`.
 struct MachoHeader {
-    /// True for 64-bit (mh_header_64), false for 32-bit.
-    is_64: bool,
     /// True for little-endian encoding.
     little_endian: bool,
     /// Number of load commands.
@@ -99,7 +95,6 @@ fn decode_header(bytes: &[u8]) -> Option<MachoHeader> {
         return None;
     }
     Some(MachoHeader {
-        is_64,
         little_endian,
         ncmds,
         sizeofcmds,
