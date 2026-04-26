@@ -166,54 +166,24 @@ const MAX_PROJECT_ROOT_DEPTH: usize = 6;
 /// project root (holds a poetry.lock, Pipfile.lock, requirements*.txt,
 /// or pyproject.toml). Always includes `rootfs` itself so the single-
 /// project case is unchanged. Recurses up to `MAX_PROJECT_ROOT_DEPTH`
-/// levels, pruning installed-tree / VCS / cache directories so the
-/// walk stays bounded on real-world trees.
-///
-/// Mirrors the npm walk: symlink-loop safe, skips dotfiles, skips
-/// known heavy subtrees (`node_modules/`, `target/`, `dist/`, `venv/`,
-/// `__pycache__/`, etc.).
+/// levels via the shared
+/// [`super::project_roots::walk_for_project_roots`] helper.
 fn candidate_python_project_roots(rootfs: &Path) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    let mut visited: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
-    walk_for_python_roots(rootfs, 0, &mut out, &mut visited);
-    out
-}
-
-fn walk_for_python_roots(
-    dir: &Path,
-    depth: usize,
-    out: &mut Vec<PathBuf>,
-    visited: &mut std::collections::HashSet<PathBuf>,
-) {
-    let key = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
-    if !visited.insert(key) {
-        return;
-    }
-
-    if has_python_project_marker(dir) {
-        out.push(dir.to_path_buf());
-    }
-
-    if depth >= MAX_PROJECT_ROOT_DEPTH {
-        return;
-    }
-
-    let Ok(read_dir) = std::fs::read_dir(dir) else {
-        return;
+    use super::project_roots::{
+        should_skip_default_descent, walk_for_project_roots, WalkConfig,
     };
-    for entry in read_dir.flatten() {
-        let path = entry.path();
-        if !path.is_dir() {
-            continue;
-        }
-        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
-            continue;
-        };
-        if should_skip_python_descent(name) {
-            continue;
-        }
-        walk_for_python_roots(&path, depth + 1, out, visited);
-    }
+    walk_for_project_roots(
+        rootfs,
+        &WalkConfig {
+            max_depth: MAX_PROJECT_ROOT_DEPTH,
+            is_project_root: &has_python_project_marker,
+            // Default skip set + python's `site-packages` (handled
+            // separately by `read_venv_dist_info`).
+            should_skip: &|name| {
+                should_skip_default_descent(name) || name == "site-packages"
+            },
+        },
+    )
 }
 
 /// True when `dir` holds any Python project-root marker. Installed
@@ -238,30 +208,6 @@ fn has_python_project_marker(dir: &Path) -> bool {
         }
     }
     false
-}
-
-/// Directory names the Python walker refuses to descend into. Mirrors
-/// the npm walker's skip set plus Python-specific caches (`venv/`,
-/// `.venv/` via the dotfile rule, `__pycache__/`, `.tox/`, `.nox/`,
-/// `.pytest_cache/` via the dotfile rule).
-fn should_skip_python_descent(name: &str) -> bool {
-    if name.starts_with('.') {
-        return true;
-    }
-    matches!(
-        name,
-        "node_modules"
-            | "bower_components"
-            | "vendor"
-            | "target"
-            | "dist"
-            | "build"
-            | "out"
-            | "coverage"
-            | "__pycache__"
-            | "venv"
-            | "site-packages"
-    )
 }
 
 /// Merge `additions` into `entries`, dropping any addition whose PURL

@@ -150,83 +150,16 @@ const MAX_PROJECT_ROOT_DEPTH: usize = 6;
 /// Dedup by PURL in `read()` handles the common case where a root
 /// lockfile and a sub-package `package.json` reference the same dep.
 fn candidate_project_roots(rootfs: &Path) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    let mut visited: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
-    walk_for_project_roots(rootfs, 0, &mut out, &mut visited);
-    out
-}
-
-fn walk_for_project_roots(
-    dir: &Path,
-    depth: usize,
-    out: &mut Vec<PathBuf>,
-    visited: &mut std::collections::HashSet<PathBuf>,
-) {
-    // Guard against symlink loops and duplicate enumeration. Use the
-    // canonical path when it's available; fall back to `dir` as-is so
-    // a missing dir doesn't silently swallow the scan.
-    let key = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
-    if !visited.insert(key) {
-        return;
-    }
-
-    if has_npm_signal(dir) {
-        out.push(dir.to_path_buf());
-    }
-
-    if depth >= MAX_PROJECT_ROOT_DEPTH {
-        return;
-    }
-
-    let Ok(read_dir) = std::fs::read_dir(dir) else {
-        return;
+    use super::project_roots::{
+        should_skip_default_descent, walk_for_project_roots, WalkConfig,
     };
-    for entry in read_dir.flatten() {
-        let path = entry.path();
-        if !path.is_dir() {
-            continue;
-        }
-        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
-            continue;
-        };
-        if should_skip_descent(name) {
-            continue;
-        }
-        walk_for_project_roots(&path, depth + 1, out, visited);
-    }
-}
-
-/// Directory names we refuse to descend into when looking for project
-/// roots. Split into three reasons:
-///
-/// 1. **Installed-tree subtrees** — `node_modules/` is an installed
-///    dependency graph. Its own `package.json`s are already handled by
-///    the parent project's `node_modules/` walker; descending would
-///    produce N² false-positive "project roots". Same for `vendor/`
-///    and the classic `bower_components/`.
-/// 2. **Hidden / VCS / tooling dirs** — `.git/`, `.hg/`, `.svn/`, and
-///    any dotfile dir. Never a project root; always just noise.
-/// 3. **Build outputs and language caches** — `target/` (Rust + Maven),
-///    `dist/`, `build/`, `out/`, `coverage/`, `.next/`, `.nuxt/`,
-///    `__pycache__/`, `.venv/`, `venv/`. Won't contain upstream-project
-///    metadata worth re-reading.
-fn should_skip_descent(name: &str) -> bool {
-    // Dotfiles (includes .git, .svn, .next, .venv, .cache, etc.).
-    if name.starts_with('.') {
-        return true;
-    }
-    matches!(
-        name,
-        "node_modules"
-            | "bower_components"
-            | "vendor"
-            | "target"
-            | "dist"
-            | "build"
-            | "out"
-            | "coverage"
-            | "__pycache__"
-            | "venv"
+    walk_for_project_roots(
+        rootfs,
+        &WalkConfig {
+            max_depth: MAX_PROJECT_ROOT_DEPTH,
+            is_project_root: &has_npm_signal,
+            should_skip: &should_skip_default_descent,
+        },
     )
 }
 
