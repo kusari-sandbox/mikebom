@@ -57,7 +57,7 @@ A committed golden file:
 - Has every `<WORKSPACE>` placeholder substitution applied — no `/Users/...` or `/home/runner/work/...` paths anywhere.
 - Has every legitimately-volatile field replaced with the documented placeholder string for that format (see "Placeholder catalog" below).
 - Has all "deep hash" content stripped per the format's strip rule (see "Strip rules" below).
-- Ends with a single trailing newline (POSIX-standard text-file convention; matches what `serde_json::to_string_pretty` followed by a newline produces).
+- No trailing newline — matches what `serde_json::to_string_pretty` produces, which is what every existing committed golden was written with.
 
 ### Placeholder catalog
 
@@ -67,6 +67,7 @@ A committed golden file:
 | CDX | `serialNumber` (top-level) | Fresh v4 UUID per invocation per CycloneDX spec. | `urn:uuid:00000000-0000-0000-0000-000000000000` |
 | CDX | `metadata.timestamp` | `Utc::now()` per invocation per CycloneDX spec. | `1970-01-01T00:00:00Z` |
 | SPDX 2.3 | `creationInfo.created` | Wall-clock timestamp per SPDX spec. | `1970-01-01T00:00:00Z` |
+| SPDX 2.3 | Every `annotations[].annotationDate` (document-level and per-package) | Required field on every annotation per the SPDX 2.3 spec; mikebom emits one wall-clock stamp per annotation at scan time. Surfaced empirically during T009. | `1970-01-01T00:00:00Z` |
 | SPDX 3 | `@graph[].created` on `CreationInfo` element(s) | Wall-clock timestamp per SPDX 3 spec. | `1970-01-01T00:00:00Z` |
 | SPDX 3 | Document IRI (`@id` on `SpdxDocument` element) | Currently content-derived (host-stable per `spdx3_determinism.rs:11-13`); placeholder reserved for future regression. | (not masked today; if emitter changes, mask to `<DOCUMENT_IRI>`) |
 
@@ -109,25 +110,26 @@ A reader of `tests/common/normalize.rs` MUST be able to answer "why is this fiel
 /// stripping descends recursively through nested components.
 ///
 /// Returns the normalized JSON re-serialized as pretty-printed string
-/// with sorted keys + trailing newline.
+/// with sorted keys (no trailing newline — matches what
+/// `serde_json::to_string_pretty` produces, which is what every
+/// existing committed golden was written with).
 pub fn normalize_cdx_for_golden(raw: &str, workspace: &Path) -> String;
 
-/// Normalize a parsed SPDX 2.3 document for golden comparison.
+/// Normalize a raw SPDX 2.3 scan output for golden comparison.
 ///
-/// Caller MUST have already serialized the document to a string and
-/// run workspace-path replacement on it; the input here is the
-/// post-string-replace re-parsed Value. UUID/timestamp masking +
-/// hash stripping run on this Value. Caller serializes the result
-/// for comparison or write.
-///
-/// Returns the masked Value; serialization is the caller's responsibility.
-pub fn normalize_spdx23_for_golden(doc: serde_json::Value, workspace: &Path) -> serde_json::Value;
+/// Same `&str -> String` contract as `normalize_cdx_for_golden`:
+/// workspace-path string-replace runs on the raw output;
+/// `creationInfo.created` masking + `packages[].checksums[]` strip
+/// run on the parsed JSON; pretty-printed serialized string returned.
+pub fn normalize_spdx23_for_golden(raw: &str, workspace: &Path) -> String;
 
-/// Normalize a parsed SPDX 3 document for golden comparison.
+/// Normalize a raw SPDX 3 scan output for golden comparison.
 ///
 /// Same contract as `normalize_spdx23_for_golden` but for the SPDX 3
-/// `@graph`-shaped document.
-pub fn normalize_spdx3_for_golden(doc: serde_json::Value, workspace: &Path) -> serde_json::Value;
+/// `@graph`-shaped document. Walks `@graph[]` for `CreationInfo`
+/// elements (mask `created`) and `Package` elements (strip
+/// `verifiedUsing[]`).
+pub fn normalize_spdx3_for_golden(raw: &str, workspace: &Path) -> String;
 
 /// Apply the cross-host fake-HOME env-var isolation to a Command.
 ///

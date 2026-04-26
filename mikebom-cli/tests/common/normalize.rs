@@ -36,11 +36,17 @@
 //!     per the CDX 1.6 spec.
 //!
 //! - **SPDX 2.3**:
-//!   - (filled in T007) `creationInfo.created` — wall-clock per SPDX 2.3 spec.
+//!   - `creationInfo.created` → `TIMESTAMP_PLACEHOLDER` — top-level
+//!     `creationInfo` field, wall-clock per the SPDX 2.3 spec.
+//!   - Every `annotations[].annotationDate` (document-level and
+//!     per-package) → `TIMESTAMP_PLACEHOLDER` — required field on
+//!     every annotation per the SPDX 2.3 spec; mikebom emits one
+//!     wall-clock stamp per annotation at scan time.
 //!
 //! - **SPDX 3**:
-//!   - (filled in T011) every `@graph[]` element with `type ==
-//!     "CreationInfo"`: `created` field — wall-clock per SPDX 3 spec.
+//!   - Every `@graph[]` element with `type == "CreationInfo"`:
+//!     `created` field → `TIMESTAMP_PLACEHOLDER` — wall-clock per
+//!     the SPDX 3 spec.
 //!
 //! ## Strip rules by format
 //!
@@ -52,9 +58,11 @@
 //!   so per-host cache state varies the hash set; stripping makes
 //!   the goldens portable. Hash-set parity within a single scan is
 //!   still guarded by `spdx_cdx_parity.rs` (in-memory, same host).
-//! - **SPDX 2.3**: (filled in T007) `packages[].checksums[]` — same.
-//! - **SPDX 3**: (filled in T011) `verifiedUsing[]` on every
-//!   `@graph[]` element with `type == "Package"` — same.
+//! - **SPDX 2.3**: `packages[].checksums[]` — same reason as CDX
+//!   hash strip; the per-host cache state varies the checksum set.
+//! - **SPDX 3**: `verifiedUsing[]` on every `@graph[]` element with
+//!   `type == "Package"` (or `"software_Package"` for SPDX 3.0.1
+//!   typed-prefix shape) — same per-host hash variability reason.
 //!
 //! ## Fake-HOME isolation envvars
 //!
@@ -156,31 +164,101 @@ fn strip_cdx_component_hashes(c: &mut serde_json::Value) {
     }
 }
 
-/// Normalize a parsed SPDX 2.3 document for golden comparison.
+/// Normalize a raw SPDX 2.3 scan output for golden comparison.
 ///
-/// Caller MUST have already serialized the document to a string and
-/// run workspace-path replacement on it; the input here is the
-/// post-string-replace re-parsed Value. UUID/timestamp masking + hash
-/// stripping run on this Value. Caller serializes the result for
-/// comparison or write.
-pub fn normalize_spdx23_for_golden(
-    _doc: serde_json::Value,
-    _workspace: &Path,
-) -> serde_json::Value {
-    unimplemented!("T007")
+/// Same contract as `normalize_cdx_for_golden`: workspace-path
+/// string-replace runs on the raw output; `creationInfo.created`
+/// masking + `packages[].checksums[]` strip run on the parsed JSON;
+/// pretty-printed serialized string returned (no trailing newline).
+pub fn normalize_spdx23_for_golden(raw: &str, workspace: &Path) -> String {
+    let ws_str = workspace.to_string_lossy().to_string();
+    let replaced = raw.replace(ws_str.as_str(), WORKSPACE_PLACEHOLDER);
+
+    let mut json: serde_json::Value = serde_json::from_str(&replaced)
+        .expect("produced SPDX 2.3 is valid JSON after workspace-path rewrite");
+    if let Some(obj) = json.as_object_mut() {
+        // Mask creationInfo.created — wall-clock per spec.
+        if let Some(ci) = obj.get_mut("creationInfo").and_then(|v| v.as_object_mut()) {
+            if ci.contains_key("created") {
+                ci.insert(
+                    "created".to_string(),
+                    serde_json::Value::String(TIMESTAMP_PLACEHOLDER.to_string()),
+                );
+            }
+        }
+        // Mask document-level annotations[].annotationDate.
+        if let Some(anns) = obj.get_mut("annotations").and_then(|v| v.as_array_mut()) {
+            mask_spdx23_annotation_dates(anns);
+        }
+        // Strip packages[].checksums[] (host-cache-derived) and mask
+        // per-package annotations[].annotationDate.
+        if let Some(pkgs) = obj.get_mut("packages").and_then(|v| v.as_array_mut()) {
+            for p in pkgs {
+                if let Some(p_obj) = p.as_object_mut() {
+                    p_obj.remove("checksums");
+                    if let Some(anns) =
+                        p_obj.get_mut("annotations").and_then(|v| v.as_array_mut())
+                    {
+                        mask_spdx23_annotation_dates(anns);
+                    }
+                }
+            }
+        }
+    }
+    serde_json::to_string_pretty(&json).expect("re-serialize SPDX 2.3")
 }
 
-/// Normalize a parsed SPDX 3 document for golden comparison.
+/// Replace every `annotationDate` field in an `annotations[]` array
+/// with the timestamp placeholder. SPDX 2.3 makes `annotationDate`
+/// REQUIRED on every annotation, so every entry has the field; we
+/// just overwrite without checking presence.
+fn mask_spdx23_annotation_dates(annotations: &mut [serde_json::Value]) {
+    for a in annotations {
+        if let Some(obj) = a.as_object_mut() {
+            if obj.contains_key("annotationDate") {
+                obj.insert(
+                    "annotationDate".to_string(),
+                    serde_json::Value::String(TIMESTAMP_PLACEHOLDER.to_string()),
+                );
+            }
+        }
+    }
+}
+
+/// Normalize a raw SPDX 3 scan output for golden comparison.
 ///
 /// Same contract as `normalize_spdx23_for_golden` but for the SPDX 3
 /// `@graph`-shaped document. Walks `@graph[]` for `CreationInfo`
 /// elements (mask `created`) and `Package` elements (strip
-/// `verifiedUsing[]`).
-pub fn normalize_spdx3_for_golden(
-    _doc: serde_json::Value,
-    _workspace: &Path,
-) -> serde_json::Value {
-    unimplemented!("T011")
+/// `verifiedUsing[]`). Document IRI is content-derived (host-stable
+/// per `spdx3_determinism.rs:11-13`) so left alone.
+pub fn normalize_spdx3_for_golden(raw: &str, workspace: &Path) -> String {
+    let ws_str = workspace.to_string_lossy().to_string();
+    let replaced = raw.replace(ws_str.as_str(), WORKSPACE_PLACEHOLDER);
+
+    let mut json: serde_json::Value = serde_json::from_str(&replaced)
+        .expect("produced SPDX 3 is valid JSON after workspace-path rewrite");
+    if let Some(graph) = json.get_mut("@graph").and_then(|v| v.as_array_mut()) {
+        for element in graph {
+            let Some(obj) = element.as_object_mut() else {
+                continue;
+            };
+            let kind = obj.get("type").and_then(|v| v.as_str()).map(String::from);
+            match kind.as_deref() {
+                Some("CreationInfo") if obj.contains_key("created") => {
+                    obj.insert(
+                        "created".to_string(),
+                        serde_json::Value::String(TIMESTAMP_PLACEHOLDER.to_string()),
+                    );
+                }
+                Some("Package" | "software_Package") => {
+                    obj.remove("verifiedUsing");
+                }
+                _ => {}
+            }
+        }
+    }
+    serde_json::to_string_pretty(&json).expect("re-serialize SPDX 3")
 }
 
 /// Apply the cross-host fake-HOME env-var isolation to a Command.

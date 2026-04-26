@@ -1,0 +1,806 @@
+{
+  "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+  "@graph": [
+    {
+      "@id": "_:creation-info",
+      "created": "1970-01-01T00:00:00Z",
+      "createdBy": [
+        "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/tool/mikebom"
+      ],
+      "specVersion": "3.0.1",
+      "type": "CreationInfo"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "mikebom-0.1.0-alpha.3",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/tool/mikebom",
+      "type": "Tool"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "dataLicense": "https://spdx.org/licenses/CC0-1.0",
+      "name": "simple-module",
+      "rootElement": [
+        "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-root-LIZGGP3G6P24VW23"
+      ],
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W",
+      "type": "SpdxDocument"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:mikebom:simple-module:0.0.0:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:generic/simple-module@0.0.0",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "simple-module",
+      "software_packageUrl": "pkg:generic/simple-module@0.0.0",
+      "software_packageVersion": "0.0.0",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-root-LIZGGP3G6P24VW23",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/pmezard:github.com\\/pmezard\\/go-difflib:v1.0.0:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/pmezard\\/go-difflib:github.com\\/pmezard\\/go-difflib:v1.0.0:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/github.com/pmezard/go-difflib@v1.0.0",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "github.com/pmezard/go-difflib",
+      "software_packageUrl": "pkg:golang/github.com/pmezard/go-difflib@v1.0.0",
+      "software_packageVersion": "v1.0.0",
+      "software_sourceInfo": "https://github.com/pmezard/go-difflib",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-6LPOVXNHYYPHFH7J",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-HOLDQLB4ZG2JENHT",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:gopkg.in:gopkg.in\\/yaml.v3:v3.0.1:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:gopkg.in\\/yaml.v3:gopkg.in\\/yaml.v3:v3.0.1:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/gopkg.in/yaml.v3@v3.0.1",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "gopkg.in/yaml.v3",
+      "software_packageUrl": "pkg:golang/gopkg.in/yaml.v3@v3.0.1",
+      "software_packageVersion": "v3.0.1",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-A3EJRWNXRJBCN4AR",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-P3H55RXVD3DOUGUX",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/inconshreveable:github.com\\/inconshreveable\\/mousetrap:v1.1.0:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/inconshreveable\\/mousetrap:github.com\\/inconshreveable\\/mousetrap:v1.1.0:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/github.com/inconshreveable/mousetrap@v1.1.0",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "github.com/inconshreveable/mousetrap",
+      "software_packageUrl": "pkg:golang/github.com/inconshreveable/mousetrap@v1.1.0",
+      "software_packageVersion": "v1.1.0",
+      "software_sourceInfo": "https://github.com/inconshreveable/mousetrap",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-DJ3ZIKWTNBYO26BT",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-WDQXRU5U5VXMXD7I",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/stretchr:github.com\\/stretchr\\/testify:v1.11.1:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/stretchr\\/testify:github.com\\/stretchr\\/testify:v1.11.1:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/github.com/stretchr/testify@v1.11.1",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "github.com/stretchr/testify",
+      "software_packageUrl": "pkg:golang/github.com/stretchr/testify@v1.11.1",
+      "software_packageVersion": "v1.11.1",
+      "software_sourceInfo": "https://github.com/stretchr/testify",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-FQD3O6TFIGWWRCL5",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-A2SLNI62QTZAA5ES",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/sirupsen:github.com\\/sirupsen\\/logrus:v1.9.4:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/sirupsen\\/logrus:github.com\\/sirupsen\\/logrus:v1.9.4:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/github.com/sirupsen/logrus@v1.9.4",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "github.com/sirupsen/logrus",
+      "software_packageUrl": "pkg:golang/github.com/sirupsen/logrus@v1.9.4",
+      "software_packageVersion": "v1.9.4",
+      "software_sourceInfo": "https://github.com/sirupsen/logrus",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JBX4TYZ3HEXJNFYD",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-RJY2MTGHCO6RNAH7",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/spf13:github.com\\/spf13\\/pflag:v1.0.9:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/spf13\\/pflag:github.com\\/spf13\\/pflag:v1.0.9:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/github.com/spf13/pflag@v1.0.9",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "github.com/spf13/pflag",
+      "software_packageUrl": "pkg:golang/github.com/spf13/pflag@v1.0.9",
+      "software_packageVersion": "v1.0.9",
+      "software_sourceInfo": "https://github.com/spf13/pflag",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JOU7AJL2C6XXTUFK",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-7G3YT5IGRPAH7OYU",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:gopkg.in:gopkg.in\\/check.v1:v0.0.0-20161208181325-20d25e280405:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:gopkg.in\\/check.v1:gopkg.in\\/check.v1:v0.0.0-20161208181325-20d25e280405:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/gopkg.in/check.v1@v0.0.0-20161208181325-20d25e280405",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "gopkg.in/check.v1",
+      "software_packageUrl": "pkg:golang/gopkg.in/check.v1@v0.0.0-20161208181325-20d25e280405",
+      "software_packageVersion": "v0.0.0-20161208181325-20d25e280405",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-OPPLTPJ24FIGRUY2",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-P3H55RXVD3DOUGUX",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/mattn:github.com\\/mattn\\/go-isatty:v0.0.21:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/mattn\\/go-isatty:github.com\\/mattn\\/go-isatty:v0.0.21:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/github.com/mattn/go-isatty@v0.0.21",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "github.com/mattn/go-isatty",
+      "software_packageUrl": "pkg:golang/github.com/mattn/go-isatty@v0.0.21",
+      "software_packageVersion": "v0.0.21",
+      "software_sourceInfo": "https://github.com/mattn/go-isatty",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-UADJIBC3AU5U4VJC",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-JJFJHVXAR4WGQHI5",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:golang.org\\/x:golang.org\\/x\\/sys:v0.28.0:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:golang.org\\/x\\/sys:golang.org\\/x\\/sys:v0.28.0:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/golang.org/x/sys@v0.28.0",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "golang.org/x/sys",
+      "software_packageUrl": "pkg:golang/golang.org/x/sys@v0.28.0",
+      "software_packageVersion": "v0.28.0",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-XXDQJPHRGTN4ALYD",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-2ZDFNHBBEVR6S53W",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/spf13:github.com\\/spf13\\/cobra:v1.10.2:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/spf13\\/cobra:github.com\\/spf13\\/cobra:v1.10.2:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/github.com/spf13/cobra@v1.10.2",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "github.com/spf13/cobra",
+      "software_packageUrl": "pkg:golang/github.com/spf13/cobra@v1.10.2",
+      "software_packageVersion": "v1.10.2",
+      "software_sourceInfo": "https://github.com/spf13/cobra",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZGOZVHQZC2RMR6GZ",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-7G3YT5IGRPAH7OYU",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/davecgh:github.com\\/davecgh\\/go-spew:v1.1.1:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:github.com\\/davecgh\\/go-spew:github.com\\/davecgh\\/go-spew:v1.1.1:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "github.com/davecgh/go-spew",
+      "software_packageUrl": "pkg:golang/github.com/davecgh/go-spew@v1.1.1",
+      "software_packageVersion": "v1.1.1",
+      "software_sourceInfo": "https://github.com/davecgh/go-spew",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZPQ6ND5QEI5V2QHC",
+      "suppliedBy": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-HFZXHVDIK5L5YRH3",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "golang.org/x",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-2ZDFNHBBEVR6S53W",
+      "type": "Organization"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "github.com/spf13",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-7G3YT5IGRPAH7OYU",
+      "type": "Organization"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "github.com/stretchr",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-A2SLNI62QTZAA5ES",
+      "type": "Organization"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "github.com/davecgh",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-HFZXHVDIK5L5YRH3",
+      "type": "Organization"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "github.com/pmezard",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-HOLDQLB4ZG2JENHT",
+      "type": "Organization"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "github.com/mattn",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-JJFJHVXAR4WGQHI5",
+      "type": "Organization"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "gopkg.in",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-P3H55RXVD3DOUGUX",
+      "type": "Organization"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "github.com/sirupsen",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-RJY2MTGHCO6RNAH7",
+      "type": "Organization"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "github.com/inconshreveable",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/agent-org-WDQXRU5U5VXMXD7I",
+      "type": "Organization"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-27LKR7CJLL75YPUK",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-OPPLTPJ24FIGRUY2",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-2D3A7GUOPFJUYQBV",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-FQD3O6TFIGWWRCL5",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-2MJFSR6FDPD2B75H",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZPQ6ND5QEI5V2QHC",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-3ACUEUVKQJIJSHE2",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-UADJIBC3AU5U4VJC",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-3IR6IA6LS6RX5DQ4",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:trace-integrity-events-dropped\",\"value\":0}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-4WAJXT3NMCYAY67Y",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JBX4TYZ3HEXJNFYD",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-5H5HPEJECZTLIOS7",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:trace-integrity-ring-buffer-overflows\",\"value\":0}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-5MDSSN4JWIU4S6DW",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-DJ3ZIKWTNBYO26BT",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-5RPY5BOFB7HACP2H",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-A3EJRWNXRJBCN4AR",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-6362XDID5YFVVCXY",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-FQD3O6TFIGWWRCL5",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-6JFXIGBDOQD2C7XG",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JBX4TYZ3HEXJNFYD",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-6NHEJGXFVS3NUS6F",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:github.com\\\\/spf13\\\\/cobra:github.com\\\\/spf13\\\\/cobra:v1.10.2:*:*:*:*:*:*:*\",\"cpe:2.3:a:github.com\\\\/spf13:github.com\\\\/spf13\\\\/cobra:v1.10.2:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZGOZVHQZC2RMR6GZ",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-72Z4WPEWCASQW75L",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-UADJIBC3AU5U4VJC",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-AC5QIRZ5W3U5P32G",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-OPPLTPJ24FIGRUY2",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-C6EQXSX5TSY2AF2P",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZGOZVHQZC2RMR6GZ",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-CLBQMTDLNZS6Z4ED",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:github.com\\\\/spf13\\\\/pflag:github.com\\\\/spf13\\\\/pflag:v1.0.9:*:*:*:*:*:*:*\",\"cpe:2.3:a:github.com\\\\/spf13:github.com\\\\/spf13\\\\/pflag:v1.0.9:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JOU7AJL2C6XXTUFK",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-D645J623Q76INOSH",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:github.com\\\\/pmezard\\\\/go-difflib:github.com\\\\/pmezard\\\\/go-difflib:v1.0.0:*:*:*:*:*:*:*\",\"cpe:2.3:a:github.com\\\\/pmezard:github.com\\\\/pmezard\\\\/go-difflib:v1.0.0:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-6LPOVXNHYYPHFH7J",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-EADWBASQAJE67V3F",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:github.com\\\\/davecgh\\\\/go-spew:github.com\\\\/davecgh\\\\/go-spew:v1.1.1:*:*:*:*:*:*:*\",\"cpe:2.3:a:github.com\\\\/davecgh:github.com\\\\/davecgh\\\\/go-spew:v1.1.1:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZPQ6ND5QEI5V2QHC",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-EEE77CH5HVUHW3GM",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JOU7AJL2C6XXTUFK",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-EGZDNBEQLC7V7ZXC",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-UADJIBC3AU5U4VJC",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-F3RBOIRIFVDN7NO4",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-OPPLTPJ24FIGRUY2",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-FSEGW5KLT34YMRT5",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:gopkg.in\\\\/yaml.v3:gopkg.in\\\\/yaml.v3:v3.0.1:*:*:*:*:*:*:*\",\"cpe:2.3:a:gopkg.in:gopkg.in\\\\/yaml.v3:v3.0.1:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-A3EJRWNXRJBCN4AR",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-G76N37LL2X7QLEDR",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JBX4TYZ3HEXJNFYD",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-G7ATVBXXS5INC3NN",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:github.com\\\\/sirupsen\\\\/logrus:github.com\\\\/sirupsen\\\\/logrus:v1.9.4:*:*:*:*:*:*:*\",\"cpe:2.3:a:github.com\\\\/sirupsen:github.com\\\\/sirupsen\\\\/logrus:v1.9.4:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JBX4TYZ3HEXJNFYD",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-I3GN3W7JH65HRUOG",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"compositions\",\"value\":{\"complete_ecosystems\":[\"golang\"]}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-LRKCRIPN76XPLP2E",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:github.com\\\\/mattn\\\\/go-isatty:github.com\\\\/mattn\\\\/go-isatty:v0.0.21:*:*:*:*:*:*:*\",\"cpe:2.3:a:github.com\\\\/mattn:github.com\\\\/mattn\\\\/go-isatty:v0.0.21:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-UADJIBC3AU5U4VJC",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-N6FLV54UJTSIHSLF",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:trace-integrity-kprobe-attach-failures\",\"value\":[]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-NFJTI4LHDFPMUPO5",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-DJ3ZIKWTNBYO26BT",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-NH2ORZVXEYRW63CP",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JOU7AJL2C6XXTUFK",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-OB42VHGP3LKTDJOQ",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-A3EJRWNXRJBCN4AR",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-OBA667XKNDIZXPRE",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-FQD3O6TFIGWWRCL5",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-ODLDEJ43F4W5AFCY",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-XXDQJPHRGTN4ALYD",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-OZZ5OKR5V46VO7EE",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-XXDQJPHRGTN4ALYD",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-PSOBROOAWLPOJ7IN",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-JOU7AJL2C6XXTUFK",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-Q2SYTH5NKH7KQQ2E",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:github.com\\\\/stretchr\\\\/testify:github.com\\\\/stretchr\\\\/testify:v1.11.1:*:*:*:*:*:*:*\",\"cpe:2.3:a:github.com\\\\/stretchr:github.com\\\\/stretchr\\\\/testify:v1.11.1:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-FQD3O6TFIGWWRCL5",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-QNWH25W2GIY3CMAN",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZGOZVHQZC2RMR6GZ",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-R2WEJLKANXDEX75Y",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZPQ6ND5QEI5V2QHC",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-RNGEC2B6YANJCDB6",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:golang.org\\\\/x\\\\/sys:golang.org\\\\/x\\\\/sys:v0.28.0:*:*:*:*:*:*:*\",\"cpe:2.3:a:golang.org\\\\/x:golang.org\\\\/x\\\\/sys:v0.28.0:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-XXDQJPHRGTN4ALYD",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-RVSYMRE6WGOIUOKT",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZPQ6ND5QEI5V2QHC",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-RWEZITCGAEIQ5JLL",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:generation-context\",\"value\":\"filesystem-scan\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-RWUZRRVEV6LDNEZP",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-ZGOZVHQZC2RMR6GZ",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-S47AGMW5HYPZMSNP",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-6LPOVXNHYYPHFH7J",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-TXITGFSIV7QCO775",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:gopkg.in\\\\/check.v1:gopkg.in\\\\/check.v1:v0.0.0-20161208181325-20d25e280405:*:*:*:*:*:*:*\",\"cpe:2.3:a:gopkg.in:gopkg.in\\\\/check.v1:v0.0.0-20161208181325-20d25e280405:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-OPPLTPJ24FIGRUY2",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-W5DSYLV6QXUPB2MR",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-DJ3ZIKWTNBYO26BT",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-WNWE4BNTUD5E6VIX",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"evidence.identity\",\"value\":{\"confidence\":0.85,\"technique\":\"package-database\"}}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-6LPOVXNHYYPHFH7J",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-WUSE7C7LEKHRMLPI",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:os-release-missing-fields\",\"value\":[\"ID\",\"VERSION_ID\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-XH3RNZOBPLLVPPCE",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:trace-integrity-uprobe-attach-failures\",\"value\":[]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-Y7V3UTWLLWMZC7Z6",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:cpe-candidates\",\"value\":[\"cpe:2.3:a:github.com\\\\/inconshreveable\\\\/mousetrap:github.com\\\\/inconshreveable\\\\/mousetrap:v1.1.0:*:*:*:*:*:*:*\",\"cpe:2.3:a:github.com\\\\/inconshreveable:github.com\\\\/inconshreveable\\\\/mousetrap:v1.1.0:*:*:*:*:*:*:*\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-DJ3ZIKWTNBYO26BT",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-YOHWEI4OTKMSFIWW",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:sbom-tier\",\"value\":\"source\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-6LPOVXNHYYPHFH7J",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-YT2VAMDZZLOEVRWE",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-XXDQJPHRGTN4ALYD",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/anno-ZBC3KIHTMBKOBL72",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:source-files\",\"value\":[\"<WORKSPACE>/tests/fixtures/go/simple-module/go.sum\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-BT6DL7UT2EDWO3EVH4YXT47W/pkg-A3EJRWNXRJBCN4AR",
+      "type": "Annotation"
+    }
+  ]
+}

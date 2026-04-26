@@ -1,0 +1,98 @@
+{
+  "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+  "@graph": [
+    {
+      "@id": "_:creation-info",
+      "created": "1970-01-01T00:00:00Z",
+      "createdBy": [
+        "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/tool/mikebom"
+      ],
+      "specVersion": "3.0.1",
+      "type": "CreationInfo"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "name": "mikebom-0.1.0-alpha.3",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/tool/mikebom",
+      "type": "Tool"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "dataLicense": "https://spdx.org/licenses/CC0-1.0",
+      "name": "bdb-only",
+      "rootElement": [
+        "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/pkg-root-GAECKAZT2GMN6PKP"
+      ],
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K",
+      "type": "SpdxDocument"
+    },
+    {
+      "creationInfo": "_:creation-info",
+      "externalIdentifier": [
+        {
+          "externalIdentifierType": "cpe23",
+          "identifier": "cpe:2.3:a:mikebom:bdb-only:0.0.0:*:*:*:*:*:*:*",
+          "type": "ExternalIdentifier"
+        },
+        {
+          "externalIdentifierType": "packageUrl",
+          "identifier": "pkg:generic/bdb-only@0.0.0",
+          "type": "ExternalIdentifier"
+        }
+      ],
+      "name": "bdb-only",
+      "software_packageUrl": "pkg:generic/bdb-only@0.0.0",
+      "software_packageVersion": "0.0.0",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/pkg-root-GAECKAZT2GMN6PKP",
+      "type": "software_Package"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/anno-AOK4B4NHMWXIT53I",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:generation-context\",\"value\":\"filesystem-scan\"}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/anno-ENMTP4OXECYJRJXL",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:os-release-missing-fields\",\"value\":[\"ID\",\"VERSION_ID\"]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/anno-F4ZXYNEMJBOJLIN7",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:trace-integrity-events-dropped\",\"value\":0}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/anno-KQSIAARYJNLQFXGS",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:trace-integrity-kprobe-attach-failures\",\"value\":[]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/anno-MNHQ72JJVCB5OC2M",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:trace-integrity-uprobe-attach-failures\",\"value\":[]}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K",
+      "type": "Annotation"
+    },
+    {
+      "annotationType": "other",
+      "creationInfo": "_:creation-info",
+      "spdxId": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K/anno-RH6QAQ7EHVSIAYH4",
+      "statement": "{\"schema\":\"mikebom-annotation/v1\",\"field\":\"mikebom:trace-integrity-ring-buffer-overflows\",\"value\":0}",
+      "subject": "https://mikebom.kusari.dev/spdx3/doc-3WJIPDYCNWOZJD5GLZK2LI4K",
+      "type": "Annotation"
+    }
+  ]
+}
