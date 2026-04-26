@@ -140,14 +140,17 @@ milestones 023 + 024).
   Type-2 record (4-byte signature `RSDS` + 16 GUID + 4 age + zero-
   terminated UTF-8 PDB path). Same shape as Mach-O LC_UUID parser
   in 024.
-- **R2: PE32 vs PE32+ generic bound friction.** `PeFile<'data, Pe, R>`
-  is generic over `ImageNtHeaders`. Calling `pdb_info()` requires
-  picking PeFile32 or PeFile64; class-detection in scan.rs already
-  knows which. Mitigation: dispatch on `ImageOptionalHeader32` /
-  `ImageOptionalHeader64` via the same magic-byte read existing
-  scan_binary already does (the `"pe"` arm has classification). If
-  this gets ugly, extract a trait wrapper in pe.rs that hides the
-  generic.
+- **R2: PE32 vs PE32+ dispatch.** `PeFile<'data, Pe, R>` is generic
+  over `ImageNtHeaders`. Calling `pdb_info()` requires picking
+  `PeFile32` or `PeFile64`. Resolution (now canonical in tasks T013):
+  read `IMAGE_OPTIONAL_HEADER.Magic` at the optional-header offset
+  (`0x10B` = PE32 → `PeFile32::parse`; `0x20B` = PE32+ →
+  `PeFile64::parse`). The wrapper fns in pe.rs are generic over
+  `ImageNtHeaders` so the body is shared regardless. If the
+  dispatch gets ugly inline in scan.rs, extract a `parse_pe(bytes)`
+  helper in pe.rs that does the magic-byte read + dispatch + calls
+  the three parsers + returns a `(Option<String>, Option<String>,
+  Option<String>)` tuple.
 - **R3: synthetic fixture construction.** Hand-building a valid PE
   byte buffer is more involved than ELF or Mach-O (DOS stub +
   IMAGE_DOS_HEADER + COFF-style headers + section table + data

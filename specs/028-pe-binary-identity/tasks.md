@@ -128,11 +128,15 @@ paths; entry.rs translates to bag entries via a parallel
       - `scan.rs` fat-Mach-O path (`Some(BinaryScan { ... })` around
         line 309 — defaults: None × 3).
       - `entry.rs::tests::fake_binary_scan` helper.
-      The non-fat path: when `class == "pe"`, dispatch on the
-      ImageNtHeaders bit-width (PeFile32 vs PeFile64). Easiest path:
-      try PeFile64::parse(bytes), fall back to PeFile32::parse(bytes),
-      then call the three FR-001 parsers. Populate the three new
-      BinaryScan fields. ELF / Mach-O paths leave the fields at None.
+      The non-fat path: when `class == "pe"`, read the
+      `IMAGE_OPTIONAL_HEADER.Magic` byte at the optional-header offset
+      (locatable via the existing `e_lfanew` + COFF-header layout, or
+      via `object::pe::ImageDosHeader::parse` + `nt_headers_offset()`
+      + 24-byte COFF header skip). Magic value `0x10B` → dispatch to
+      `PeFile32::parse(bytes)`; `0x20B` → `PeFile64::parse(bytes)`.
+      Then call the three FR-001 parsers (which are generic over
+      `ImageNtHeaders`). Populate the three new BinaryScan fields.
+      ELF / Mach-O paths leave the fields at None.
 - [ ] T014 [US1] Edit `entry.rs`: add a parallel
       `build_pe_identity_annotations` helper next to
       `build_macho_identity_annotations`. Same skip-on-empty contract.

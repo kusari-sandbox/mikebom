@@ -160,9 +160,12 @@ Then:  no `mikebom:pe-pdb-id` annotation is emitted (vs an annotation
 - **Endianness:** PE is always little-endian. No special handling.
 
 - **32-bit vs 64-bit PE:** the `object` crate's typed accessors handle
-  both via the `ImageNtHeaders` trait — mikebom calls the same fn
-  regardless. No code-path split needed (unlike Mach-O fat handling
-  in milestone 024).
+  both via the `ImageNtHeaders` trait — mikebom's wrapper fns are
+  generic over the trait so the body is shared. The call site picks
+  the concrete `PeFile32` vs `PeFile64` by reading
+  `IMAGE_OPTIONAL_HEADER.Magic` (`0x10B` → PE32, `0x20B` → PE32+).
+  No fat-container handling like Mach-O's per-slice walk in 024 —
+  PE has no equivalent multi-arch wrapper format.
 
 ## Functional requirements
 
@@ -214,19 +217,22 @@ Then:  no `mikebom:pe-pdb-id` annotation is emitted (vs an annotation
   `ParityExtractor` rows + 9 fn imports.
 
 - **FR-007**: Inline tests in `pe.rs::tests` exercise the three parsers
-  against either (a) hand-constructed synthetic PE byte buffers OR
-  (b) tiny real-world PE fixtures embedded as `&[u8]` const arrays.
-  Choice deferred to implementation; both options are valid.
+  against hand-constructed synthetic PE byte buffers (the same approach
+  milestone 024 took for Mach-O). Buffers are constructed in
+  `#[cfg(test)]`-only fixture-builder helpers, not committed as binary
+  blobs. This avoids any embedded-blob licensing/attribution overhead
+  and keeps the fixture surface inspectable in source.
 
-- **FR-008**: `tests/scan_binary.rs` gains assertions covering the new
-  bag entries. Approach (a): a synthetic-PE fixture hand-written to
-  `tempdir` exercises the full scan_binary → make_file_level_component
-  → bag pipeline. Approach (b): inline-only tests in
-  `entry.rs::tests` mock a populated `BinaryScan` and assert the bag
-  shape. Implementation may pick either; (b) is lighter and aligned
-  with how 024's bag-emission tests work in `entry.rs::tests` (no
-  scan_binary integration test on the macOS lane existed for /bin/ls
-  pre-024 either).
+- **FR-008**: Bag-emission assertions live in `entry.rs::tests` —
+  inline tests mock a populated `BinaryScan` and assert the bag
+  shape (3 keys when fully populated; subset when only some PE
+  fields are Some). This matches how milestone 024's bag-emission
+  tests work in `entry.rs::tests` and avoids the
+  `tests/scan_binary.rs` route since none of the host CI lanes
+  (Linux default, Linux ebpf, macOS) carry a scannable system PE
+  binary the way Linux does for ELF. The `pe.rs::tests` parser
+  tests cover the FR-001 path; the `entry.rs::tests` tests cover
+  the FR-004 bag-emission path.
 
 - **FR-009**: 27 byte-identity goldens regen produces zero diff
   (existing fixtures don't include PE binaries — same null-deltas
