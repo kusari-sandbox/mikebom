@@ -58,6 +58,30 @@ pub enum BuildInfoStatus {
     Missing,
 }
 
+/// Milestone 025 — VCS state recorded in the binary's BuildInfo. Set
+/// when the binary was built with `-buildvcs=true` (the Go default
+/// since 1.18) from a VCS-managed source tree. `None` for binaries
+/// built with `-buildvcs=false` or outside a VCS worktree.
+#[derive(Clone, Debug, Default)]
+pub struct GoVcsInfo {
+    /// Commit SHA of the source tree at build time. Verbatim from
+    /// the `vcs.revision` BuildInfo key — usually a 40-char SHA-1
+    /// hex; can also be a short SHA depending on Go's emitter mode.
+    /// Drives the `mikebom:go-vcs-revision` annotation.
+    pub revision: Option<String>,
+    /// Commit timestamp in RFC 3339 format (e.g.
+    /// `"2026-04-26T12:00:00Z"`). Verbatim from the `vcs.time`
+    /// BuildInfo key. Drives the `mikebom:go-vcs-time` annotation.
+    pub time: Option<String>,
+    /// `true` when the worktree had uncommitted changes at build
+    /// time, `false` when the build came from a clean checkout.
+    /// Parsed from the `vcs.modified` BuildInfo key (which Go writes
+    /// as the literal strings `"true"` / `"false"`). `None` when the
+    /// key is absent or unparseable. Drives the
+    /// `mikebom:go-vcs-modified` annotation.
+    pub modified: Option<bool>,
+}
+
 /// What a successful BuildInfo extraction yields.
 #[allow(dead_code)] // main_package + go_version are diagnostic / logging-only fields populated by the BuildInfo parser.
 #[derive(Clone, Debug)]
@@ -72,6 +96,10 @@ pub struct GoBinaryInfo {
     pub deps: Vec<(String, String, Option<String>)>,
     /// `build GOVERSION` key — e.g. `go1.22.1`. Surfaced for logs only.
     pub go_version: Option<String>,
+    /// Milestone 025 — VCS state at build time, if recorded by Go's
+    /// `-buildvcs=true` emitter. `None` when no `vcs.*` keys were
+    /// present in the BuildInfo blob.
+    pub vcs: Option<GoVcsInfo>,
 }
 
 /// Errors the binary reader can produce. The public `read` path
@@ -211,7 +239,7 @@ pub fn decode_buildinfo(bytes: &[u8], offset: usize) -> Result<GoBinaryInfo, GoB
         .to_string();
 
     let (main_package, main_module, deps) = parse_mod_info(&mod_info);
-    let go_version = parse_go_version_from_build_info(&vers_info);
+    let (go_version, vcs) = parse_vers_info(&vers_info);
 
     Ok(GoBinaryInfo {
         path: PathBuf::new(), // caller fills in
@@ -219,6 +247,7 @@ pub fn decode_buildinfo(bytes: &[u8], offset: usize) -> Result<GoBinaryInfo, GoB
         main_module,
         deps,
         go_version,
+        vcs,
     })
 }
 
@@ -343,19 +372,54 @@ fn trim_mod_sentinel_bytes(bytes: &[u8]) -> &[u8] {
     bytes
 }
 
-fn parse_go_version_from_build_info(s: &str) -> Option<String> {
-    // The first BuildInfo string IS the Go version (e.g. "go1.22.1"),
-    // possibly followed by a LF-separated list of `key\tvalue` build
-    // setting lines. Take the first line as the version.
+/// Parse the BuildInfo `vers_info` blob into the Go version + the
+/// optional VCS metadata. Format (LF-separated):
+///
+/// ```text
+/// go1.22.1
+/// vcs<TAB>git
+/// vcs.revision<TAB>deadbeef0123
+/// vcs.time<TAB>2026-04-26T12:00:00Z
+/// vcs.modified<TAB>false
+/// build<TAB>... (other build settings — ignored)
+/// ```
+///
+/// The first non-empty line is the Go version. Subsequent lines are
+/// `key<TAB>value` pairs; this parser walks them looking for the three
+/// `vcs.*` keys per spec FR-005. Other keys (`build` settings, the
+/// `vcs` system identifier) are out of scope for milestone 025 and
+/// silently ignored.
+fn parse_vers_info(s: &str) -> (Option<String>, Option<GoVcsInfo>) {
     let trimmed = s.trim();
     if trimmed.is_empty() {
-        return None;
+        return (None, None);
     }
-    let first_line = trimmed.lines().next()?.trim();
-    if first_line.is_empty() {
-        return None;
+    let mut lines = trimmed.lines();
+    let go_version = lines
+        .next()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty())
+        .map(String::from);
+
+    let mut vcs = GoVcsInfo::default();
+    for line in lines {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let mut it = line.splitn(2, '\t');
+        let (Some(key), Some(value)) = (it.next(), it.next()) else {
+            continue;
+        };
+        match key {
+            "vcs.revision" => vcs.revision = Some(value.to_string()),
+            "vcs.time" => vcs.time = Some(value.to_string()),
+            "vcs.modified" => vcs.modified = value.parse::<bool>().ok(),
+            _ => {}
+        }
     }
-    Some(first_line.to_string())
+    let vcs_some = vcs.revision.is_some() || vcs.time.is_some() || vcs.modified.is_some();
+    (go_version, if vcs_some { Some(vcs) } else { None })
 }
 
 // ---------------------------------------------------------------------------
@@ -836,6 +900,68 @@ mod tests {
         assert_eq!(info.deps.len(), 1);
         assert_eq!(info.deps[0].0, "github.com/new/lib");
         assert_eq!(info.deps[0].1, "v2.0.0");
+    }
+
+    // --- milestone 025: VCS metadata extraction ----------------------------
+
+    #[test]
+    fn parses_all_three_vcs_keys() {
+        // Realistic build_info blob: Go version + system + revision +
+        // time + modified.
+        let mod_info = "path\texample.com/app\nmod\texample.com/app\tv0.0.0\t\n";
+        let build_info = "go1.22.1\n\
+                          vcs\tgit\n\
+                          vcs.revision\tdeadbeef0123456789abcdef0123456789abcdef\n\
+                          vcs.time\t2026-04-26T12:00:00Z\n\
+                          vcs.modified\tfalse";
+        let blob = build_inline_buildinfo(mod_info, build_info);
+        let info = decode_buildinfo(&blob, 0).expect("decode");
+        let vcs = info.vcs.expect("vcs metadata extracted");
+        assert_eq!(
+            vcs.revision.as_deref(),
+            Some("deadbeef0123456789abcdef0123456789abcdef")
+        );
+        assert_eq!(vcs.time.as_deref(), Some("2026-04-26T12:00:00Z"));
+        assert_eq!(vcs.modified, Some(false));
+        // Go version still parses.
+        assert_eq!(info.go_version.as_deref(), Some("go1.22.1"));
+    }
+
+    #[test]
+    fn parses_only_revision_other_keys_absent() {
+        // Build_info with vcs.revision only (some Go toolchain modes
+        // omit time/modified when emitter can't determine them).
+        let mod_info = "path\tx\nmod\tx\tv0.0.0\t\n";
+        let build_info = "go1.22.1\nvcs.revision\tabc123";
+        let blob = build_inline_buildinfo(mod_info, build_info);
+        let info = decode_buildinfo(&blob, 0).expect("decode");
+        let vcs = info.vcs.expect("partial vcs metadata still surfaces");
+        assert_eq!(vcs.revision.as_deref(), Some("abc123"));
+        assert_eq!(vcs.time, None);
+        assert_eq!(vcs.modified, None);
+    }
+
+    #[test]
+    fn no_vcs_keys_yields_none_vcs() {
+        // Build_info with only the Go version — binary built with
+        // -buildvcs=false (or outside a VCS worktree).
+        let mod_info = "path\tx\nmod\tx\tv0.0.0\t\n";
+        let build_info = "go1.22.1";
+        let blob = build_inline_buildinfo(mod_info, build_info);
+        let info = decode_buildinfo(&blob, 0).expect("decode");
+        assert!(info.vcs.is_none(), "no vcs.* keys → vcs field is None");
+        assert_eq!(info.go_version.as_deref(), Some("go1.22.1"));
+    }
+
+    #[test]
+    fn vcs_modified_dirty_tree_parses_true() {
+        // Confirms dirty-tree flag round-trips correctly.
+        let mod_info = "path\tx\nmod\tx\tv0.0.0\t\n";
+        let build_info = "go1.22.1\nvcs.modified\ttrue";
+        let blob = build_inline_buildinfo(mod_info, build_info);
+        let info = decode_buildinfo(&blob, 0).expect("decode");
+        let vcs = info.vcs.expect("vcs metadata present");
+        assert_eq!(vcs.modified, Some(true));
     }
 
     // --- detect / read_binary ----------------------------------------------
