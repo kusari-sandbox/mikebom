@@ -7,80 +7,71 @@ description: "Task list — milestone 021 SPDX normalize-consumption"
 **Input**: Design documents from `/specs/021-spdx-normalize-consumption/`
 **Prerequisites**: spec.md (✅), plan.md (✅), checklists/requirements.md (✅)
 
-**Tests**: No new tests. The 27 byte-identity goldens (from milestones 017 + 020) plus the existing 50-iteration tight-loop discipline are the regression surface.
+**Tests**: No new tests. The 27 byte-identity goldens (from milestones 017 + 020) plus the 50-iteration tight-loop discipline are the regression surface.
 
-**Organization**: Single user story (US1, P2). Two atomic commits + polish.
-
-## Format: `[ID] [Story] Description`
-
-- All tasks map to US1.
+**Organization**: Single user story (US1, P2). One atomic commit + verification.
 
 ## Path Conventions
 
-- Touches `mikebom-cli/tests/spdx_us1_acceptance.rs`, `mikebom-cli/tests/spdx3_us3_acceptance.rs`, `mikebom-cli/tests/spdx_determinism.rs`, `mikebom-cli/tests/spdx3_determinism.rs`.
+- Touches `mikebom-cli/tests/spdx_us1_acceptance.rs` and `mikebom-cli/tests/spdx_determinism.rs`.
 - Does NOT touch `mikebom-cli/src/` (FR-006 / SC-005).
-- Does NOT touch `cdx_regression.rs`, `spdx_regression.rs` (already at parity), or `common/normalize.rs` itself (already mature).
+- Does NOT touch `cdx_regression.rs`, `spdx_regression.rs`, `spdx3_us3_acceptance.rs`, `spdx3_determinism.rs`, or `common/normalize.rs` (all already at parity per direct re-verification).
 
 ---
 
 ## Phase 1: Reconnaissance & Baseline
 
-- [X] T001 Reconnaissance done in pre-spec investigation (2026-04-26). Findings logged in `spec.md` Background table. The "documented flake" verified non-existent (50 isolated + 5 default-parallel + 12 4-way concurrent + 3 regen-mode runs all green).
-- [ ] T002 Snapshot baseline: `./scripts/pre-pr.sh 2>&1 | tee /tmp/baseline-021.txt | grep -E '^test [a-z_:]+ \.\.\. ok' | sort -u > /tmp/baseline-021-tests.txt`. Compare post-021 to confirm zero test renames/removals.
+- [X] T001 Reconnaissance done in pre-spec investigation (2026-04-26). Initial recon overstated scope; direct re-verification corrected: `spdx3_us3_acceptance.rs` and `spdx3_determinism.rs` are already at parity. The "documented spdx_determinism flake" verified non-existent across 70 local + 30 CI runs.
+- [ ] T002 Snapshot baseline: `./scripts/pre-pr.sh 2>&1 | tee /tmp/baseline-021.txt | grep -E '^test [a-z_:]+ \.\.\. ok' | sort -u > /tmp/baseline-021-tests.txt`. Confirm post-021 list is identical (zero rename or removal).
 
 ---
 
-## Phase 2: Commit 1 — `021/acceptance-isolation`
+## Phase 2: Single Commit — `021/spdx-isolation`
 
-**Goal**: `spdx_us1_acceptance.rs` and `spdx3_us3_acceptance.rs` apply `apply_fake_home_env` at every `Command::new(bin())` spawn site.
+**Goal**: Both files apply `apply_fake_home_env` at their single shared spawn helper.
 
-- [ ] T003 Audit `spdx_us1_acceptance.rs` for `Command::new(bin())` and `Command::new(common::bin())` sites. List each line number. Expected: 5-7 sites based on file LOC.
-- [ ] T004 At each site: import `common::normalize::apply_fake_home_env`; allocate `let fake_home = tempfile::tempdir().expect("tempdir");`; call `apply_fake_home_env(&mut cmd, fake_home.path())` before `.output()`/`.spawn()`. Hold `fake_home` in scope until after the spawn completes.
-- [ ] T005 Audit `spdx3_us3_acceptance.rs` for spawn sites that don't already use `apply_fake_home_env`. The existing scenario-4 npm test (line 206) is the pattern.
-- [ ] T006 Apply isolation to the missing scenarios (specifically scenario 5 at ~line 277 per recon).
-- [ ] T007 Verify: `cargo +stable test -p mikebom --test spdx_us1_acceptance --test spdx3_us3_acceptance` passes. Pre-PR clean.
-- [ ] T008 Commit: `refactor(021/acceptance-isolation): apply_fake_home_env across SPDX 2.3 + 3.0.1 acceptance tests`.
-
----
-
-## Phase 3: Commit 2 — `021/determinism-isolation`
-
-**Goal**: `spdx_determinism.rs` gains `apply_fake_home_env`; `spdx3_determinism.rs::normalize()` gains workspace-path replacement.
-
-- [ ] T009 Edit `spdx_determinism.rs::scan_to_spdx_json` (line 16): allocate `fake_home: TempDir` (caller-provided or function-internal; pick whichever keeps the helper simple), apply `apply_fake_home_env` to the `Command` before `.output()`. Hold the tempdir in scope until output is read.
-- [ ] T010 Edit `spdx3_determinism.rs::normalize()` (line 56): add workspace-path replacement against `WORKSPACE_PLACEHOLDER` before parsing JSON. Decision per FR-004: either inline the `raw.replace(workspace, WORKSPACE_PLACEHOLDER)` step OR delegate to `normalize_spdx3_for_golden()` if the contract matches. Verify by running the test before and after.
-- [ ] T011 Verify: `cargo +stable test -p mikebom --test spdx_determinism --test spdx3_determinism` passes. Pre-PR clean.
-- [ ] T012 Commit: `refactor(021/determinism-isolation): apply_fake_home_env + workspace-path normalization across SPDX determinism tests`.
+- [ ] T003 Edit `mikebom-cli/tests/spdx_us1_acceptance.rs::scan()` (line 34):
+  1. Add `use common::normalize::apply_fake_home_env;` to the imports near `use common::{bin, workspace_root};`.
+  2. Inside the `scan()` body, after `let tmp = tempfile::tempdir()...`, allocate `let fake_home = tempfile::tempdir().expect("fake-home tempdir");`.
+  3. After `let mut cmd = Command::new(bin());`, add `apply_fake_home_env(&mut cmd, fake_home.path());`.
+  4. Verify `fake_home` lives until after `let out = cmd.output()...;` returns (it does — both bindings are in the same `fn` body and Rust drops at end-of-scope).
+- [ ] T004 Edit `mikebom-cli/tests/spdx_determinism.rs::scan_to_spdx_json()` (line 16):
+  1. Add `use common::normalize::apply_fake_home_env;` to imports.
+  2. Inside `scan_to_spdx_json()`, after `let tmp = tempfile::tempdir()...`, allocate `let fake_home = tempfile::tempdir().expect("fake-home tempdir");`.
+  3. After `let bin = env!(...); let status = Command::new(bin)`, restructure to bind `let mut cmd = Command::new(bin); apply_fake_home_env(&mut cmd, fake_home.path()); let status = cmd.arg(...)...`.
+- [ ] T005 Verify: `cargo +stable test -p mikebom --test spdx_us1_acceptance --test spdx_determinism` passes.
+- [ ] T006 Pre-PR clean (`./scripts/pre-pr.sh`).
+- [ ] T007 Commit: `refactor(021/spdx-isolation): apply_fake_home_env in spdx_us1_acceptance + spdx_determinism shared helpers`.
 
 ---
 
-## Phase 4: Verification
+## Phase 3: Verification
 
-- [ ] T013 50-iteration tight loops, one per affected file:
+- [ ] T008 50-iteration tight loops:
   ```
-  for i in $(seq 1 50); do cargo +stable test -p mikebom --test spdx_us1_acceptance -- --test-threads=1 2>&1 | grep -qE 'test result: ok' || echo FAIL $i; done
+  for i in $(seq 1 50); do
+    cargo +stable test -p mikebom --test spdx_us1_acceptance -- --test-threads=1 \
+      2>&1 | grep -qE 'test result: ok' || echo "FAIL iter $i"
+  done
   ```
-  Repeat for `spdx_determinism`, `spdx3_us3_acceptance`, `spdx3_determinism`. SC-002 holds when each is 50/50.
-- [ ] T014 SC-003 verification: regen all 27 goldens via `MIKEBOM_UPDATE_CDX_GOLDENS=1 MIKEBOM_UPDATE_SPDX_GOLDENS=1 MIKEBOM_UPDATE_SPDX3_GOLDENS=1 cargo +stable test --workspace --tests -- --test-threads=1`. Verify `git diff -- mikebom-cli/tests/golden` is empty.
-- [ ] T015 SC-005 verification: `git diff main..HEAD -- mikebom-cli/src/` is empty.
-- [ ] T016 Push branch; observe both Linux CI lanes + macOS lane green.
-- [ ] T017 Author PR description: 2-commit summary, contract pointer (`tests/common/normalize.rs` is what's being consumed), byte-identity attestation.
+  Repeat for `spdx_determinism`. SC-002 holds when each is 50/50.
+- [ ] T009 SC-003 verification: regen all 27 goldens via `MIKEBOM_UPDATE_CDX_GOLDENS=1 MIKEBOM_UPDATE_SPDX_GOLDENS=1 MIKEBOM_UPDATE_SPDX3_GOLDENS=1 cargo +stable test --workspace --tests -- --test-threads=1`. Verify `git diff -- mikebom-cli/tests/golden` is empty.
+- [ ] T010 SC-005 verification: `git diff main..HEAD -- mikebom-cli/src/` is empty. Also: `git diff main..HEAD -- mikebom-cli/tests/spdx3_us3_acceptance.rs mikebom-cli/tests/spdx3_determinism.rs` is empty (corrected-scope regression check from spec Scenario 3).
+- [ ] T011 Push branch; observe both Linux CI lanes + macOS lane green.
+- [ ] T012 Author PR description: 1-commit summary, recon-correction note, byte-identity attestation, what was NOT touched and why.
 
 ---
 
 ## Dependency Graph
 
 ```text
-T001 (recon, done) ──→ T002 (baseline)
-                          │
-                          ↓
-                     T003 → T004 → T005 → T006 → T007 → T008  ← Commit 1
-                                                          │
-                                                          ↓
-                                                     T009 → T010 → T011 → T012  ← Commit 2
-                                                                            │
-                                                                            ↓
-                                                                       T013 → T014 → T015 → T016 → T017
+T001 (recon, done) → T002 (baseline)
+                       │
+                       ↓
+                  T003 → T004 → T005 → T006 → T007  ← Single commit
+                                                │
+                                                ↓
+                                           T008 → T009 → T010 → T011 → T012
 ```
 
 ## Estimated effort
@@ -88,7 +79,6 @@ T001 (recon, done) ──→ T002 (baseline)
 | Phase | Effort | Notes |
 |---|---|---|
 | Phase 1 (baseline) | 5 min | T001 already done; just T002 snapshot |
-| Phase 2 (acceptance) | 45 min | Audit + insert; us1 has more sites than us3 |
-| Phase 3 (determinism) | 30 min | Smaller diff; mostly mechanical |
-| Phase 4 (verify + PR) | 20 min | 50x loops + regen + push |
-| **Total** | **~1.5 hr** | One focused sitting. |
+| Phase 2 (single commit) | 20 min | Two helper edits, ~6 lines each |
+| Phase 3 (verify + PR) | 20 min | 50x loops + regen + push |
+| **Total** | **~45 min** | One focused half-hour-plus. |

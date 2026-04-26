@@ -12,14 +12,16 @@ Milestone 017 (PR #40) extracted `mikebom-cli/tests/common/normalize.rs` (281 LO
 
 What didn't get done: the four sibling **acceptance** + **determinism** test files were left mid-conversion. The 2026-04-26 reconnaissance (logged in `tasks.md` T001) confirmed:
 
-| Test file | `apply_fake_home_env`? | normalize helper? |
-|---|---|---|
-| `cdx_regression.rs` | ✓ | ✓ (gold standard) |
-| `spdx_regression.rs` | ✓ | ✓ (already parity) |
-| `spdx_us1_acceptance.rs` | ✗ | ✗ — bare `Command::new(bin())` |
-| `spdx3_us3_acceptance.rs` | ⚠ partial — only one scenario | ✗ |
-| `spdx_determinism.rs` | ✗ | ✗ |
-| `spdx3_determinism.rs` | ✓ | ⚠ partial — missing workspace-path |
+| Test file | `apply_fake_home_env`? | normalize helper? | Real work |
+|---|---|---|---|
+| `cdx_regression.rs` | ✓ | ✓ | — (gold standard) |
+| `spdx_regression.rs` | ✓ | ✓ | — (already parity) |
+| `spdx_us1_acceptance.rs` | ✗ | ✗ — bare `Command::new(bin())` | Add fake-home isolation to `scan()` helper (1 site covers all 5 scenarios) |
+| `spdx3_us3_acceptance.rs` | ✓ (all 3 sites) | n/a (no goldens) | — (already correct; recon was wrong) |
+| `spdx_determinism.rs` | ✗ | n/a (no goldens) | Add fake-home isolation to `scan_to_spdx_json()` helper |
+| `spdx3_determinism.rs` | ✓ (all sites) | n/a (same-host two-run; workspace-path not needed) | — (already correct; recon was wrong) |
+
+**Note on spec amendment (2026-04-26):** initial recon overstated the scope. Direct re-verification (`grep -c apply_fake_home_env`) confirmed `spdx3_us3_acceptance.rs` already isolates every `Command::new` site (3/3) and `spdx3_determinism.rs::run_scan` already calls `apply_fake_home_env` for both runs of the deb-fixture test. The "missing workspace-path" claim against `spdx3_determinism.rs::normalize()` was based on confusing same-host two-run comparison (which doesn't need workspace-path normalization, since both outputs contain the same workspace path) with cross-host golden pinning (which does). Spec FRs and tasks were corrected accordingly; the remaining real scope is two files and ~15 LOC of changes.
 
 The risk is the same one PR #40 surfaced: a host-specific value (HOME-derived path, stale Maven repo cache, GOPATH module cache, workspace path) leaks into a test's assertion target, the test passes on the dev box but fails on a CI runner with different paths — or worse, passes on both but masks a real bug because the contaminated input happens to produce matching contaminated output.
 
@@ -35,13 +37,11 @@ The work is **consumption**, not extraction: the helpers exist; three files don'
 
 After implementation:
 
-- `mikebom-cli/tests/spdx_us1_acceptance.rs` calls `apply_fake_home_env(&mut cmd, &fake_home)` on every spawned `Command::new(bin())` and stops setting host-leaked env vars unconditionally.
-- `mikebom-cli/tests/spdx_determinism.rs` does the same — both `scan_to_spdx_json` invocations isolate HOME via the helper.
-- `mikebom-cli/tests/spdx3_us3_acceptance.rs` applies isolation across **all** scenarios (not just scenario 4's npm test).
-- `mikebom-cli/tests/spdx3_determinism.rs` adds workspace-path normalization to its `normalize()` helper (so two-runs comparison won't break the day a future field starts including the workspace path).
-- All four files compile + pass under both:
+- `mikebom-cli/tests/spdx_us1_acceptance.rs::scan()` calls `apply_fake_home_env(&mut cmd, fake_home.path())` on its single `Command::new(bin())` site. All 5 acceptance scenarios that call this helper inherit the isolation.
+- `mikebom-cli/tests/spdx_determinism.rs::scan_to_spdx_json()` does the same. Both `run_twice` invocations (which call this helper) inherit the isolation.
+- Both files compile + pass under:
   - `cargo +stable test --workspace` (default lane)
-  - 50 iterations of `cargo +stable test -p mikebom --test spdx_us1_acceptance`, `--test spdx_determinism`, etc. in a tight loop on macOS
+  - 50 iterations of `cargo +stable test -p mikebom --test spdx_us1_acceptance` and `--test spdx_determinism` in tight loops on macOS
 - 27 byte-identity goldens regen with zero diff (no behavior change in mikebom output).
 
 ## Acceptance Scenarios
@@ -64,12 +64,15 @@ Then:  both invocations produce mutually-byte-identical output (after
        fake-HOME isolation so the comparison is honest
 ```
 
-**Scenario 3: spdx3_us3_acceptance scenario consistency**
+**Scenario 3 (regression check): spdx3_us3_acceptance + spdx3_determinism unchanged**
 ```
-Given: spdx3_us3_acceptance.rs has 5 scenarios
-When:  any one of them spawns `mikebom sbom scan`
-Then:  all 5 use apply_fake_home_env identically — no scenario sees
-       host state that another scenario doesn't
+Given: those two files were corrected to isolation-complete prior to milestone 021
+When:  the milestone 021 PR opens
+Then:  `git diff main..021-spdx-normalize-consumption -- \
+       mikebom-cli/tests/spdx3_us3_acceptance.rs \
+       mikebom-cli/tests/spdx3_determinism.rs` is empty (verifies the
+       corrected scope of FR-003 and FR-004 — see "Note on spec
+       amendment" above)
 ```
 
 ## Edge Cases
@@ -82,11 +85,11 @@ Then:  all 5 use apply_fake_home_env identically — no scenario sees
 
 ## Functional Requirements
 
-- **FR-001**: `mikebom-cli/tests/spdx_us1_acceptance.rs` imports `apply_fake_home_env` from `common::normalize` and applies it to every `Command::new(common::bin())` invocation. Each call site allocates a `tempfile::TempDir` for the fake HOME and holds it for the duration of the spawn.
-- **FR-002**: `mikebom-cli/tests/spdx_determinism.rs` does the same — both `scan_to_spdx_json()` invocations (one in `scan_to_spdx_json` itself, applied to the helper) isolate HOME identically.
-- **FR-003**: `mikebom-cli/tests/spdx3_us3_acceptance.rs` audits every scenario; any `Command::new(bin())` that doesn't currently call `apply_fake_home_env` gains the call. The existing scenario-4 npm test (line 206) is the reference pattern.
-- **FR-004**: `mikebom-cli/tests/spdx3_determinism.rs::normalize()` (line 56) gains workspace-path replacement against `WORKSPACE_PLACEHOLDER`. The local `normalize()` continues to mask `CreationInfo.created` (already done); workspace-path becomes its second responsibility. (Or, equivalently, switch to calling `normalize_spdx3_for_golden()` from `common::normalize` if the contract matches — verified at implementation time.)
-- **FR-005**: `mikebom-cli/tests/spdx_us1_acceptance.rs::mask_volatile()` (lines 297-322) is left in place. Out of scope to extract — different concern from golden comparison.
+- **FR-001**: `mikebom-cli/tests/spdx_us1_acceptance.rs::scan()` (line 34) imports `apply_fake_home_env` from `common::normalize` and applies it to its single `Command::new(bin())` site (line 37). One `tempfile::TempDir` per `scan()` invocation, held in scope until the spawn returns. This single edit covers all 5 acceptance scenarios since they share the helper.
+- **FR-002**: `mikebom-cli/tests/spdx_determinism.rs::scan_to_spdx_json()` (line 16) does the same — its single `Command::new(bin)` site (line 20) applies `apply_fake_home_env` with a per-call `TempDir`. Both `run_twice()` invocations (which call this helper) automatically inherit the isolation.
+- **FR-003**: ~~spdx3_us3_acceptance.rs uniformity~~ — **DROPPED** (corrected 2026-04-26): re-verification showed all 3 spawn sites already isolate. No change needed.
+- **FR-004**: ~~spdx3_determinism.rs workspace-path replacement~~ — **DROPPED** (corrected 2026-04-26): same-host two-run comparison doesn't need workspace-path normalization (both outputs contain the same workspace path so equality holds). Workspace-path is a cross-host golden-pinning concern, not a same-host two-run-comparison concern. No change needed.
+- **FR-005**: `mikebom-cli/tests/spdx_us1_acceptance.rs::mask_volatile()` is left in place. Out of scope to extract — different concern from golden comparison.
 - **FR-006**: No mikebom production code changes. Test-files-only refactor (mirrors milestone 016's discipline).
 - **FR-007**: 27 byte-identity goldens regen with zero diff. Verifies no scan-output behavior change.
 - **FR-008**: Each commit leaves `./scripts/pre-pr.sh` clean — same per-commit-clean discipline as 018, 019, 020.

@@ -8,64 +8,49 @@ milestone: 021
 
 ## Architecture
 
-Test-files-only refactor. Each affected file imports the existing primitives from `common::normalize` and applies them at every `Command::new(bin())` site (or, for determinism tests, every output-normalization site).
+Test-files-only refactor. Each affected file imports the existing primitives from `common::normalize` and applies them at the single shared spawn helper.
 
 No new modules, no new types, no production code changes. The `common::normalize` module already exposes everything needed.
 
-## Touched files
+## Touched files (corrected 2026-04-26)
 
 | File | Change shape | Estimated diff |
 |---|---|---|
-| `mikebom-cli/tests/spdx_us1_acceptance.rs` | Import `apply_fake_home_env`; allocate `TempDir` + apply env at each scan-spawn site (~6 spawn sites) | ~30 lines |
-| `mikebom-cli/tests/spdx_determinism.rs` | Update `scan_to_spdx_json()` to take or create a fake-home tempdir + apply env | ~10 lines |
-| `mikebom-cli/tests/spdx3_us3_acceptance.rs` | Audit 5 scenarios; add `apply_fake_home_env` to scenarios that don't have it (specifically scenario 5 at line 277) | ~15 lines |
-| `mikebom-cli/tests/spdx3_determinism.rs` | `normalize()` at line 56 gets workspace-path replacement against `WORKSPACE_PLACEHOLDER` | ~5 lines |
+| `mikebom-cli/tests/spdx_us1_acceptance.rs` | `scan()` helper at line 34 imports `apply_fake_home_env`; allocates one TempDir + applies env at line 37's `Command::new(bin())` site | ~6 lines |
+| `mikebom-cli/tests/spdx_determinism.rs` | `scan_to_spdx_json()` at line 16 does the same | ~6 lines |
 
-Total: ~60 lines of test-file changes across 4 files.
+Total: ~12 lines across 2 files.
+
+(Originally scoped at ~60 lines across 4 files; recon overstated the work — see spec.md "Note on spec amendment" for the verified file-by-file findings that reduced scope.)
 
 ## Phasing
 
-Three atomic commits, organized by failure-mode similarity:
+**Single atomic commit** (`021/spdx-isolation`) — both files together since each is a one-helper, one-spawn-site change. Splitting into two commits would be ceremony for ~6 lines apiece. The originally planned "Commit 2" (determinism-isolation) collapses into the same commit; the originally planned "Commit 3" (verify) was already optional.
 
-### Commit 1: `021/acceptance-isolation`
-- `spdx_us1_acceptance.rs` and `spdx3_us3_acceptance.rs` together — both are acceptance tests with shape assertions, both need pure HOME isolation.
-- After commit: ALL acceptance-test spawns isolate HOME. SC-001 holds.
-
-### Commit 2: `021/determinism-isolation`
-- `spdx_determinism.rs` and `spdx3_determinism.rs` together — both are run-twice-and-compare, similar fix shape.
-- `spdx_determinism.rs` gains `apply_fake_home_env`. `spdx3_determinism.rs::normalize()` gains workspace-path replacement.
-- After commit: both runs of the same fixture see identical isolated env. SC-002 holds.
-
-### Commit 3: `021/verify`
-- Optional commit. If commits 1 and 2 are atomic and SC-003 holds at each of those, this commit is empty and not needed.
-- If anything triggered a goldens diff, this commit captures the regen.
-
-Per FR-008 each commit leaves `./scripts/pre-pr.sh` clean.
+After commit: SC-001 + SC-002 + SC-003 + SC-005 hold simultaneously. Pre-PR clean.
 
 ## Estimated effort
 
 | Phase | Effort | Notes |
 |---|---|---|
-| Commit 1 (acceptance) | 45 min | Audit + insert isolation at each spawn site; ~6 sites in us1, ~3 missing sites in us3 |
-| Commit 2 (determinism) | 30 min | More mechanical — only one site each |
-| Verification + PR | 15 min | 50x loop per file + regen + push + PR description |
-| **Total** | **1.5 hr** | One focused sitting. |
+| Single commit (both files) | 20 min | One helper edit per file, mechanical |
+| Verification + PR | 20 min | 50x loops + regen + push + watch CI |
+| **Total** | **~40 min** | One focused half-hour. |
 
 ## Risks
 
-- **R1: Acceptance tests' shape assertions break under isolation.** Possible if any assertion implicitly depended on a host-cache-derived value. Mitigation: read each scenario carefully before applying isolation; if a shape assertion relies on something that fake-HOME would invalidate, the assertion itself needs reframing. (Per recon, we don't expect this — assertions check PURLs/license fields/document-namespace stability, all fixture-derived.)
-- **R2: `spdx3_determinism.rs` workspace-path edit invalidates the existing two-runs-compare contract.** Mitigation: the change is symmetric — both runs apply the same normalization, so the equality comparison still holds. Tight-loop verification (SC-002) is the regression gate.
-- **R3: I create a temp `fake_home` per spawn but assertions later read paths from the produced output.** Possible with scenario-5-style tests. Mitigation: keep TempDir alive in the test scope; only normalize the JSON for assertions, not the underlying paths the test inspects.
+- **R1: Acceptance tests' shape assertions break under isolation.** Possible if any assertion implicitly depended on a host-cache-derived value (e.g., a Maven artifact resolved from local M2). Mitigation: spdx_us1_acceptance.rs scenarios check PURLs/license fields/document-namespace stability — all fixture-derived. If a shape assertion does break, the assertion itself was the bug (depending on host state to pass).
+- **R2: `tempfile::TempDir` lifecycle.** The fake_home TempDir must outlive the spawn. Mitigation: bind it as a local in `scan()`/`scan_to_spdx_json()` so the implicit drop happens at end-of-scope, after `.output()` returns.
 
 ## Constitution alignment
 
-- **Principle IV (no `.unwrap()` in production):** test code is feature-gated via the existing `#[cfg_attr(test, allow(clippy::unwrap_used))]` on test modules; this milestone respects existing patterns.
+- **Principle IV (no `.unwrap()` in production):** test code is feature-gated via the existing `#[cfg_attr(test, allow(clippy::unwrap_used))]` patterns; `.expect()` calls in tests follow existing convention.
 - **Principle VI (three-crate architecture):** untouched. Test-only.
-- **Per-commit verification (lessons from 018-019-020):** FR-008 enforced.
+- **Per-commit verification (lessons from 018-019-020):** FR-008 enforced; only one commit, so trivially satisfied.
 
 ## What this milestone does NOT do
 
 - Does not extract anything from `common/normalize.rs` (already extracted).
 - Does not add goldens to acceptance/determinism tests (out of scope per spec).
-- Does not touch `cdx_regression.rs` or `spdx_regression.rs` (already parity).
+- Does not touch `cdx_regression.rs`, `spdx_regression.rs`, `spdx3_us3_acceptance.rs`, or `spdx3_determinism.rs` (already at parity per re-verification).
 - Does not investigate the determinism flake (verified non-existent in T001).

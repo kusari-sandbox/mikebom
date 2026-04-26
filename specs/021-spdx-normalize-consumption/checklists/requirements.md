@@ -27,7 +27,7 @@ This is the template for tighter milestones (when scope is genuinely contained).
 ## Independence
 
 - [X] The single user story is self-contained — no dependencies on other in-flight work.
-- [X] Each per-commit deliverable (2 commits) is independently verifiable (per FR-008 each commit's `./scripts/pre-pr.sh` passes).
+- [X] Each per-commit deliverable (1 commit, post-correction) is independently verifiable (per FR-008 each commit's `./scripts/pre-pr.sh` passes). Original 2-commit plan collapsed to 1 after re-verification reduced scope.
 
 ## Concreteness
 
@@ -50,14 +50,13 @@ This is the template for tighter milestones (when scope is genuinely contained).
 
 ## Pre-implementation
 
-- [X] [PHASE-1] T001 reconnaissance done (2026-04-26).
+- [X] [PHASE-1] T001 reconnaissance done + corrected (2026-04-26). Initial recon overstated scope; direct re-verification reduced scope to 2 files / ~12 lines.
 - [ ] [PHASE-1] T002 baseline snapshot captured.
-- [ ] [PHASE-2] Commit 1 landed; SC-001 holds (all acceptance-test spawns isolate HOME).
-- [ ] [PHASE-3] Commit 2 landed; determinism tests have isolation + workspace-path symmetry.
+- [ ] [PHASE-2] Single commit landed (combined acceptance + determinism); SC-001 + SC-002 hold simultaneously.
 - [ ] [POLISH] SC-002 50x tight-loop passes for each affected file.
 - [ ] [POLISH] SC-003 27-golden regen produces zero diff.
 - [ ] [POLISH] SC-004 all CI lanes green.
-- [ ] [POLISH] SC-005 `mikebom-cli/src/` diff empty.
+- [ ] [POLISH] SC-005 `mikebom-cli/src/` diff empty + corrected-scope files (spdx3_us3, spdx3_determinism) untouched.
 
 ## Post-merge
 
