@@ -1,23 +1,31 @@
 //! SPDX 2.3 determinism regression (milestone 010 T016).
 //!
 //! FR-020 / SC-007 — two runs of the same scan must produce
-//! byte-identical SPDX output *except* for the
-//! `creationInfo.created` timestamp, which the spec requires to
-//! reflect when the document was generated. Within the test we feed
-//! both runs the same scan and compare the produced files after
-//! masking only `created`; every other field — `documentNamespace`,
-//! SPDXIDs, package / relationship ordering — must match exactly.
+//! byte-identical SPDX output after the canonical normalization
+//! (`creationInfo.created` mask, `annotations[].annotationDate` mask,
+//! `packages[].checksums[]` strip, workspace-path placeholder) is
+//! applied. Every remaining field — `documentNamespace`, SPDXIDs,
+//! package / relationship ordering — must match exactly.
 
 use std::process::Command;
 
 mod common;
+use common::normalize::{apply_fake_home_env, normalize_spdx23_for_golden};
 use common::workspace_root;
 
-fn scan_to_spdx_json(fixture: &std::path::Path) -> serde_json::Value {
+/// Run `mikebom sbom scan --format spdx-2.3-json` against `fixture`
+/// in an isolated fake-HOME and return the produced raw JSON string.
+/// Callers normalize via `normalize_spdx23_for_golden` (for byte
+/// equality) or parse to `serde_json::Value` (for narrower
+/// field-extraction assertions).
+fn scan_to_spdx_raw(fixture: &std::path::Path) -> String {
     let tmp = tempfile::tempdir().expect("tempdir");
+    let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let out = tmp.path().join("mikebom.spdx.json");
     let bin = env!("CARGO_BIN_EXE_mikebom");
-    let status = Command::new(bin)
+    let mut cmd = Command::new(bin);
+    apply_fake_home_env(&mut cmd, fake_home.path());
+    let status = cmd
         .arg("--offline")
         .arg("sbom")
         .arg("scan")
@@ -35,23 +43,12 @@ fn scan_to_spdx_json(fixture: &std::path::Path) -> serde_json::Value {
         "scan failed: {}",
         String::from_utf8_lossy(&status.stderr)
     );
-    serde_json::from_str(&std::fs::read_to_string(&out).unwrap()).unwrap()
+    std::fs::read_to_string(&out).expect("read SPDX output")
 }
 
-/// Clear the one field SPDX requires to vary per invocation
-/// (`creationInfo.created` — wall-clock timestamp). Everything else
-/// is deterministic by construction in our serializer.
-fn mask_created(doc: &mut serde_json::Value) {
-    if let Some(ci) = doc
-        .as_object_mut()
-        .and_then(|o| o.get_mut("creationInfo"))
-        .and_then(|v| v.as_object_mut())
-    {
-        ci.insert(
-            "created".to_string(),
-            serde_json::Value::String("MASKED".to_string()),
-        );
-    }
+fn scan_to_spdx_json(fixture: &std::path::Path) -> serde_json::Value {
+    let raw = scan_to_spdx_raw(fixture);
+    serde_json::from_str(&raw).expect("SPDX output parses")
 }
 
 fn run_twice(subpath: &str) {
@@ -61,15 +58,14 @@ fn run_twice(subpath: &str) {
         "fixture missing: {}",
         fixture.display()
     );
-    let mut a = scan_to_spdx_json(&fixture);
-    let mut b = scan_to_spdx_json(&fixture);
-    mask_created(&mut a);
-    mask_created(&mut b);
+    let workspace = workspace_root();
+    let a = normalize_spdx23_for_golden(&scan_to_spdx_raw(&fixture), &workspace);
+    let b = normalize_spdx23_for_golden(&scan_to_spdx_raw(&fixture), &workspace);
     assert_eq!(
-        serde_json::to_string_pretty(&a).unwrap(),
-        serde_json::to_string_pretty(&b).unwrap(),
-        "SPDX output differs between two identical scans (after masking \
-         only creationInfo.created) — determinism contract violation"
+        a, b,
+        "SPDX output differs between two identical scans (after the \
+         canonical normalize_spdx23_for_golden masking) — determinism \
+         contract violation"
     );
 }
 
