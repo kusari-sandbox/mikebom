@@ -632,7 +632,10 @@ fn compute_boot_offset_ns() -> u64 {
 #[cfg(not(all(target_os = "linux", feature = "ebpf-tracing")))]
 async fn execute_scan(_args: ScanArgs) -> anyhow::Result<()> {
     anyhow::bail!(
-        "eBPF tracing requires Linux. Use a Lima VM for tracing.\n\
-         Non-tracing commands (generate, enrich, validate) work on any platform."
+        "this build was compiled without eBPF support; rebuild with \
+         --features ebpf-tracing on a Linux host to enable trace capture.\n\
+         (macOS users: spin up a Lima VM and rebuild there. Non-tracing \
+         commands — sbom scan/verify, attestation generate/verify, policy — \
+         work on any platform without the feature.)"
     )
 }
