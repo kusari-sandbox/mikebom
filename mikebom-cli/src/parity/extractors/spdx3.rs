@@ -356,6 +356,12 @@ spdx3_anno!(c21_spdx3, "mikebom:generation-context", document);
 spdx3_anno!(c22_spdx3, "mikebom:os-release-missing-fields", document);
 spdx3_anno!(c23_spdx3, "mikebom:trace-integrity-ring-buffer-overflows", document);
 
+// C24-C26 (milestone 023 — ELF identity, surfaced via the
+// extra_annotations bag in entry.rs::make_file_level_component).
+spdx3_anno!(c24_spdx3, "mikebom:elf-build-id", component);
+spdx3_anno!(c25_spdx3, "mikebom:elf-runpath", component);
+spdx3_anno!(c26_spdx3, "mikebom:elf-debuglink", component);
+
 // ============================================================
 // Sections D-G — custom SPDX 3 extractors
 // ============================================================
