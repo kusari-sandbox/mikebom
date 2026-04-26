@@ -14,6 +14,7 @@
 use std::process::Command;
 
 mod common;
+use common::normalize::apply_fake_home_env;
 use common::{workspace_root, EcosystemCase, CASES};
 
 struct Scan {
@@ -29,12 +30,8 @@ fn dual_scan(case: &EcosystemCase) -> Scan {
     let spdx3_path = tmp.path().join("out.spdx3.json");
     let bin = env!("CARGO_BIN_EXE_mikebom");
     let mut cmd = Command::new(bin);
-    cmd.env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+    apply_fake_home_env(&mut cmd, fake_home.path());
+    cmd
         .arg("--offline")
         .arg("sbom")
         .arg("scan")

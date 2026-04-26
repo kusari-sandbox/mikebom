@@ -13,6 +13,7 @@ use std::process::Command;
 
 
 mod common;
+use common::normalize::apply_fake_home_env;
 use common::{bin, workspace_root};
 
 /// Canonical cargo fixture — small, offline-friendly, and already
@@ -38,13 +39,9 @@ fn run_scan_in(
 ) -> std::process::Output {
     let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let mut cmd = Command::new(bin());
-    cmd.current_dir(cwd)
-        .env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+    cmd.current_dir(cwd);
+    apply_fake_home_env(&mut cmd, fake_home.path());
+    cmd
         .arg("--offline")
         .arg("sbom")
         .arg("scan")

@@ -41,6 +41,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 mod common;
+use common::normalize::apply_fake_home_env;
 use common::workspace_root;
 
 // ---------- scenario 1: format-neutral internal types -------------
@@ -201,13 +202,9 @@ fn scenario_4_npm_fixture_has_purl_parity_between_cdx_and_spdx3() {
     let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let cdx_path = tmp.path().join("out.cdx.json");
     let spdx3_path = tmp.path().join("out.spdx3.json");
-    let out = Command::new(env!("CARGO_BIN_EXE_mikebom"))
-        .env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_mikebom"));
+    apply_fake_home_env(&mut cmd, fake_home.path());
+    let out = cmd
         .arg("--offline")
         .arg("sbom")
         .arg("scan")
@@ -283,14 +280,10 @@ fn scenario_5_opt_in_not_selected_produces_no_spdx3_artifact() {
     let fx = workspace_root().join("tests/fixtures/cargo/lockfile-v3");
     let tmp = tempfile::tempdir().expect("tempdir");
     let fake_home = tempfile::tempdir().expect("fake-home tempdir");
-    let out = Command::new(env!("CARGO_BIN_EXE_mikebom"))
-        .current_dir(tmp.path())
-        .env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_mikebom"));
+    cmd.current_dir(tmp.path());
+    apply_fake_home_env(&mut cmd, fake_home.path());
+    let out = cmd
         .arg("--offline")
         .arg("sbom")
         .arg("scan")
@@ -334,12 +327,7 @@ fn run_scan_with_format(
     let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let out_path = tmp.path().join("out.spdx3.json");
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_mikebom"));
-    cmd.env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"));
+    apply_fake_home_env(&mut cmd, fake_home.path());
     for (k, v) in extra_env {
         cmd.env(k, v);
     }

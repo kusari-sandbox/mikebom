@@ -12,6 +12,7 @@ use std::process::Command;
 
 
 mod common;
+use common::normalize::apply_fake_home_env;
 use common::{bin, workspace_root};
 
 
@@ -23,13 +24,9 @@ fn scan_into(dir: &std::path::Path) {
     let cdx = dir.join("mikebom.cdx.json");
     let spdx23 = dir.join("mikebom.spdx.json");
     let spdx3 = dir.join("mikebom.spdx3.json");
-    let out = Command::new(bin())
-        .env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+    let mut cmd = Command::new(bin());
+    apply_fake_home_env(&mut cmd, fake_home.path());
+    let out = cmd
         .arg("--offline")
         .arg("sbom")
         .arg("scan")

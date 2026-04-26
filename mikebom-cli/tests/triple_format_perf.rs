@@ -37,6 +37,7 @@ use std::time::{Duration, Instant};
 
 
 mod common;
+use common::normalize::apply_fake_home_env;
 use common::bin;
 struct ImageFile {
     path: &'static str,
@@ -141,12 +142,8 @@ fn time_scan(image: &std::path::Path, formats: &str) -> Duration {
     let tmp = tempfile::tempdir().expect("tempdir");
     let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let mut cmd = Command::new(bin());
-    cmd.env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+    apply_fake_home_env(&mut cmd, fake_home.path());
+    cmd
         .arg("--offline")
         .arg("sbom")
         .arg("scan")

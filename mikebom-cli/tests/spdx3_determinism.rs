@@ -16,6 +16,7 @@
 use std::process::Command;
 
 mod common;
+use common::normalize::apply_fake_home_env;
 use common::workspace_root;
 
 fn run_scan(fixture_rel: &str) -> serde_json::Value {
@@ -25,13 +26,8 @@ fn run_scan(fixture_rel: &str) -> serde_json::Value {
     let out_path = tmp.path().join("out.spdx3.json");
     let bin = env!("CARGO_BIN_EXE_mikebom");
     let mut cmd = Command::new(bin);
+    apply_fake_home_env(&mut cmd, fake_home.path());
     let out = cmd
-        .env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
         .arg("--offline")
         .arg("sbom")
         .arg("scan")
@@ -107,13 +103,9 @@ fn two_runs_against_deb_fixture_are_byte_identical() {
     let out_b = tmp.path().join("b.spdx3.json");
     let bin = env!("CARGO_BIN_EXE_mikebom");
     for out_path in [&out_a, &out_b] {
-        let st = Command::new(bin)
-            .env("HOME", fake_home.path())
-            .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-            .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-            .env("GOPATH", fake_home.path().join("no-gopath"))
-            .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-            .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+        let mut cmd = Command::new(bin);
+        apply_fake_home_env(&mut cmd, fake_home.path());
+        let st = cmd
             .arg("--offline")
             .arg("sbom")
             .arg("scan")
