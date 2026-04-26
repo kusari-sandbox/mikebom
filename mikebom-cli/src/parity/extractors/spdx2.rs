@@ -308,6 +308,12 @@ spdx23_anno!(c22_spdx23, "mikebom:os-release-missing-fields", document);
 // C23 actually expands into 4 sub-fields; canary is ring-buffer-overflows.
 spdx23_anno!(c23_spdx23, "mikebom:trace-integrity-ring-buffer-overflows", document);
 
+// C24-C26 (milestone 023 — ELF identity, surfaced via the
+// extra_annotations bag in entry.rs::make_file_level_component).
+spdx23_anno!(c24_spdx23, "mikebom:elf-build-id", component);
+spdx23_anno!(c25_spdx23, "mikebom:elf-runpath", component);
+spdx23_anno!(c26_spdx23, "mikebom:elf-debuglink", component);
+
 // ============================================================
 // Sections D-G — custom SPDX 2.3 extractors
 // ============================================================

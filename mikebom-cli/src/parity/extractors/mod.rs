@@ -26,27 +26,29 @@ pub use common::{
 
 use cdx::{
     c10_cdx, c11_cdx, c12_cdx, c13_cdx, c14_cdx, c15_cdx, c16_cdx, c17_cdx, c18_cdx, c19_cdx,
-    c1_cdx, c20_cdx, c21_cdx, c22_cdx, c23_cdx, c2_cdx, c3_cdx, c4_cdx, c5_cdx, c6_cdx, c7_cdx,
-    c8_cdx, c9_cdx, cdx_containment, cdx_cpe, cdx_dev_deps, cdx_distribution, cdx_hashes,
-    cdx_homepage, cdx_licenses_concluded, cdx_licenses_declared, cdx_name, cdx_purl, cdx_root,
-    cdx_runtime_deps, cdx_supplier, cdx_vcs, cdx_version, d1_cdx, d2_cdx, e1_cdx, f1_cdx, g1_cdx,
+    c1_cdx, c20_cdx, c21_cdx, c22_cdx, c23_cdx, c24_cdx, c25_cdx, c26_cdx, c2_cdx, c3_cdx,
+    c4_cdx, c5_cdx, c6_cdx, c7_cdx, c8_cdx, c9_cdx, cdx_containment, cdx_cpe, cdx_dev_deps,
+    cdx_distribution, cdx_hashes, cdx_homepage, cdx_licenses_concluded, cdx_licenses_declared,
+    cdx_name, cdx_purl, cdx_root, cdx_runtime_deps, cdx_supplier, cdx_vcs, cdx_version, d1_cdx,
+    d2_cdx, e1_cdx, f1_cdx, g1_cdx,
 };
 use common::empty;
 use spdx2::{
     c10_spdx23, c11_spdx23, c12_spdx23, c13_spdx23, c14_spdx23, c15_spdx23, c16_spdx23,
     c17_spdx23, c18_spdx23, c19_spdx23, c1_spdx23, c20_spdx23, c21_spdx23, c22_spdx23,
-    c23_spdx23, c2_spdx23, c3_spdx23, c4_spdx23, c5_spdx23, c6_spdx23, c7_spdx23, c8_spdx23,
-    c9_spdx23, d1_spdx23, d2_spdx23, e1_spdx23, f1_spdx23, g1_spdx23, spdx23_containment,
-    spdx23_cpe, spdx23_dev_deps, spdx23_distribution, spdx23_hashes, spdx23_homepage,
-    spdx23_licenses_concluded, spdx23_licenses_declared, spdx23_name, spdx23_purl, spdx23_root,
-    spdx23_runtime_deps, spdx23_supplier, spdx23_vcs, spdx23_version,
+    c23_spdx23, c24_spdx23, c25_spdx23, c26_spdx23, c2_spdx23, c3_spdx23, c4_spdx23, c5_spdx23,
+    c6_spdx23, c7_spdx23, c8_spdx23, c9_spdx23, d1_spdx23, d2_spdx23, e1_spdx23, f1_spdx23,
+    g1_spdx23, spdx23_containment, spdx23_cpe, spdx23_dev_deps, spdx23_distribution,
+    spdx23_hashes, spdx23_homepage, spdx23_licenses_concluded, spdx23_licenses_declared,
+    spdx23_name, spdx23_purl, spdx23_root, spdx23_runtime_deps, spdx23_supplier, spdx23_vcs,
+    spdx23_version,
 };
 use spdx3::{
     c10_spdx3, c11_spdx3, c12_spdx3, c13_spdx3, c14_spdx3, c15_spdx3, c16_spdx3, c17_spdx3,
-    c18_spdx3, c19_spdx3, c1_spdx3, c20_spdx3, c21_spdx3, c22_spdx3, c23_spdx3, c2_spdx3,
-    c3_spdx3, c4_spdx3, c5_spdx3, c6_spdx3, c7_spdx3, c8_spdx3, c9_spdx3, d1_spdx3, d2_spdx3,
-    e1_spdx3, f1_spdx3, g1_spdx3, spdx3_containment, spdx3_cpe, spdx3_dev_deps,
-    spdx3_distribution, spdx3_hashes, spdx3_homepage, spdx3_licenses_concluded,
+    c18_spdx3, c19_spdx3, c1_spdx3, c20_spdx3, c21_spdx3, c22_spdx3, c23_spdx3, c24_spdx3,
+    c25_spdx3, c26_spdx3, c2_spdx3, c3_spdx3, c4_spdx3, c5_spdx3, c6_spdx3, c7_spdx3, c8_spdx3,
+    c9_spdx3, d1_spdx3, d2_spdx3, e1_spdx3, f1_spdx3, g1_spdx3, spdx3_containment, spdx3_cpe,
+    spdx3_dev_deps, spdx3_distribution, spdx3_hashes, spdx3_homepage, spdx3_licenses_concluded,
     spdx3_licenses_declared, spdx3_name, spdx3_purl, spdx3_root, spdx3_runtime_deps,
     spdx3_supplier, spdx3_vcs, spdx3_version,
 };
@@ -131,6 +133,12 @@ pub static EXTRACTORS: &[ParityExtractor] = &[
     // shape gap.
     ParityExtractor { row_id: "C22", label: "mikebom:os-release-missing-fields", cdx: c22_cdx, spdx23: c22_spdx23, spdx3: c22_spdx3, directional: Directionality::PresenceOnly },
     ParityExtractor { row_id: "C23", label: "mikebom:trace-integrity-*", cdx: c23_cdx, spdx23: c23_spdx23, spdx3: c23_spdx3, directional: Directionality::SymmetricEqual },
+    // Section C continued — milestone 023 ELF identity (CDX/SPDX
+    // emitted via the extra_annotations bag in entry.rs::make_file_level_component;
+    // catalog rows defined in docs/reference/sbom-format-mapping.md C24-C26).
+    ParityExtractor { row_id: "C24", label: "mikebom:elf-build-id",      cdx: c24_cdx, spdx23: c24_spdx23, spdx3: c24_spdx3, directional: Directionality::SymmetricEqual },
+    ParityExtractor { row_id: "C25", label: "mikebom:elf-runpath",       cdx: c25_cdx, spdx23: c25_spdx23, spdx3: c25_spdx3, directional: Directionality::SymmetricEqual },
+    ParityExtractor { row_id: "C26", label: "mikebom:elf-debuglink",     cdx: c26_cdx, spdx23: c26_spdx23, spdx3: c26_spdx3, directional: Directionality::SymmetricEqual },
     // Section D — Evidence
     // D1 evidence shape diverges — CDX `evidence.identity[].{field,
     // confidence, methods[]}` is the full CDX evidence model;

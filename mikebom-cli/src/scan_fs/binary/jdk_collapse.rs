@@ -114,6 +114,7 @@ impl JdkCollapser {
                     npm_role: None,
                     co_owned_by: None,
                     hashes: Vec::new(),
+                    extra_annotations: Default::default(),
                 })
             })
             .collect()

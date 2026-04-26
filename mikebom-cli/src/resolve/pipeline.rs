@@ -180,6 +180,7 @@ impl ResolutionPipeline {
             co_owned_by: None,
             shade_relocation: None,
             external_references: Vec::new(),
+                        extra_annotations: Default::default(),
                     };
                     components.push(component);
                     continue; // URL match found; skip lower-priority resolvers for this connection.
@@ -238,6 +239,7 @@ impl ResolutionPipeline {
             co_owned_by: None,
             shade_relocation: None,
             external_references: Vec::new(),
+                                    extra_annotations: Default::default(),
                                 };
                                 components.push(component);
                             }
@@ -310,6 +312,7 @@ impl ResolutionPipeline {
             co_owned_by: None,
             shade_relocation: None,
             external_references: Vec::new(),
+                    extra_annotations: Default::default(),
                 };
                 components.push(component);
             }

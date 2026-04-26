@@ -379,6 +379,12 @@ cdx_anno!(c22_cdx, "mikebom:os-release-missing-fields", document);
 // share the same emit path.
 cdx_anno!(c23_cdx, "mikebom:trace-integrity-ring-buffer-overflows", document);
 
+// C24-C26 (milestone 023 — ELF identity, surfaced via the
+// extra_annotations bag in entry.rs::make_file_level_component).
+cdx_anno!(c24_cdx, "mikebom:elf-build-id", component);
+cdx_anno!(c25_cdx, "mikebom:elf-runpath", component);
+cdx_anno!(c26_cdx, "mikebom:elf-debuglink", component);
+
 // ============================================================
 // Section D — Evidence (D1, D2 — CDX-native shape)
 // ============================================================

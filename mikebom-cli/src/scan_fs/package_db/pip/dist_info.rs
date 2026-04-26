@@ -235,6 +235,7 @@ impl PipDistInfoEntry {
             hashes: Vec::new(),
             sbom_tier: Some("deployed".to_string()),
             shade_relocation: None,
+            extra_annotations: Default::default(),
         })
     }
 }

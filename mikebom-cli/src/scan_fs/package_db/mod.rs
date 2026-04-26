@@ -181,6 +181,19 @@ pub struct PackageDbEntry {
     /// "bytecode-present shaded ancestors." Surfaced via CDX
     /// property `mikebom:shade-relocation = true`.
     pub shade_relocation: Option<bool>,
+    /// Milestone 023: generic per-component annotation bag. Each
+    /// entry is emitted at SBOM-generation time as `mikebom:<key>`:
+    /// a CycloneDX `properties[]` entry, a SPDX 2.3 `annotations[]`
+    /// envelope, and a SPDX 3 graph-element Annotation. Used by the
+    /// binary scanner for fields like `mikebom:elf-build-id`,
+    /// `mikebom:elf-runpath`, `mikebom:elf-debuglink`; future
+    /// per-binary-metadata milestones (024 Mach-O LC_UUID, 025 Go
+    /// VCS, 026 version strings, 027 layer attribution) populate
+    /// the same bag without requiring per-field schema migration.
+    /// `BTreeMap` chosen over `HashMap` for deterministic emission
+    /// order — byte-identity goldens depend on stable output.
+    /// Default empty.
+    pub extra_annotations: std::collections::BTreeMap<String, serde_json::Value>,
 }
 
 /// Hard failures a database reader can raise that MUST abort the scan
@@ -833,6 +846,7 @@ Architecture: arm64
             hashes: Vec::new(),
             sbom_tier: sbom_tier.map(String::from),
             shade_relocation: None,
+            extra_annotations: Default::default(),
         }
     }
 

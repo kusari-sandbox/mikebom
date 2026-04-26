@@ -133,6 +133,22 @@ fn scan_system_binary_emits_file_level_and_linkage() {
             Some("analyzed")
         );
     }
+
+    // Milestone 023 — on Linux, /bin/ls is built with NT_GNU_BUILD_ID
+    // by every modern distro (gcc/clang default; reproducible-builds
+    // requirement). The bag-emission path should surface it as a
+    // CDX `mikebom:elf-build-id` property. Spec SC-002.
+    //
+    // Skip on macOS where /bin/ls is Mach-O — milestone 023 only
+    // covers ELF; Mach-O LC_UUID is deferred to milestone 024.
+    if class == "elf" {
+        let build_id = property_value(file_level, "mikebom:elf-build-id");
+        assert!(
+            build_id.as_deref().is_some_and(|s| !s.is_empty()
+                && s.chars().all(|c| c.is_ascii_hexdigit())),
+            "expected non-empty hex mikebom:elf-build-id on /bin/ls; got {build_id:?}"
+        );
+    }
 }
 
 #[test]

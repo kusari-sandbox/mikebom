@@ -126,6 +126,40 @@ pub(super) fn scan_binary(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         None
     };
 
+    // Milestone 023 — three more ELF identity signals (NT_GNU_BUILD_ID,
+    // DT_RPATH/DT_RUNPATH, .gnu_debuglink) using the same byte-slice
+    // contract as parse_note_package_public. Non-ELF leaves all three
+    // at their default values.
+    let (build_id, runpath, debuglink) = if class == "elf" {
+        let build_id = file
+            .section_by_name_bytes(b".note.gnu.build-id")
+            .and_then(|s| s.data().ok())
+            .and_then(elf::parse_gnu_build_id);
+        let debuglink = file
+            .section_by_name_bytes(b".gnu_debuglink")
+            .and_then(|s| s.data().ok())
+            .and_then(elf::parse_debuglink);
+        let runpath = match (
+            file.section_by_name_bytes(b".dynamic").and_then(|s| s.data().ok()),
+            file.section_by_name_bytes(b".dynstr").and_then(|s| s.data().ok()),
+        ) {
+            (Some(dynamic), Some(dynstr)) => {
+                // Detect ELF class + endianness from the file header's
+                // e_ident bytes (offsets 4 and 5). Both are bounds-
+                // checked here defensively; `object::read::File::parse`
+                // succeeded above so the bytes are present, but the
+                // upstream contract isn't carried in the type system.
+                let is_64bit = bytes.get(4).copied() == Some(2);
+                let little_endian = bytes.get(5).copied() != Some(2);
+                elf::extract_runpath_entries(dynamic, dynstr, is_64bit, little_endian)
+            }
+            _ => Vec::new(),
+        };
+        (build_id, runpath, debuglink)
+    } else {
+        (None, Vec::new(), None)
+    };
+
     // Read-only string region per FR-025 / Q4 — format-appropriate
     // sections only. Used by the curated version-string scanner.
     let string_region = collect_string_region(&file, class);
@@ -141,6 +175,9 @@ pub(super) fn scan_binary(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         has_dynamic,
         stripped,
         note_package,
+        build_id,
+        runpath,
+        debuglink,
         string_region,
         packer: packer_kind,
     })
@@ -257,6 +294,9 @@ fn scan_fat_macho(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         has_dynamic,
         stripped,
         note_package: None, // Mach-O doesn't carry .note.package
+        build_id: None,     // milestone 023 — ELF-only fields stay default
+        runpath: Vec::new(),
+        debuglink: None,
         string_region,
         packer: packer::detect(bytes),
     })

@@ -492,6 +492,22 @@ impl CycloneDxBuilder {
                 }));
             }
 
+            // Milestone 023: generic per-component annotation bag.
+            // Each entry surfaces as a CycloneDX property. Strings
+            // pass through verbatim; other JSON values are
+            // serde_json-stringified (matches the existing convention
+            // for array- and object-shaped CDX property values).
+            for (key, value) in &component.extra_annotations {
+                let value_str = match value {
+                    serde_json::Value::String(s) => s.clone(),
+                    other => serde_json::to_string(other).unwrap_or_default(),
+                };
+                properties.push(json!({
+                    "name": key,
+                    "value": value_str,
+                }));
+            }
+
             if !properties.is_empty() {
                 entry["properties"] = json!(properties);
             }
@@ -686,6 +702,7 @@ mod tests {
             co_owned_by: None,
             shade_relocation: None,
             external_references: Vec::new(),
+            extra_annotations: Default::default(),
         }
     }
 

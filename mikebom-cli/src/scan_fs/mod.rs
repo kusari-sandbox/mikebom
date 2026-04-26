@@ -187,6 +187,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
             co_owned_by: None,
             shade_relocation: None,
             external_references: Vec::new(),
+            extra_annotations: Default::default(),
         });
     }
 
@@ -462,6 +463,7 @@ pub fn scan_path(root: &Path, deb_codename: Option<&str>, size_cap: u64, read_pa
                 co_owned_by: entry.co_owned_by.clone(),
                 shade_relocation: entry.shade_relocation,
                 external_references: external_refs_from_purl(&entry.purl),
+                extra_annotations: entry.extra_annotations.clone(),
             });
 
             // Emit a Relationship edge for each dependency that

@@ -169,6 +169,7 @@ fn package_to_entry(pkg: &CargoPackage, source_path: &str) -> Option<PackageDbEn
         hashes: Vec::new(),
         sbom_tier: Some("source".to_string()),
         shade_relocation: None,
+        extra_annotations: Default::default(),
     })
 }
 

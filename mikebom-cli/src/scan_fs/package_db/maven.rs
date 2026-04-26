@@ -1586,6 +1586,7 @@ pub(crate) fn emit_shade_relocation_entries(
             hashes: Vec::new(),
             sbom_tier: Some("analyzed".to_string()),
             shade_relocation: Some(true),
+            extra_annotations: Default::default(),
         });
     }
 }
@@ -1840,6 +1841,7 @@ fn pom_dep_to_entry(
         hashes,
         sbom_tier: Some(tier),
         shade_relocation: None,
+        extra_annotations: Default::default(),
     })
 }
 
@@ -2097,6 +2099,7 @@ fn build_transitive_entry(
         hashes,
         sbom_tier: Some("source".to_string()),
         shade_relocation: None,
+        extra_annotations: Default::default(),
     })
 }
 
@@ -2149,6 +2152,7 @@ fn jar_pom_to_entry(
         hashes,
         sbom_tier: Some("analyzed".to_string()),
         shade_relocation: None,
+        extra_annotations: Default::default(),
     })
 }
 

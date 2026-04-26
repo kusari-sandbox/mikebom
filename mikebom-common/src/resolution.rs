@@ -190,6 +190,18 @@ pub struct ResolvedComponent {
     /// entry is present.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub external_references: Vec<ExternalReference>,
+    /// Milestone 023: generic per-component annotation bag mirroring
+    /// `PackageDbEntry::extra_annotations`. Each entry is emitted at
+    /// SBOM-generation time as a `mikebom:<key>` annotation across
+    /// all three formats (CDX property, SPDX 2.3 annotation envelope,
+    /// SPDX 3 graph-element Annotation). Used by the binary scanner
+    /// for fields like `mikebom:elf-build-id`, `mikebom:elf-runpath`,
+    /// `mikebom:elf-debuglink`. Future per-binary-metadata milestones
+    /// (024 Mach-O LC_UUID, 025 Go VCS, 026 version strings, 027
+    /// layer attribution) populate the same bag without per-field
+    /// schema migration. `BTreeMap` for deterministic emission order.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub extra_annotations: std::collections::BTreeMap<String, serde_json::Value>,
 }
 
 /// A single external reference on a `ResolvedComponent`. The
@@ -366,6 +378,7 @@ mod tests {
             co_owned_by: None,
             shade_relocation: None,
             external_references: Vec::new(),
+            extra_annotations: Default::default(),
         };
 
         let json = serde_json::to_string(&component).expect("serialize component");
@@ -420,6 +433,7 @@ mod tests {
             co_owned_by: None,
             shade_relocation: None,
             external_references: Vec::new(),
+            extra_annotations: Default::default(),
         };
 
         let json = serde_json::to_string(&component).expect("serialize component");

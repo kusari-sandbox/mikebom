@@ -55,18 +55,33 @@ pub(super) fn version_match_to_entry(
         npm_role: None,
         co_owned_by: None,
         hashes: Vec::new(),
+        extra_annotations: Default::default(),
     })
 }
 
 /// Cross-format scan result. Common fields populated from all three
-/// formats via `object::read::File::imports()`; `note_package` is
-/// ELF-specific and `None` for Mach-O / PE.
+/// formats via `object::read::File::imports()`; `note_package`,
+/// `build_id`, `runpath`, and `debuglink` are ELF-specific and stay at
+/// their default values for Mach-O / PE.
 pub(crate) struct BinaryScan {
     pub binary_class: &'static str,
     pub imports: Vec<String>,
     pub has_dynamic: bool,
     pub stripped: bool,
     pub note_package: Option<elf::ElfNotePackage>,
+    /// Lowercase-hex `NT_GNU_BUILD_ID` note from `.note.gnu.build-id`
+    /// (milestone 023). Typically 40 hex chars (20-byte SHA-1).
+    /// `None` for non-ELF or for ELF binaries built with
+    /// `-Wl,--build-id=none`.
+    pub build_id: Option<String>,
+    /// `DT_RPATH` / `DT_RUNPATH` paths in declaration order, dedup'd
+    /// (milestone 023). `$ORIGIN` and similar substitutions are
+    /// recorded raw — expansion is runtime-context-dependent.
+    pub runpath: Vec<String>,
+    /// `.gnu_debuglink` reference (milestone 023): NUL-terminated
+    /// filename + LE CRC32 of the referenced .debug file. Pointer
+    /// only — mikebom does not chase or verify the .debug file.
+    pub debuglink: Option<elf::DebuglinkEntry>,
     /// Concatenated read-only string-section bytes per FR-025 /
     /// research R6. Fed to the curated version-string scanner.
     /// Capped at 16 MB per binary.
@@ -150,8 +165,42 @@ pub(super) fn make_file_level_component(
         npm_role: None,
         co_owned_by: None,
         hashes: Vec::new(),
+        extra_annotations: build_elf_identity_annotations(scan),
     }
     .with_sha256_placeholder(hash)
+}
+
+/// Milestone 023: translate the three ELF identity fields on
+/// `BinaryScan` into bag entries for emission. Each annotation is
+/// included only when the source field is populated, so non-ELF
+/// binaries (Mach-O, PE) and ELF binaries built with
+/// `-Wl,--build-id=none` (etc.) emit no empty annotations.
+fn build_elf_identity_annotations(
+    scan: &BinaryScan,
+) -> std::collections::BTreeMap<String, serde_json::Value> {
+    let mut bag = std::collections::BTreeMap::new();
+    if let Some(ref id) = scan.build_id {
+        bag.insert(
+            "mikebom:elf-build-id".to_string(),
+            serde_json::Value::String(id.clone()),
+        );
+    }
+    if !scan.runpath.is_empty() {
+        bag.insert(
+            "mikebom:elf-runpath".to_string(),
+            serde_json::json!(scan.runpath),
+        );
+    }
+    if let Some(ref dl) = scan.debuglink {
+        bag.insert(
+            "mikebom:elf-debuglink".to_string(),
+            serde_json::json!({
+                "file": dl.file,
+                "crc32": format!("{:08x}", dl.crc32),
+            }),
+        );
+    }
+    bag
 }
 
 /// Extension helper: attach the file-SHA-256 as a `hashes` field.
@@ -286,6 +335,7 @@ pub(super) fn note_package_to_entry(
         npm_role: None,
         co_owned_by: None,
         hashes: Vec::new(),
+        extra_annotations: Default::default(),
     })
 }
 
@@ -531,6 +581,9 @@ mod tests {
             has_dynamic: false,
             stripped: false,
             note_package: None,
+            build_id: None,
+            runpath: Vec::new(),
+            debuglink: None,
             string_region: Vec::new(),
             packer: None,
         }
@@ -575,5 +628,79 @@ mod tests {
         let entry =
             make_file_level_component(&path, b"plain-bytes", &scan, false);
         assert_eq!(entry.detected_go, None);
+    }
+
+    /// Milestone 023: when BinaryScan carries all three ELF identity
+    /// fields, the bag picks up exactly three entries with the
+    /// expected key-value shapes.
+    #[test]
+    fn make_file_level_component_populates_bag_with_all_three_elf_signals() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("with-all");
+        std::fs::write(&path, b"sample").unwrap();
+
+        let mut scan = fake_binary_scan();
+        scan.build_id = Some("deadbeef".repeat(5));
+        scan.runpath = vec!["$ORIGIN/../lib".to_string(), "/opt/vendor/lib".to_string()];
+        scan.debuglink = Some(elf::DebuglinkEntry {
+            file: "with-all.debug".to_string(),
+            crc32: 0xdeadbeef,
+        });
+
+        let entry = make_file_level_component(&path, b"sample", &scan, false);
+        assert_eq!(entry.extra_annotations.len(), 3);
+        assert_eq!(
+            entry.extra_annotations.get("mikebom:elf-build-id"),
+            Some(&serde_json::Value::String("deadbeef".repeat(5))),
+        );
+        assert_eq!(
+            entry.extra_annotations.get("mikebom:elf-runpath"),
+            Some(&serde_json::json!([
+                "$ORIGIN/../lib",
+                "/opt/vendor/lib"
+            ])),
+        );
+        assert_eq!(
+            entry.extra_annotations.get("mikebom:elf-debuglink"),
+            Some(&serde_json::json!({
+                "file": "with-all.debug",
+                "crc32": "deadbeef",
+            })),
+        );
+    }
+
+    /// When BinaryScan carries no ELF identity fields, the bag is
+    /// empty — no `mikebom:elf-*` annotations slip through.
+    #[test]
+    fn make_file_level_component_empty_bag_when_elf_signals_absent() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("plain");
+        std::fs::write(&path, b"plain").unwrap();
+
+        let scan = fake_binary_scan(); // all three fields default-empty
+        let entry = make_file_level_component(&path, b"plain", &scan, false);
+        assert!(entry.extra_annotations.is_empty());
+    }
+
+    /// Mixed case: only build-id present. The bag emits only the
+    /// build-id key — no empty runpath array, no empty debuglink.
+    #[test]
+    fn make_file_level_component_bag_skips_unpopulated_entries() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("with-build-id-only");
+        std::fs::write(&path, b"only-build-id").unwrap();
+
+        let mut scan = fake_binary_scan();
+        scan.build_id = Some("c0ffee".to_string());
+        // runpath stays empty; debuglink stays None.
+
+        let entry = make_file_level_component(&path, b"only-build-id", &scan, false);
+        assert_eq!(entry.extra_annotations.len(), 1);
+        assert_eq!(
+            entry.extra_annotations.get("mikebom:elf-build-id"),
+            Some(&serde_json::Value::String("c0ffee".to_string())),
+        );
+        assert!(!entry.extra_annotations.contains_key("mikebom:elf-runpath"));
+        assert!(!entry.extra_annotations.contains_key("mikebom:elf-debuglink"));
     }
 }

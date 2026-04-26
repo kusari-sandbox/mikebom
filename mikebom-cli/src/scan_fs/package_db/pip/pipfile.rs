@@ -90,6 +90,7 @@ pub(crate) fn parse_pipfile_lock(
                 hashes: Vec::new(),
                 sbom_tier: Some("source".to_string()),
                 shade_relocation: None,
+                extra_annotations: Default::default(),
             });
         }
     }

@@ -256,6 +256,14 @@ pub fn annotate_component(
         push(&mut out, "evidence.occurrences", json!(items));
     }
 
+    // Milestone 023: generic per-component annotation bag. Each
+    // entry surfaces as a SPDX 2.3 `annotations[]` envelope via the
+    // shared `MikebomAnnotationCommentV1` machinery. BTreeMap iteration
+    // order is sorted by key — deterministic across runs.
+    for (key, value) in &c.extra_annotations {
+        push(&mut out, key, value.clone());
+    }
+
     out
 }
 
