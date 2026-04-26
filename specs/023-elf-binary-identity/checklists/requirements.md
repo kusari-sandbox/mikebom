@@ -26,15 +26,19 @@
 
 ## Tighter spec set rationale (4 files vs 8)
 
-- [X] No `research.md` — recon answered every architectural question; no open
-      "should we do X or Y" decisions.
-- [X] No `data-model.md` — only one new struct (DebuglinkEntry, 2 fields).
-      The "data model" is fully specified inline in FR-002.
-- [X] No `contracts/` — public surface unchanged; FR-007 / SC-005 enforce.
+- [X] No `research.md` — recon answered every architectural question; the
+      bag-first design discovery happened mid-implementation and was
+      captured as a spec amendment rather than a separate research file.
+- [~] `data-model.md` would be appropriate for the bag's contract.
+      Inlined in spec.md FR-001-FR-007 instead. Acceptable for this scope.
+- [~] `contracts/` would be appropriate for the bag's emission contract
+      across CDX/SPDX 2.3/SPDX 3. Inlined as FR-005, FR-006, FR-007.
 - [X] No `quickstart.md` — 4 short files self-explanatory.
 
-This is the third use of the 4-file template (after 021, 022). Pattern stable
-for genuinely contained milestones.
+This is the third use of the 4-file template (after 021, 022). Spec was
+amended mid-implementation when scope discovery showed PackageDbEntry has
+35 init sites and emission flows through generate/. Amendment landed in a
+follow-up commit before any non-extractor code touched main.
 
 ## Independence
 
@@ -71,14 +75,17 @@ for genuinely contained milestones.
 - [X] Recon-first: every claim in the spec backed by a file:line reference
       from the pre-spec investigation.
 
-## Pre-implementation
+## Pre-implementation (revised — bag-first phasing)
 
-- [X] [PHASE-1] T001 reconnaissance done (2026-04-26).
-- [ ] [PHASE-1] T002 baseline snapshot captured.
-- [ ] [PHASE-2] Commit 1 (extractors) landed.
-- [ ] [PHASE-3] Commit 2 (wire-up + fixtures) landed.
-- [ ] [PHASE-4] Commit 3 (parity rows) landed.
-- [ ] [POLISH] SC-001-SC-006 verified.
+- [X] [PHASE-1] T001 reconnaissance done (2026-04-26) + bag-first amendment
+      after mid-implementation scope discovery.
+- [X] [PHASE-1] T002 baseline snapshot captured (1217 tests).
+- [X] [PHASE-2] Commit 1 (`023/extractors`, `e0d658e`) landed — ELF parsers
+      with 13 inline tests, dead_code allowed.
+- [ ] [PHASE-3] Commit 2 (`023/extra-annotations-bag`) landed — bag end-to-end.
+- [ ] [PHASE-4] Commit 3 (`023/wire-up-elf-identity`) landed — first consumer.
+- [ ] [PHASE-5] Commit 4 (`023/parity-rows`) landed.
+- [ ] [POLISH] SC-001-SC-008 verified.
 - [ ] [POLISH] All 3 CI lanes green.
 
 ## Post-merge

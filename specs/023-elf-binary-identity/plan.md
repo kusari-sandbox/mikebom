@@ -1,138 +1,157 @@
 ---
-description: "Implementation plan — milestone 023 ELF binary identity"
+description: "Implementation plan — milestone 023 ELF binary identity (revised, bag-first)"
 status: plan
 milestone: 023
 ---
 
-# Plan: ELF binary identity
+# Plan: ELF binary identity (revised — bag-first design)
 
 ## Architecture
 
-Pure additive scanning extension. Three new `pub(super)` extractors in
-`elf.rs` follow the established `extract_note_package` shape (parse via
-`object::read::elf::*`, return None on failure). Three new fields on
-`BinaryScan`. Three new annotation emissions in `mod.rs::read`. Three new
-catalog rows + parity extractors via the established C-section pattern.
+Two cohorts:
 
-No new types beyond a small `DebuglinkEntry { file: String, crc32: u32 }`
-struct used only inside the binary scanner. No public-API surface change.
-No schema migration.
+**Cohort A — generic per-component annotation bag** (the foundation):
+- New field `extra_annotations: BTreeMap<String, serde_json::Value>` on
+  both `PackageDbEntry` (mikebom-cli) and `ResolvedComponent` (mikebom-common).
+- Initialization at every existing struct-literal site (35 + ~5 = ~40 sites,
+  one line each).
+- Plumbing through `scan_fs/mod.rs:445` PackageDbEntry → ResolvedComponent
+  conversion.
+- Generic emission code in `cyclonedx/builder.rs`, `spdx/annotations.rs`,
+  `spdx/v3_annotations.rs` that iterates the bag at the end of per-component
+  emission.
+
+**Cohort B — ELF identity as the first bag consumer**:
+- `BinaryScan` gains `build_id: Option<String>`, `runpath: Vec<String>`,
+  `debuglink: Option<DebuglinkEntry>` (already-prepared parsers in
+  `binary/elf.rs` from commit `e0d658e`).
+- `scan.rs::scan_binary` populates these fields when ELF.
+- `entry.rs::make_file_level_component` translates the populated fields
+  into bag entries (`mikebom:elf-build-id` etc.).
+- Catalog rows + parity extractors via the established `*_anno!` pattern.
+
+The bag is the architectural payoff. ELF identity is the first consumer that
+proves it works end-to-end.
 
 ## Reuse inventory
 
-These existing items handle the work; this milestone consumes them:
+- `BTreeMap` from std + `serde_json::Value` — already in scope everywhere.
+- `MikebomAnnotationCommentV1` envelope (`generate/spdx/annotations.rs:43`)
+  for SPDX 2.3 emission — generic emission iterates the bag and pushes one
+  envelope per entry.
+- `push(out, field, value)` helper (existing pattern in
+  `generate/spdx/annotations.rs`).
+- `properties.push(json!({"name": ..., "value": ...}))` pattern in
+  `cyclonedx/builder.rs`.
+- ELF extractors in `binary/elf.rs` (already-landed in commit `e0d658e`).
+- `cdx_anno!`, `spdx23_anno!`, `spdx3_anno!` macros for parity rows.
+- `tests/scan_binary.rs` scaffolding for fixture-driven assertions.
 
-- `object::read::elf::ElfFile<'_, _>` (already in scope via the `object` crate
-  used by `elf.rs::extract_note_package`).
-- `object::read::elf::NoteIterator` — produced by `ElfFile::raw_header().e_shoff`-
-  driven iteration; same primitive that walks notes today.
-- `object::read::elf::SectionTable::section_by_name(b".gnu_debuglink")` — exists
-  in the API; returns `Section<'_>` with `.data()`.
-- `object::read::elf::Dyn` (DT_RPATH = 0x0F, DT_RUNPATH = 0x1D) — accessed via
-  `ElfFile::dynamic()`. Strings interned in `.dynstr`.
-- `extract_mikebom_annotation_values` and `cdx_property_values` — established
-  C-section emission infrastructure (`parity/extractors/common.rs`,
-  `parity/extractors/cdx.rs`).
-- `cdx_anno!`, `spdx23_anno!`, `spdx3_anno!` macros — one-line registration
-  per format per extractor (3 extractors × 3 formats = 9 lines total).
-- `tests/scan_binary.rs` — existing scaffolding for binary-fixture testing.
+## Touched files (revised — measured against actual code, not estimated)
 
-## Touched files
-
-| File | Change | LOC |
+| File | Change | Approx LOC |
 |---|---|---|
-| `mikebom-cli/src/scan_fs/binary/elf.rs` | + 3 extractor fns + DebuglinkEntry struct | +180 |
-| `mikebom-cli/src/scan_fs/binary/entry.rs` | + 3 fields on BinaryScan + DebuglinkEntry import | +12 |
-| `mikebom-cli/src/scan_fs/binary/scan.rs` | populate the 3 fields in scan_binary's ELF arm | +15 |
-| `mikebom-cli/src/scan_fs/binary/mod.rs` | emit 3 annotations from BinaryScan when populated | +30 |
-| `mikebom-cli/src/parity/extractors/cdx.rs` | + 3 cdx_anno! invocations | +3 |
-| `mikebom-cli/src/parity/extractors/spdx2.rs` | + 3 spdx23_anno! invocations | +3 |
-| `mikebom-cli/src/parity/extractors/spdx3.rs` | + 3 spdx3_anno! invocations | +3 |
-| `mikebom-cli/src/parity/extractors/mod.rs` | + 3 EXTRACTORS table rows + 9 fn imports | +12 |
+| `mikebom-cli/src/scan_fs/package_db/mod.rs` | + `extra_annotations` field on PackageDbEntry | +5 |
+| 35 PackageDbEntry init sites across `mikebom-cli/src/scan_fs/` | + `extra_annotations: Default::default(),` per site | +35 |
+| `mikebom-common/src/resolution.rs` | + same field on ResolvedComponent | +5 |
+| ~5 ResolvedComponent init sites (likely `scan_fs/mod.rs` mostly) | + 1 line each | +5 |
+| `mikebom-cli/src/scan_fs/mod.rs:~445` | clone bag through PackageDbEntry → ResolvedComponent conversion | +1 |
+| `mikebom-cli/src/generate/cyclonedx/builder.rs` | + generic bag emission | +12 |
+| `mikebom-cli/src/generate/spdx/annotations.rs` | + generic bag emission | +10 |
+| `mikebom-cli/src/generate/spdx/v3_annotations.rs` | + generic bag emission | +10 |
+| `mikebom-cli/src/scan_fs/binary/entry.rs` | + 3 fields on BinaryScan; populate bag in make_file_level_component | +30 |
+| `mikebom-cli/src/scan_fs/binary/scan.rs` | populate the 3 fields in scan_binary's ELF arm | +35 |
+| `mikebom-cli/src/scan_fs/binary/elf.rs` | (already done in commit `e0d658e`; 3 extractors + tests) | 0 |
+| `mikebom-cli/src/parity/extractors/{cdx,spdx2,spdx3}.rs` | + 3 `*_anno!` invocations each | +9 |
+| `mikebom-cli/src/parity/extractors/mod.rs` | + 3 EXTRACTORS rows + 9 fn imports | +12 |
 | `docs/reference/sbom-format-mapping.md` | + 3 C-section rows | +6 |
-| `mikebom-cli/tests/fixtures/binaries/elf/` | + 3 fixtures (binary blobs, deterministic build) | new dir |
-| `mikebom-cli/tests/scan_binary.rs` | + assertions for the 3 fields × 3 fixtures | +60 |
+| `mikebom-cli/tests/fixtures/binaries/elf/` | + 3 fixtures (binary blobs) | new dir |
+| `mikebom-cli/tests/scan_binary.rs` | + 3 assertions | +60 |
 
-Total Rust source: ~250 LOC across 8 files.
+Total: ~13 files (excluding fixtures), ~235 LOC of source changes plus the
+35-site init churn (~35 LOC of mechanical default-init).
 
 ## Phasing
 
-Three atomic commits in dependency order:
+Four atomic commits in dependency order:
 
-### Commit 1: `023/extractors`
-- Add `extract_gnu_build_id`, `extract_runpath_entries`, `extract_debuglink`,
-  `DebuglinkEntry` to `elf.rs`.
-- Inline tests for each (small in-memory ELF byte-blobs, hand-constructed via
-  `object::write::elf::Writer` if practical, else table-tests against tiny
-  hand-crafted fixtures).
-- No call sites yet — these compile but are unused. `dead_code` may need an
-  `#[allow]` on the trio for this commit only; lifted in commit 2.
+### Commit 1 — `023/extractors` (LANDED in `e0d658e`)
+✅ ELF extractors + DebuglinkEntry + 13 inline tests with `#[allow(dead_code)]`.
 
-### Commit 2: `023/wire-up-scan`
-- Add 3 fields to `BinaryScan` (`entry.rs`).
-- Populate them in `scan.rs::scan_binary` ELF arm.
-- Emit 3 annotations from `mod.rs::read` when populated.
-- Add the 3 fixtures + 3 `tests/scan_binary.rs` assertions.
+### Commit 2 — `023/extra-annotations-bag`
+- Add `extra_annotations: BTreeMap<String, serde_json::Value>` to
+  `PackageDbEntry` and `ResolvedComponent`.
+- Init at every struct-literal site (35 + ~5).
+- Clone through `scan_fs/mod.rs` conversion.
+- Generic emission code in 3 generate/ files.
+- Iteration order: `BTreeMap` provides deterministic ordering for byte-
+  identity goldens.
 
-### Commit 3: `023/parity-rows`
-- Add 3 `*_anno!` invocations across cdx.rs / spdx2.rs / spdx3.rs.
-- Add 3 `EXTRACTORS` table rows in `mod.rs`.
-- Add 3 catalog rows in `docs/reference/sbom-format-mapping.md`.
-- `holistic_parity` should pick them up automatically — assertion is
-  SymmetricEqual on each.
+After this commit: bag works end-to-end but has no consumers. Run regen on
+27 goldens — expect zero diff (no consumer adds keys yet).
 
-Per FR per the spec, each commit's `./scripts/pre-pr.sh` is clean.
-Commit 1's `#[allow(dead_code)]` is the only intermediate-state wart.
+### Commit 3 — `023/wire-up-elf-identity`
+- Add 3 fields to `BinaryScan`.
+- Populate in `scan.rs::scan_binary` ELF arm.
+- Translate to bag entries in `entry.rs::make_file_level_component`.
+- Remove `#[allow(dead_code)]` from elf.rs extractors (now called).
+- Add 3 fixtures + 3 assertions in `tests/scan_binary.rs`.
+
+After this commit: ELF identity emits end-to-end. Goldens regen with deltas
+only on binary fixtures.
+
+### Commit 4 — `023/parity-rows`
+- 3 catalog rows + 3 `*_anno!` invocations across cdx/spdx2/spdx3.
+- 3 EXTRACTORS rows + 9 fn imports in mod.rs.
+- holistic_parity asserts SymmetricEqual on the new rows.
+
+Per FR-019 each commit's `./scripts/pre-pr.sh` is clean.
 
 ## Estimated effort
 
 | Phase | Effort | Notes |
 |---|---|---|
-| Commit 1 (extractors) | 4 hr | object-crate API spelunking is the careful step |
-| Commit 2 (wire-up) | 3 hr | Fixtures need careful construction (deterministic builds) |
-| Commit 3 (parity rows) | 1 hr | Mechanical |
+| Commit 1 (already done) | — | — |
+| Commit 2 (bag) | 4-5 hr | 35-site init is mechanical; emission is the careful step |
+| Commit 3 (ELF wire-up + fixtures + tests) | 3-4 hr | Deterministic-fixture construction is the new wrinkle |
+| Commit 4 (parity rows) | 1 hr | Mechanical |
 | Verification + PR | 1 hr | Goldens regen + CI watch |
-| **Total** | **~9 hr** | One focused day. |
+| **Total** | **~10 hr** | One focused day. |
 
 ## Risks
 
-- **R1: object-crate API for note iteration.** `object::read::elf` is
-  well-documented but the note-walking API is generic over endian/word-size.
-  `elf.rs::extract_note_package` already navigates this — my implementation
-  mirrors that exactly. If the existing helper turns out to use a private API
-  trick, fall back to a direct `.section_by_name(b".note.gnu.build-id")` + raw
-  byte parse (the note format is fixed: `name_size + desc_size + type +
-  name_bytes + desc_bytes`).
-- **R2: DT_RPATH/DT_RUNPATH string-table resolution.** `Dyn::d_val` for
-  RPATH/RUNPATH is a string-table offset, not the string itself. Need to
-  resolve through `.dynstr`. Same pattern that `linkage.rs:23-32`'s soname
-  resolution uses (DT_NEEDED is also a .dynstr offset).
-- **R3: Fixture builds are non-deterministic.** Building three small ELF
-  binaries with `gcc`/`clang` produces different output per host. Mitigation:
-  use `objcopy` to surgically rewrite known-good fixtures: take a known small
-  binary (e.g., a static `hello-world`), then `objcopy --set-section-flags`
-  / `--add-section` to construct the exact note content. Alternative: use
-  `object::write::elf::Writer` to construct fixtures programmatically in
-  `build.rs` of the test crate.
-- **R4: Catalog row IDs collide.** The catalog parser auto-assigns next
-  available IDs (C24, C25, C26 if C23 is the highest). If a future milestone
-  has already squatted those, renumber. Easy to adjust.
+- **R1 (NEW): Bag ordering must be deterministic across runs.** `BTreeMap`'s
+  iteration order is sorted by key — same on every run, every host. Verified
+  by spec and enforced by holistic_parity's byte-identity gate.
+- **R2 (NEW): Existing typed fields might "double-emit" if someone stuffs the
+  same key into the bag.** Mitigation: spec discipline (see Edge Cases). If
+  it happens, holistic_parity's SymmetricEqual check on the existing typed
+  field's catalog row will catch it (the same field would now have two
+  different values across CDX/SPDX).
+- **R3 (NEW): Generic emission must skip the bag if empty.** Otherwise CDX
+  emits an empty `properties[]` array on every component. Mitigation: emit
+  block guarded by `if !c.extra_annotations.is_empty()`.
+- **R4: object-crate API for note iteration** — already mitigated in
+  commit 1's tests.
+- **R5: Fixture builds non-deterministic** — same mitigation as original
+  plan: `objcopy --add-section` on a known-good base or programmatic
+  `object::write::elf::Writer`.
 
 ## Constitution alignment
 
-- **Principle I (zero C in deps):** `object` crate is pure-Rust. ✓
-- **Principle IV (no `.unwrap()` in production):** the new extractors return
-  `Option`/empty `Vec` on every failure path. No panics. ✓
-- **Principle VI (three-crate architecture):** untouched. ✓
-- **Per-commit verification (lessons from 018-022):** FR-008 enforced.
-- **Recon-first discipline (lesson from 022):** every assumption in the spec
-  is grounded in a file:line reference from the recon report.
+- **Principle I (zero C):** untouched. ✓
+- **Principle IV (no `.unwrap()`):** all bag plumbing uses Default + Option. ✓
+- **Principle VI (three-crate architecture):** mikebom-common gains
+  `extra_annotations` on ResolvedComponent — this is a contract change but
+  follows the existing convention (ResolvedComponent already has typed
+  fields like `is_dev`, `co_owned_by`). ✓
+- **Per-commit verification:** FR-019 enforced.
 
 ## What this milestone does NOT do
 
-- Does not touch macho.rs / pe.rs / Mach-O / PE handling.
-- Does not change CLI args or output flags.
-- Does not implement build-id-based dedup at scan time (recording only).
+- Does not migrate existing typed fields into the bag.
+- Does not touch macho.rs / pe.rs (deferred to 024 / 028).
+- Does not change CLI args.
 - Does not add a debuginfod / debug-symbol-package lookup.
 - Does not validate .gnu_debuglink CRC32.
-- Does not expand `$ORIGIN` in RPATH/RUNPATH strings.
+- Does not expand `$ORIGIN` in RPATH/RUNPATH.
