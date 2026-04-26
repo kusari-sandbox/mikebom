@@ -65,7 +65,7 @@ impl Default for LiveStats {
 
 // ── Linux implementation ──────────────────────────────────────────────
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
 mod inner {
     use std::sync::atomic::Ordering;
     use std::sync::Arc;
@@ -174,7 +174,7 @@ mod inner {
 
 // ── Non-Linux stub ────────────────────────────────────────────────────
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(all(target_os = "linux", feature = "ebpf-tracing")))]
 mod inner {
     use std::sync::atomic::AtomicBool;
     use std::sync::Arc;

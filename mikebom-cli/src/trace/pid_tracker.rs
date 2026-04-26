@@ -89,7 +89,7 @@ impl PidTracker {
 
 // ── Linux implementation ──────────────────────────────────────────────
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "ebpf-tracing"))]
 impl PidTracker {
     fn refresh_platform(&mut self) -> anyhow::Result<()> {
         let mut new_pids = HashSet::new();
@@ -158,7 +158,7 @@ impl PidTracker {
 
 // ── Non-Linux stub ────────────────────────────────────────────────────
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(all(target_os = "linux", feature = "ebpf-tracing")))]
 impl PidTracker {
     fn refresh_platform(&mut self) -> anyhow::Result<()> {
         anyhow::bail!(

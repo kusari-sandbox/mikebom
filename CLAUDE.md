@@ -28,6 +28,20 @@ Auto-generated from all feature plans. Last updated: 2026-04-25
 
 - Rust stable (user-space) + nightly (eBPF target via `aya-ebpf`) + aya, aya-ebpf, aya-build, tokio, clap, reqwest, serde/serde_json, cyclonedx-bom, packageurl, sha2, chrono, thiserror, anyhow, tracing (001-build-trace-pipeline)
 
+## Feature flags
+
+- **`ebpf-tracing`** (off by default; milestone 020): gates the user-space
+  eBPF integration that powers `mikebom trace`. When off (the default
+  everywhere — local dev, default CI lanes), aya/aya-log/libc are dropped
+  from the dep graph and nightly + bpf-linker are not required. When on
+  (Linux + `--features ebpf-tracing`), build the kernel-side artifact
+  first via `cargo run -p xtask -- ebpf`, then test with
+  `cargo +stable test --workspace --features ebpf-tracing`. Local pre-PR
+  opt-in: `MIKEBOM_PREPR_EBPF=1 ./scripts/pre-pr.sh`. CI runs the
+  feature-on path in the dedicated `lint-and-test-ebpf` job. See
+  `specs/020-ebpf-feature-gate/contracts/feature-flag.md` for the full
+  contract.
+
 ## Project Structure
 
 ```text
