@@ -38,6 +38,8 @@
 
 #![allow(dead_code)]
 
+pub mod normalize;
+
 use std::path::PathBuf;
 
 /// One row of the cross-format-test fixture matrix. `label` names

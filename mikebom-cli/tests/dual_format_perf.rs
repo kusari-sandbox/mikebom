@@ -27,14 +27,28 @@ use std::time::{Duration, Instant};
 
 
 
-// Local `bin()` instead of `common::bin` because this file is
-// included as a submodule of `tests/holistic_parity.rs` (via
-// `mod dual_format_perf;`), and a nested `mod common;` resolves
-// relative to the parent test target's directory rather than to
-// `tests/common/mod.rs`. Keeping the one-line helper inline avoids
-// the `#[path]` ceremony.
+// Local helpers instead of `common::bin` / `common::apply_fake_home_env`
+// because this file is included as a submodule of
+// `tests/holistic_parity.rs` (via `mod dual_format_perf;`). A bare
+// `mod common;` resolves relative to the parent test target's
+// directory rather than to `tests/common/mod.rs`. The `#[path =
+// "common/mod.rs"]` workaround compiles when this file is its own
+// test target but causes a "module loaded multiple times" error in
+// the holistic_parity target (which already declares `mod common;`
+// at its own top level). Cloning the two helpers locally is the
+// only option that compiles in both contexts; FR-008 documents
+// this file as a deliberate exception.
 fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_mikebom")
+}
+
+fn apply_fake_home_env(cmd: &mut std::process::Command, fake_home: &std::path::Path) {
+    cmd.env("HOME", fake_home)
+        .env("M2_REPO", fake_home.join("no-m2-repo"))
+        .env("MAVEN_HOME", fake_home.join("no-maven-home"))
+        .env("GOPATH", fake_home.join("no-gopath"))
+        .env("GOMODCACHE", fake_home.join("no-gomodcache"))
+        .env("CARGO_HOME", fake_home.join("no-cargo-home"));
 }
 
 /// One file inside the synthetic image's inner layer tar.
@@ -178,12 +192,8 @@ fn time_scan(image: &std::path::Path, formats: &str) -> Duration {
     let tmp = tempfile::tempdir().expect("tempdir");
     let fake_home = tempfile::tempdir().expect("fake-home tempdir");
     let mut cmd = Command::new(bin());
-    cmd.env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+    apply_fake_home_env(&mut cmd, fake_home.path());
+    cmd
         .arg("--offline")
         .arg("sbom")
         .arg("scan")

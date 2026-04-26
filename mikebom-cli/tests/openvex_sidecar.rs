@@ -30,6 +30,7 @@ use std::sync::OnceLock;
 
 
 mod common;
+use common::normalize::apply_fake_home_env;
 use common::{workspace_root, EcosystemCase, CASES};
 
 fn openvex_schema() -> &'static jsonschema::Validator {
@@ -69,12 +70,8 @@ fn scan_spdx(case: &EcosystemCase) -> (tempfile::TempDir, PathBuf, serde_json::V
     let spdx_path = tmp.path().join("out.spdx.json");
     let bin = env!("CARGO_BIN_EXE_mikebom");
     let mut cmd = Command::new(bin);
-    cmd.env("HOME", fake_home.path())
-        .env("M2_REPO", fake_home.path().join("no-m2-repo"))
-        .env("MAVEN_HOME", fake_home.path().join("no-maven-home"))
-        .env("GOPATH", fake_home.path().join("no-gopath"))
-        .env("GOMODCACHE", fake_home.path().join("no-gomodcache"))
-        .env("CARGO_HOME", fake_home.path().join("no-cargo-home"))
+    apply_fake_home_env(&mut cmd, fake_home.path());
+    cmd
         .arg("--offline")
         .arg("sbom")
         .arg("scan")

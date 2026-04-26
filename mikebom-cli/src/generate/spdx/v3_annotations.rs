@@ -86,9 +86,18 @@ fn build_annotation(
 ) -> Value {
     let envelope = MikebomAnnotationCommentV1::new(field, value);
     let statement = envelope.to_comment_string();
+    // ID derivation MUST NOT include `statement` — that string carries
+    // workspace-relative source-file paths for `mikebom:source-files`,
+    // and including host-specific bytes here breaks cross-host
+    // byte-identity (milestone 017 T013b: same scan on macOS dev vs
+    // Linux CI produced different `anno-*` hashes, displacing every
+    // annotation in the spdxId-sorted `@graph[]` array). `subject|field`
+    // is already unique per annotation: `push_*_fields` emits one
+    // annotation per (component, field) pair, with no duplicate field
+    // names per subject.
     let anno_iri = format!(
         "{doc_iri}/anno-{}",
-        hash_prefix(format!("{subject_iri}|{field}|{statement}").as_bytes(), 16)
+        hash_prefix(format!("{subject_iri}|{field}").as_bytes(), 16)
     );
     json!({
         "type": "Annotation",
