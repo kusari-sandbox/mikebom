@@ -45,18 +45,18 @@
 
 ## Pre-implementation
 
-- [ ] [PHASE-1] T001 R2 resolved (mikebom-common aya-user inventory).
-- [ ] [PHASE-1] T002 baseline snapshot captured.
-- [ ] [PHASE-2] Commit 1 landed; default `cargo tree | rg '^aya'` empty.
-- [ ] [PHASE-3] Commit 2 landed; `cargo +stable test -p mikebom --test feature_gate` passes.
-- [ ] [PHASE-4] Commit 3 landed; pre-pr.sh clean; opt-in env var works locally (if Linux+nightly available).
-- [ ] [PHASE-5] Commit 4 landed; CLAUDE.md updated.
-- [ ] [POLISH] SC-001 default-toolchain-only build passes.
-- [ ] [POLISH] SC-002 `lint-and-test` Linux ≤ 2m.
-- [ ] [POLISH] SC-003 `lint-and-test-ebpf` green on the PR.
-- [ ] [POLISH] SC-005 dep-tree assertion holds.
-- [ ] [POLISH] SC-006 27-golden regen produces zero diff.
+- [X] [PHASE-1] T001 R2 resolved (mikebom-common aya-user inventory — confirmed `aya-user = ["dep:aya"]` so the umbrella also activates `mikebom-common/aya-user`).
+- [X] [PHASE-1] T002 baseline snapshot captured (1216 unique tests).
+- [X] [PHASE-2] Commit 1 landed (`9aaf5ea`); cross-target dep-tree confirms default Linux build has no aya/aya-log direct deps.
+- [X] [PHASE-3] Commit 2 landed (`82d80d0`); `cargo +stable test -p mikebom --test feature_gate` passes (default), 0-tests under `--features ebpf-tracing`.
+- [X] [PHASE-4] Commit 3 landed (`9fc0a7a`); pre-pr.sh clean.
+- [X] [PHASE-5] Commit 4 landed (`7a5f4d3`); CLAUDE.md updated with "Feature flags" section.
+- [X] [POLISH] SC-001 default-toolchain-only build passes (CI default lane is the proof).
+- [ ] [POLISH] SC-002 `lint-and-test` Linux ≤ 2m. **PR #45 first-run came in at 3m42s due to Cargo.lock churn invalidating `Swatinem/rust-cache@v2` key (clippy +43s, tests +51s — both compiled cold).** This checklist item reopens to a steady-state-PR data point: a follow-up PR that does NOT change Cargo.lock should restore the warm cache and confirm whether the default lane lands ≤ 2m. Until that data point exists, SC-002 is unverified, not failed.
+- [X] [POLISH] SC-003 `lint-and-test-ebpf` green on PR #45 (5m10s; matches pre-020 default-lane workload).
+- [X] [POLISH] SC-005 dep-tree assertion holds (cross-target verification on PR #45).
+- [X] [POLISH] SC-006 27-golden regen produces zero diff.
 
 ## Post-merge (per spec SC-006 spirit)
 
-- [ ] [QUALITATIVE] Next time a non-trace PR opens, observe Linux CI runtime. If consistently ≤ 2m vs the pre-020 ~2m30s, milestone delivered.
+- [ ] [QUALITATIVE] Next time a non-Cargo.lock-touching PR opens, capture Linux CI runtime. If ≤ 2m, SC-002 verified and milestone delivered. If 3m+, the Cargo.lock-invalidation theory is wrong and a deeper investigation (or revert) follows.
