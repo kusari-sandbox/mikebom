@@ -138,15 +138,31 @@ fn scan_system_binary_emits_file_level_and_linkage() {
     // by every modern distro (gcc/clang default; reproducible-builds
     // requirement). The bag-emission path should surface it as a
     // CDX `mikebom:elf-build-id` property. Spec SC-002.
-    //
-    // Skip on macOS where /bin/ls is Mach-O — milestone 023 only
-    // covers ELF; Mach-O LC_UUID is deferred to milestone 024.
     if class == "elf" {
         let build_id = property_value(file_level, "mikebom:elf-build-id");
         assert!(
             build_id.as_deref().is_some_and(|s| !s.is_empty()
                 && s.chars().all(|c| c.is_ascii_hexdigit())),
             "expected non-empty hex mikebom:elf-build-id on /bin/ls; got {build_id:?}"
+        );
+    }
+
+    // Milestone 024 — on macOS, /bin/ls is fat Mach-O with LC_UUID +
+    // LC_BUILD_VERSION on every supported OS version; verify both
+    // surface as CDX `mikebom:macho-uuid` (32 hex chars) and
+    // `mikebom:macho-min-os` (`<platform>:<version>`). Spec SC-002.
+    if class == "macho" {
+        let uuid = property_value(file_level, "mikebom:macho-uuid");
+        assert!(
+            uuid.as_deref().is_some_and(|s| s.len() == 32
+                && s.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())),
+            "expected 32-lowercase-hex mikebom:macho-uuid on /bin/ls; got {uuid:?}"
+        );
+        let min_os = property_value(file_level, "mikebom:macho-min-os");
+        assert!(
+            min_os.as_deref().is_some_and(|s| s.contains(':')
+                && !s.starts_with(':') && !s.ends_with(':')),
+            "expected non-empty mikebom:macho-min-os of shape <platform>:<version> on /bin/ls; got {min_os:?}"
         );
     }
 }

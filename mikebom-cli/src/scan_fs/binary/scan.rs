@@ -160,6 +160,21 @@ pub(super) fn scan_binary(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         (None, Vec::new(), None)
     };
 
+    // Milestone 024 — Mach-O identity signals (LC_UUID, LC_RPATH,
+    // min-OS version) extracted via byte-level parsers in macho.rs.
+    // ELF / PE leave all three at default values. Note: this is the
+    // non-fat path; the fat-Mach-O path (`scan_fat_macho` below) calls
+    // the same parsers against the first slice's bytes.
+    let (macho_uuid, macho_rpath, macho_min_os) = if class == "macho" {
+        (
+            super::macho::parse_lc_uuid(bytes),
+            super::macho::parse_lc_rpath(bytes),
+            super::macho::parse_min_os_version(bytes),
+        )
+    } else {
+        (None, Vec::new(), None)
+    };
+
     // Read-only string region per FR-025 / Q4 — format-appropriate
     // sections only. Used by the curated version-string scanner.
     let string_region = collect_string_region(&file, class);
@@ -178,6 +193,9 @@ pub(super) fn scan_binary(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         build_id,
         runpath,
         debuglink,
+        macho_uuid,
+        macho_rpath,
+        macho_min_os,
         string_region,
         packer: packer_kind,
     })
@@ -288,6 +306,16 @@ fn scan_fat_macho(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         }
     }
 
+    // Milestone 024 — fat Mach-O identity: use the first slice's bytes
+    // for LC_UUID / LC_RPATH / min-OS. Per spec edge case "fat-slice UUID
+    // divergence", arch-specific UUIDs are intentionally collapsed to the
+    // first slice; consumers needing per-slice identity should fall back
+    // to `otool -l <slice>`.
+    let first_slice = slice_datas.first().copied().unwrap_or(&[][..]);
+    let macho_uuid = super::macho::parse_lc_uuid(first_slice);
+    let macho_rpath = super::macho::parse_lc_rpath(first_slice);
+    let macho_min_os = super::macho::parse_min_os_version(first_slice);
+
     Some(BinaryScan {
         binary_class: "macho",
         imports,
@@ -297,6 +325,9 @@ fn scan_fat_macho(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         build_id: None,     // milestone 023 — ELF-only fields stay default
         runpath: Vec::new(),
         debuglink: None,
+        macho_uuid,
+        macho_rpath,
+        macho_min_os,
         string_region,
         packer: packer::detect(bytes),
     })

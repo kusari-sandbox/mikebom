@@ -82,6 +82,21 @@ pub(crate) struct BinaryScan {
     /// filename + LE CRC32 of the referenced .debug file. Pointer
     /// only — mikebom does not chase or verify the .debug file.
     pub debuglink: Option<elf::DebuglinkEntry>,
+    /// Mach-O `LC_UUID` 16-byte identity, hex-encoded lowercase
+    /// (milestone 024). The macOS analog of `build_id`. `None` for
+    /// non-Mach-O or for Mach-O binaries built with `ld -no_uuid`.
+    /// Read from the FIRST slice on fat binaries.
+    pub macho_uuid: Option<String>,
+    /// Mach-O `LC_RPATH` paths in declaration order, dedup'd
+    /// (milestone 024). `@executable_path`, `@loader_path`, `@rpath`
+    /// recorded raw — substitution is runtime-context-dependent.
+    /// Read from the FIRST slice on fat binaries.
+    pub macho_rpath: Vec<String>,
+    /// Mach-O minimum-OS version (milestone 024). Format
+    /// `<platform>:<version>` (e.g. `"macos:14.0"`, `"ios:17.5"`).
+    /// Prefers `LC_BUILD_VERSION` (newer); falls back to
+    /// `LC_VERSION_MIN_MACOSX` etc. when LC_BUILD_VERSION absent.
+    pub macho_min_os: Option<String>,
     /// Concatenated read-only string-section bytes per FR-025 /
     /// research R6. Fed to the curated version-string scanner.
     /// Capped at 16 MB per binary.
@@ -165,9 +180,21 @@ pub(super) fn make_file_level_component(
         npm_role: None,
         co_owned_by: None,
         hashes: Vec::new(),
-        extra_annotations: build_elf_identity_annotations(scan),
+        extra_annotations: build_binary_identity_annotations(scan),
     }
     .with_sha256_placeholder(hash)
+}
+
+/// Merge per-format identity annotations into a single bag. ELF and
+/// Mach-O fields are mutually exclusive in practice (a `BinaryScan` has
+/// one binary_class), so the bags don't overlap; the merge is a simple
+/// extend. Future PE-identity work (milestone 028+) plugs in here.
+fn build_binary_identity_annotations(
+    scan: &BinaryScan,
+) -> std::collections::BTreeMap<String, serde_json::Value> {
+    let mut bag = build_elf_identity_annotations(scan);
+    bag.extend(build_macho_identity_annotations(scan));
+    bag
 }
 
 /// Milestone 023: translate the three ELF identity fields on
@@ -198,6 +225,38 @@ fn build_elf_identity_annotations(
                 "file": dl.file,
                 "crc32": format!("{:08x}", dl.crc32),
             }),
+        );
+    }
+    bag
+}
+
+/// Milestone 024: translate the three Mach-O identity fields on
+/// `BinaryScan` into bag entries. Same skip-on-empty contract as the
+/// ELF helper. Each annotation includes the source LC_* command in
+/// its key as a stable cross-format identity hint:
+/// - `mikebom:macho-uuid`   ← LC_UUID
+/// - `mikebom:macho-rpath`  ← LC_RPATH
+/// - `mikebom:macho-min-os` ← LC_BUILD_VERSION (or LC_VERSION_MIN_*)
+fn build_macho_identity_annotations(
+    scan: &BinaryScan,
+) -> std::collections::BTreeMap<String, serde_json::Value> {
+    let mut bag = std::collections::BTreeMap::new();
+    if let Some(ref uuid) = scan.macho_uuid {
+        bag.insert(
+            "mikebom:macho-uuid".to_string(),
+            serde_json::Value::String(uuid.clone()),
+        );
+    }
+    if !scan.macho_rpath.is_empty() {
+        bag.insert(
+            "mikebom:macho-rpath".to_string(),
+            serde_json::json!(scan.macho_rpath),
+        );
+    }
+    if let Some(ref min_os) = scan.macho_min_os {
+        bag.insert(
+            "mikebom:macho-min-os".to_string(),
+            serde_json::Value::String(min_os.clone()),
         );
     }
     bag
@@ -584,6 +643,9 @@ mod tests {
             build_id: None,
             runpath: Vec::new(),
             debuglink: None,
+            macho_uuid: None,
+            macho_rpath: Vec::new(),
+            macho_min_os: None,
             string_region: Vec::new(),
             packer: None,
         }
