@@ -22,6 +22,7 @@ pub mod maven;
 pub mod maven_sidecar;
 pub mod npm;
 pub mod pip;
+mod project_roots;
 pub mod rpm;
 pub mod rpm_file;
 pub mod rpmdb_bdb;
