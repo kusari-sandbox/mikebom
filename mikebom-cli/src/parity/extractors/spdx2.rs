@@ -314,6 +314,11 @@ spdx23_anno!(c24_spdx23, "mikebom:elf-build-id", component);
 spdx23_anno!(c25_spdx23, "mikebom:elf-runpath", component);
 spdx23_anno!(c26_spdx23, "mikebom:elf-debuglink", component);
 
+// C27-C29 (milestone 025 — Go VCS metadata).
+spdx23_anno!(c27_spdx23, "mikebom:go-vcs-revision", component);
+spdx23_anno!(c28_spdx23, "mikebom:go-vcs-time", component);
+spdx23_anno!(c29_spdx23, "mikebom:go-vcs-modified", component);
+
 // ============================================================
 // Sections D-G — custom SPDX 2.3 extractors
 // ============================================================

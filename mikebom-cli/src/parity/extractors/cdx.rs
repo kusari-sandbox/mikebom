@@ -385,6 +385,13 @@ cdx_anno!(c24_cdx, "mikebom:elf-build-id", component);
 cdx_anno!(c25_cdx, "mikebom:elf-runpath", component);
 cdx_anno!(c26_cdx, "mikebom:elf-debuglink", component);
 
+// C27-C29 (milestone 025 — Go VCS metadata, surfaced via the
+// extra_annotations bag in go_binary.rs::build_vcs_annotations on
+// the main-module Go entry only).
+cdx_anno!(c27_cdx, "mikebom:go-vcs-revision", component);
+cdx_anno!(c28_cdx, "mikebom:go-vcs-time", component);
+cdx_anno!(c29_cdx, "mikebom:go-vcs-modified", component);
+
 // ============================================================
 // Section D — Evidence (D1, D2 — CDX-native shape)
 // ============================================================
