@@ -28,8 +28,6 @@
 //!
 //! Each parser returns `Option<String>` defensively and never panics.
 
-#![allow(dead_code)] // wired in commit 2 (028/wire-up-bag)
-
 use object::pe;
 use object::read::pe::{ImageNtHeaders, ImageOptionalHeader, PeFile, PeFile32, PeFile64};
 use object::Object;
