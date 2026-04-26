@@ -25,6 +25,16 @@ jobs:
   # PR #34. To upgrade: bump the SHA + comment together; verify the
   # comment matches what `gh api /repos/<owner>/<repo>/git/ref/tags/<tag>`
   # returns (or the dereferenced commit for annotated tags).
+  #
+  # CI matrix (post-milestone-020):
+  #   - lint-and-test           (Linux, default features, stable only)
+  #   - lint-and-test-macos     (macOS, default features, stable only)
+  #   - lint-and-test-ebpf      (Linux, --features ebpf-tracing, stable + nightly + bpf-linker)
+  #
+  # The default lanes drop the nightly + bpf-linker + xtask ebpf cost
+  # entirely. The ebpf lane runs in parallel and is the regression gate
+  # for the user-space eBPF integration. See
+  # specs/020-ebpf-feature-gate/ for the full rationale.
   lint-and-test:
     name: Lint + test (linux-x86_64)
     runs-on: ubuntu-latest
@@ -40,38 +50,13 @@ jobs:
           # CICD-SEC-1 + Kusari Inspector hardening guidance.
           persist-credentials: false
 
-      - name: Install eBPF build deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang llvm libelf-dev pkg-config libssl-dev
-
-      # Install nightly first so stable ends up as the default toolchain
-      # for unpinned `cargo` invocations. dtolnay/rust-toolchain sets the
-      # default to whichever it installed last.
-      - name: Install nightly Rust with rust-src
-        uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2 # nightly (2026-04-25)
-        with:
-          components: rust-src
-
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable (2026-04-25)
         with:
           components: clippy
 
-      - name: Make stable the default toolchain
-        run: rustup default stable
-
       - name: Cache cargo + build artifacts
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
-
-      - name: Install bpf-linker
-        run: |
-          if ! command -v bpf-linker >/dev/null 2>&1; then
-            cargo +nightly install bpf-linker --locked
-          fi
-
-      - name: Build eBPF object
-        run: cargo run --package xtask -- ebpf
 
       # sbomqs is the cross-format SBOM-quality scorer that
       # enforces spec SC-001: mikebom's SPDX output must meet or
@@ -150,3 +135,61 @@ jobs:
 
       - name: Tests
         run: cargo +stable test --workspace
+
+  # Opt-in eBPF lane. Pays the nightly + bpf-linker + xtask ebpf cost
+  # so the user-space eBPF integration (mikebom-cli/src/trace/* +
+  # `mikebom trace` subcommand) keeps working. Default lanes above
+  # do not invoke this path — see specs/020-ebpf-feature-gate/.
+  lint-and-test-ebpf:
+    name: Lint + test (linux-x86_64, --features ebpf-tracing)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false  # see lint-and-test job for rationale
+
+      - name: Install eBPF build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm libelf-dev pkg-config libssl-dev
+
+      # Install nightly first so stable ends up as the default toolchain
+      # for unpinned `cargo` invocations. dtolnay/rust-toolchain sets the
+      # default to whichever it installed last.
+      - name: Install nightly Rust with rust-src
+        uses: dtolnay/rust-toolchain@5b842231ba77f5c045dba54ac5560fed2db780e2 # nightly (2026-04-25)
+        with:
+          components: rust-src
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable (2026-04-25)
+        with:
+          components: clippy
+
+      - name: Make stable the default toolchain
+        run: rustup default stable
+
+      - name: Cache cargo + build artifacts
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+
+      - name: Install bpf-linker
+        run: |
+          if ! command -v bpf-linker >/dev/null 2>&1; then
+            cargo +nightly install bpf-linker --locked
+          fi
+
+      - name: Build eBPF object
+        run: cargo run --package xtask -- ebpf
+
+      - name: Install sbomqs
+        run: |
+          GOMODCACHE="${RUNNER_TEMP}/go-mod-cache-sbomqs" \
+            go install github.com/interlynk-io/sbomqs/v2@v2.0.6
+      - name: Add Go bin to PATH
+        run: echo "${HOME}/go/bin" >> "$GITHUB_PATH"
+
+      - name: Clippy (--features ebpf-tracing)
+        run: cargo +stable clippy --workspace --all-targets --features ebpf-tracing -- -D warnings
+
+      - name: Tests (--features ebpf-tracing)
+        run: cargo +stable test --workspace --features ebpf-tracing
