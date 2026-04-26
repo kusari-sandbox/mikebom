@@ -155,7 +155,6 @@ pub(super) fn make_file_level_component(
 }
 
 /// Extension helper: attach the file-SHA-256 as a `hashes` field.
-
 impl PackageDbEntry {
     fn with_sha256_placeholder(self, _hash: ContentHash) -> Self {
         // `PackageDbEntry` doesn't currently carry hashes directly;
