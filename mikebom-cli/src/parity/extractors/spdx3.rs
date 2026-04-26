@@ -367,6 +367,11 @@ spdx3_anno!(c27_spdx3, "mikebom:go-vcs-revision", component);
 spdx3_anno!(c28_spdx3, "mikebom:go-vcs-time", component);
 spdx3_anno!(c29_spdx3, "mikebom:go-vcs-modified", component);
 
+// C30-C32 (milestone 024 — Mach-O binary identity).
+spdx3_anno!(c30_spdx3, "mikebom:macho-uuid", component);
+spdx3_anno!(c31_spdx3, "mikebom:macho-rpath", component);
+spdx3_anno!(c32_spdx3, "mikebom:macho-min-os", component);
+
 // ============================================================
 // Sections D-G — custom SPDX 3 extractors
 // ============================================================

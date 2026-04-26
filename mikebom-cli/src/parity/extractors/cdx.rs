@@ -392,6 +392,13 @@ cdx_anno!(c27_cdx, "mikebom:go-vcs-revision", component);
 cdx_anno!(c28_cdx, "mikebom:go-vcs-time", component);
 cdx_anno!(c29_cdx, "mikebom:go-vcs-modified", component);
 
+// C30-C32 (milestone 024 — Mach-O binary identity, surfaced via the
+// extra_annotations bag in binary/entry.rs::build_macho_identity_annotations
+// on the file-level Mach-O component).
+cdx_anno!(c30_cdx, "mikebom:macho-uuid", component);
+cdx_anno!(c31_cdx, "mikebom:macho-rpath", component);
+cdx_anno!(c32_cdx, "mikebom:macho-min-os", component);
+
 // ============================================================
 // Section D — Evidence (D1, D2 — CDX-native shape)
 // ============================================================
