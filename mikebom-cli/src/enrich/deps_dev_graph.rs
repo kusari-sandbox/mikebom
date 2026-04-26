@@ -264,6 +264,7 @@ pub async fn enrich_dep_graph(
                             co_owned_by: None,
                             shade_relocation: None,
                             external_references: Vec::new(),
+                            extra_annotations: Default::default(),
                         });
                         added_components += 1;
                     }

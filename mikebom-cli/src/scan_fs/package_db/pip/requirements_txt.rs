@@ -110,6 +110,7 @@ impl RequirementsTxtEntry {
             hashes: self.hashes,
             sbom_tier: Some(tier.to_string()),
             shade_relocation: None,
+            extra_annotations: Default::default(),
         })
     }
 }

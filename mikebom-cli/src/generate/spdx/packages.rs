@@ -410,6 +410,7 @@ mod tests {
             co_owned_by: None,
             shade_relocation: None,
             external_references: Vec::new(),
+            extra_annotations: Default::default(),
         }
     }
 

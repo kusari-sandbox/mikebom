@@ -611,6 +611,7 @@ fn emit_entries_from_info(
                     hashes: Vec::new(),
                     sbom_tier: Some("analyzed".to_string()),
                     shade_relocation: None,
+                    extra_annotations: Default::default(),
                 });
             }
         }
@@ -646,6 +647,7 @@ fn emit_entries_from_info(
                     hashes: Vec::new(),
                     sbom_tier: Some("analyzed".to_string()),
                     shade_relocation: None,
+                    extra_annotations: Default::default(),
                 });
             }
         }
@@ -698,6 +700,7 @@ fn emit_file_level_diagnostic(
         hashes: Vec::new(),
         sbom_tier: Some("analyzed".to_string()),
         shade_relocation: None,
+        extra_annotations: Default::default(),
     });
 }
 

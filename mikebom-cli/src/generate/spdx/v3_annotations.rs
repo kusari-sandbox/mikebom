@@ -266,6 +266,13 @@ fn push_component_fields(
             .collect();
         push(out, "evidence.occurrences", json!(items));
     }
+
+    // Milestone 023: generic per-component annotation bag. Each
+    // entry surfaces as a SPDX 3 graph-element Annotation. BTreeMap
+    // iteration order is sorted by key — deterministic across runs.
+    for (key, value) in &c.extra_annotations {
+        push(out, key, value.clone());
+    }
 }
 
 /// Mirror of `annotations::annotate_document` — C21–C23 + E1.

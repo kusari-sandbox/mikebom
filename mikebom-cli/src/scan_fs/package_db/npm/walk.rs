@@ -146,6 +146,7 @@ fn walk_node_modules(
             hashes: Vec::new(),
             sbom_tier: Some("deployed".to_string()),
             shade_relocation: None,
+            extra_annotations: Default::default(),
         });
 
         // Feature 005 US1: in --image mode, after emitting the `npm`
@@ -229,6 +230,7 @@ pub(crate) fn parse_root_package_json(
                 hashes: Vec::new(),
                 sbom_tier: Some("design".to_string()),
                 shade_relocation: None,
+                extra_annotations: Default::default(),
             });
         }
     }

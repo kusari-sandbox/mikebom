@@ -55,6 +55,7 @@ pub(super) fn version_match_to_entry(
         npm_role: None,
         co_owned_by: None,
         hashes: Vec::new(),
+        extra_annotations: Default::default(),
     })
 }
 
@@ -150,6 +151,7 @@ pub(super) fn make_file_level_component(
         npm_role: None,
         co_owned_by: None,
         hashes: Vec::new(),
+        extra_annotations: Default::default(),
     }
     .with_sha256_placeholder(hash)
 }
@@ -286,6 +288,7 @@ pub(super) fn note_package_to_entry(
         npm_role: None,
         co_owned_by: None,
         hashes: Vec::new(),
+        extra_annotations: Default::default(),
     })
 }
 
