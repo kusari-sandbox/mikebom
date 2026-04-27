@@ -324,6 +324,11 @@ spdx23_anno!(c30_spdx23, "mikebom:macho-uuid", component);
 spdx23_anno!(c31_spdx23, "mikebom:macho-rpath", component);
 spdx23_anno!(c32_spdx23, "mikebom:macho-min-os", component);
 
+// C33-C35 (milestone 028 — PE binary identity).
+spdx23_anno!(c33_spdx23, "mikebom:pe-pdb-id", component);
+spdx23_anno!(c34_spdx23, "mikebom:pe-machine", component);
+spdx23_anno!(c35_spdx23, "mikebom:pe-subsystem", component);
+
 // ============================================================
 // Sections D-G — custom SPDX 2.3 extractors
 // ============================================================

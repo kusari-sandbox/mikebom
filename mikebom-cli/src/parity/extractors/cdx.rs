@@ -399,6 +399,13 @@ cdx_anno!(c30_cdx, "mikebom:macho-uuid", component);
 cdx_anno!(c31_cdx, "mikebom:macho-rpath", component);
 cdx_anno!(c32_cdx, "mikebom:macho-min-os", component);
 
+// C33-C35 (milestone 028 — PE binary identity, surfaced via the
+// extra_annotations bag in binary/entry.rs::build_pe_identity_annotations
+// on the file-level PE component).
+cdx_anno!(c33_cdx, "mikebom:pe-pdb-id", component);
+cdx_anno!(c34_cdx, "mikebom:pe-machine", component);
+cdx_anno!(c35_cdx, "mikebom:pe-subsystem", component);
+
 // ============================================================
 // Section D — Evidence (D1, D2 — CDX-native shape)
 // ============================================================
