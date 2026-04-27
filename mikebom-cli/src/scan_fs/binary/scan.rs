@@ -175,6 +175,17 @@ pub(super) fn scan_binary(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         (None, Vec::new(), None)
     };
 
+    // Milestone 028 — PE identity signals (CodeView pdb-id, machine
+    // type, subsystem) via `object` 0.36's typed accessors. ELF /
+    // Mach-O leave all three at default. Bit-width (PE32 vs PE32+)
+    // is auto-dispatched inside `parse_pe_identity` by reading
+    // IMAGE_OPTIONAL_HEADER.Magic.
+    let (pe_pdb_id, pe_machine, pe_subsystem) = if class == "pe" {
+        super::pe::parse_pe_identity(bytes)
+    } else {
+        (None, None, None)
+    };
+
     // Read-only string region per FR-025 / Q4 — format-appropriate
     // sections only. Used by the curated version-string scanner.
     let string_region = collect_string_region(&file, class);
@@ -196,6 +207,9 @@ pub(super) fn scan_binary(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         macho_uuid,
         macho_rpath,
         macho_min_os,
+        pe_pdb_id,
+        pe_machine,
+        pe_subsystem,
         string_region,
         packer: packer_kind,
     })
@@ -328,6 +342,9 @@ fn scan_fat_macho(path: &Path, bytes: &[u8]) -> Option<BinaryScan> {
         macho_uuid,
         macho_rpath,
         macho_min_os,
+        pe_pdb_id: None, // milestone 028 — PE-only fields stay default
+        pe_machine: None,
+        pe_subsystem: None,
         string_region,
         packer: packer::detect(bytes),
     })

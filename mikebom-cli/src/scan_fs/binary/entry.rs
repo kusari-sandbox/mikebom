@@ -97,6 +97,21 @@ pub(crate) struct BinaryScan {
     /// Prefers `LC_BUILD_VERSION` (newer); falls back to
     /// `LC_VERSION_MIN_MACOSX` etc. when LC_BUILD_VERSION absent.
     pub macho_min_os: Option<String>,
+    /// PE CodeView pdb-id (milestone 028). Format
+    /// `<guid-hex-lowercase>:<age>` — the symbol-server identity
+    /// pair from the `IMAGE_DIRECTORY_ENTRY_DEBUG` directory's
+    /// CodeView Type-2 record. `None` for non-PE binaries, stripped
+    /// PEs without `IMAGE_DEBUG_DIRECTORY`, or NB10 (Type-1) PDBs.
+    pub pe_pdb_id: Option<String>,
+    /// PE machine type (milestone 028). Lowercase string form of
+    /// `IMAGE_FILE_HEADER.Machine` (`"amd64"`, `"i386"`, `"arm64"`,
+    /// `"unknown"`, etc.). `None` for non-PE binaries.
+    pub pe_machine: Option<String>,
+    /// PE subsystem (milestone 028). Lowercase string form of
+    /// `IMAGE_OPTIONAL_HEADER.Subsystem` (`"console"`,
+    /// `"windows-gui"`, `"efi-application"`, `"unknown"`, etc.).
+    /// `None` for non-PE binaries.
+    pub pe_subsystem: Option<String>,
     /// Concatenated read-only string-section bytes per FR-025 /
     /// research R6. Fed to the curated version-string scanner.
     /// Capped at 16 MB per binary.
@@ -185,15 +200,17 @@ pub(super) fn make_file_level_component(
     .with_sha256_placeholder(hash)
 }
 
-/// Merge per-format identity annotations into a single bag. ELF and
-/// Mach-O fields are mutually exclusive in practice (a `BinaryScan` has
-/// one binary_class), so the bags don't overlap; the merge is a simple
-/// extend. Future PE-identity work (milestone 028+) plugs in here.
+/// Merge per-format identity annotations into a single bag. ELF,
+/// Mach-O, and PE fields are mutually exclusive in practice (a
+/// `BinaryScan` has one binary_class), so the bags don't overlap; the
+/// merge is a simple extend. Three identity helpers contribute as of
+/// milestone 028.
 fn build_binary_identity_annotations(
     scan: &BinaryScan,
 ) -> std::collections::BTreeMap<String, serde_json::Value> {
     let mut bag = build_elf_identity_annotations(scan);
     bag.extend(build_macho_identity_annotations(scan));
+    bag.extend(build_pe_identity_annotations(scan));
     bag
 }
 
@@ -257,6 +274,38 @@ fn build_macho_identity_annotations(
         bag.insert(
             "mikebom:macho-min-os".to_string(),
             serde_json::Value::String(min_os.clone()),
+        );
+    }
+    bag
+}
+
+/// Milestone 028: translate the three PE identity fields on
+/// `BinaryScan` into bag entries. Same skip-on-empty contract as the
+/// ELF + Mach-O helpers. Bag keys carry the source IMAGE_* field for
+/// cross-format identity:
+/// - `mikebom:pe-pdb-id`    ← IMAGE_DEBUG_DIRECTORY CodeView record
+/// - `mikebom:pe-machine`   ← IMAGE_FILE_HEADER.Machine
+/// - `mikebom:pe-subsystem` ← IMAGE_OPTIONAL_HEADER.Subsystem
+fn build_pe_identity_annotations(
+    scan: &BinaryScan,
+) -> std::collections::BTreeMap<String, serde_json::Value> {
+    let mut bag = std::collections::BTreeMap::new();
+    if let Some(ref id) = scan.pe_pdb_id {
+        bag.insert(
+            "mikebom:pe-pdb-id".to_string(),
+            serde_json::Value::String(id.clone()),
+        );
+    }
+    if let Some(ref machine) = scan.pe_machine {
+        bag.insert(
+            "mikebom:pe-machine".to_string(),
+            serde_json::Value::String(machine.clone()),
+        );
+    }
+    if let Some(ref subsystem) = scan.pe_subsystem {
+        bag.insert(
+            "mikebom:pe-subsystem".to_string(),
+            serde_json::Value::String(subsystem.clone()),
         );
     }
     bag
@@ -646,6 +695,9 @@ mod tests {
             macho_uuid: None,
             macho_rpath: Vec::new(),
             macho_min_os: None,
+            pe_pdb_id: None,
+            pe_machine: None,
+            pe_subsystem: None,
             string_region: Vec::new(),
             packer: None,
         }
@@ -764,5 +816,65 @@ mod tests {
         );
         assert!(!entry.extra_annotations.contains_key("mikebom:elf-runpath"));
         assert!(!entry.extra_annotations.contains_key("mikebom:elf-debuglink"));
+    }
+
+    /// Milestone 028: a fully-populated PE BinaryScan emits all three
+    /// PE bag keys with the expected values.
+    #[test]
+    fn make_file_level_component_populates_bag_with_all_three_pe_signals() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("sample.exe");
+        std::fs::write(&path, b"sample").unwrap();
+
+        let mut scan = fake_binary_scan();
+        scan.binary_class = "pe";
+        scan.pe_pdb_id = Some("0123456789abcdeffedcba9876543210:7".to_string());
+        scan.pe_machine = Some("amd64".to_string());
+        scan.pe_subsystem = Some("console".to_string());
+
+        let entry = make_file_level_component(&path, b"sample", &scan, false);
+        assert_eq!(entry.extra_annotations.len(), 3);
+        assert_eq!(
+            entry.extra_annotations.get("mikebom:pe-pdb-id"),
+            Some(&serde_json::Value::String(
+                "0123456789abcdeffedcba9876543210:7".to_string(),
+            )),
+        );
+        assert_eq!(
+            entry.extra_annotations.get("mikebom:pe-machine"),
+            Some(&serde_json::Value::String("amd64".to_string())),
+        );
+        assert_eq!(
+            entry.extra_annotations.get("mikebom:pe-subsystem"),
+            Some(&serde_json::Value::String("console".to_string())),
+        );
+    }
+
+    /// Milestone 028: a partially-populated PE BinaryScan (e.g. a
+    /// stripped exe with no CodeView record but valid machine +
+    /// subsystem) emits only the populated bag keys.
+    #[test]
+    fn make_file_level_component_pe_bag_skips_unpopulated_entries() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("stripped.exe");
+        std::fs::write(&path, b"stripped").unwrap();
+
+        let mut scan = fake_binary_scan();
+        scan.binary_class = "pe";
+        // pe_pdb_id stays None (stripped binary).
+        scan.pe_machine = Some("arm64".to_string());
+        scan.pe_subsystem = Some("efi-application".to_string());
+
+        let entry = make_file_level_component(&path, b"stripped", &scan, false);
+        assert_eq!(entry.extra_annotations.len(), 2);
+        assert!(!entry.extra_annotations.contains_key("mikebom:pe-pdb-id"));
+        assert_eq!(
+            entry.extra_annotations.get("mikebom:pe-machine"),
+            Some(&serde_json::Value::String("arm64".to_string())),
+        );
+        assert_eq!(
+            entry.extra_annotations.get("mikebom:pe-subsystem"),
+            Some(&serde_json::Value::String("efi-application".to_string())),
+        );
     }
 }
