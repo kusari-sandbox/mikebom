@@ -2971,37 +2971,6 @@ pub async fn execute(
     let registry = SerializerRegistry::with_defaults();
     let plan = resolve_dispatch(&registry, &args.format, &args.output)?;
 
-    // Milestone 777 US3 (FR-014 / FR-015 / FR-016) — the Sigstore
-    // keyless path cannot currently produce a CycloneDX signature that
-    // conforms to the CycloneDX 1.6 schema: it embeds a whole Sigstore
-    // bundle as the signature value, where JSON Signature Format
-    // expresses certificate and transparency-log material through
-    // dedicated properties. Rather than emit a document that is invalid
-    // while advertising itself as signed, refuse.
-    //
-    // Sited here, after dispatch resolution and before any scan work,
-    // for two reasons: the resolved plan accounts for the default
-    // format (omitting `--format` still requests CycloneDX), and
-    // failing pre-scan means no partial output can exist even when
-    // several formats were requested in one invocation (FR-015). The
-    // m221 fail-close cleanup tracker downstream remains as defence in
-    // depth rather than the mechanism relied upon.
-    //
-    // Scoped to CycloneDX only: SPDX signing is a detached sidecar with
-    // no in-document signature slot and is unaffected (FR-016).
-    if args.sign && plan.formats.iter().any(|f| f == DEFAULT_FORMAT) {
-        anyhow::bail!(
-            "--sign (Sigstore keyless) cannot currently produce a conformant \
-             CycloneDX signature, so waybill will not emit one.\n  \
-             The keyless path embeds a Sigstore bundle where the CycloneDX \
-             signature format expects JSON Signature Format fields; the \
-             resulting document does not validate against the CycloneDX 1.6 \
-             schema and is reported as unsigned by conforming consumers.\n  \
-             conformant alternative: --sign-key <PATH> (static ECDSA P-256 key)\n  \
-             or request a non-CycloneDX format, e.g. --format spdx-2.3-json, \
-             where keyless signing emits a detached sidecar and is unaffected.",
-        );
-    }
 
     // Milestone 186 (#442) — OCI Referrers API SBOM discovery.
     //
@@ -4456,6 +4425,12 @@ pub async fn execute(
         }
     };
 
+    // Milestone 778 (FR-016) — per-run record of what was signed and
+    // where each detached signature landed, so an operator can confirm
+    // from the run's own output that a signature was produced without
+    // going to the filesystem to look.
+    let mut signed_artifacts: Vec<(String, String)> = Vec::new();
+
     // Milestone 221 US2a (FR-009a): fail-close cleanup tracker. Every
     // file we write goes into this list; on any signing failure we
     // unlink each one before propagating the error, so consumers never
@@ -4516,8 +4491,21 @@ pub async fn execute(
             //   (c) SPDX (2.3 or 3) + signing enabled: write primary
             //       verbatim, then emit companion DSSE sidecar at
             //       `<target>.sig.json`.
+            // Milestone 778 — keyless CycloneDX signs to a detached
+            // sidecar, not in-document, so it must NOT take the
+            // in-document branch below. A Sigstore bundle has no
+            // conformant JSON Signature Format representation (the
+            // transparency-log proof has no slot), so there is nothing
+            // valid to put inside the document. See #804 / m777.
+            let cdx_keyless = matches!(
+                signing_mode,
+                crate::sbom::signer::SigningMode::Keyless { .. }
+            ) && fmt == "cyclonedx-json"
+                && artifact.relative_path == Path::new(serializer.default_filename());
+
             let final_bytes = if signing_mode.is_enabled()
                 && fmt == "cyclonedx-json"
+                && !cdx_keyless
                 && artifact.relative_path == Path::new(serializer.default_filename())
             {
                 match sign_cdx_bytes_for_write(&artifact.bytes, &signing_mode) {
@@ -4526,6 +4514,37 @@ pub async fn execute(
                         cleanup_written_files(&written_files);
                         return Err(anyhow::anyhow!(
                             "signing failed for {} (target: {}): {e}",
+                            fmt,
+                            target.display(),
+                        ));
+                    }
+                }
+            } else if cdx_keyless {
+                // Milestone 778 US2 — record where the signature will
+                // live, BEFORE the document is written and therefore
+                // before it is signed (FR-013). The reference is part of
+                // the signed content; adding it afterwards would
+                // invalidate the signature.
+                //
+                // The suffix comes from the signing mode rather than
+                // from the resulting sidecar, because the sidecar does
+                // not exist yet. The two are cross-checked below.
+                let suffix = signing_mode
+                    .sidecar_suffix()
+                    .expect("keyless mode always produces a sidecar");
+                let sidecar_name = format!(
+                    "{}{suffix}",
+                    target
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_default()
+                );
+                match inject_signature_reference(&artifact.bytes, &sidecar_name) {
+                    Ok(with_ref) => with_ref,
+                    Err(e) => {
+                        cleanup_written_files(&written_files);
+                        return Err(anyhow::anyhow!(
+                            "cannot record signature location in {} (target: {}): {e}",
                             fmt,
                             target.display(),
                         ));
@@ -4547,19 +4566,48 @@ pub async fn execute(
                 "wrote SBOM artifact"
             );
 
-            // Milestone 221 US2a + m222 US2b — SPDX sidecar. Only
-            // for primary SPDX artifacts (not OpenVEX side-artifacts).
-            // Static-key path emits `.sig.json` (DSSE); Sigstore
-            // keyless path emits `.sig.bundle.json` per FR-004.
+            // Milestone 221 US2a + m222 US2b — detached signature
+            // sidecar. Only for primary artifacts (not OpenVEX
+            // side-artifacts). Static-key path emits `.sig.json`
+            // (DSSE); Sigstore keyless path emits `.sig.bundle.json`.
+            //
+            // Milestone 778 added keyless CycloneDX here. The payload
+            // is `final_bytes` — the exact buffer just handed to
+            // `write_bytes_to` — so the signature covers the file as it
+            // sits on disk and `cosign verify-blob` works against it
+            // with no preprocessing (FR-004, FR-004a). Do not
+            // canonicalize: that is the in-document signer's contract,
+            // not this one's.
             if signing_mode.is_enabled()
-                && (fmt == "spdx-2.3-json" || fmt == "spdx-3-json")
+                && (fmt == "spdx-2.3-json" || fmt == "spdx-3-json" || cdx_keyless)
                 && artifact.relative_path == Path::new(serializer.default_filename())
             {
-                match crate::sbom::signer::sign_spdx_bytes_to_sidecar(
+                match crate::sbom::signer::sign_sbom_bytes_to_sidecar(
                     &final_bytes,
                     &signing_mode,
                 ) {
                     Ok(Some(sidecar_payload)) => {
+                        // Milestone 778 — if the document recorded a
+                        // signature location, the artifact must actually
+                        // land there. The reference was written from the
+                        // mode's predicted suffix and is already inside
+                        // the signed bytes, so a mismatch here would ship
+                        // a document pointing at a file that does not
+                        // exist. Fail rather than emit that.
+                        if cdx_keyless {
+                            let predicted = signing_mode
+                                .sidecar_suffix()
+                                .expect("keyless mode always produces a sidecar");
+                            let actual = sidecar_payload.sidecar_suffix();
+                            if predicted != actual {
+                                cleanup_written_files(&written_files);
+                                return Err(anyhow::anyhow!(
+                                    "signature location recorded in the document ({predicted}) \
+                                     does not match the sidecar produced ({actual}); refusing to \
+                                     emit a document pointing at a file that will not exist",
+                                ));
+                            }
+                        }
                         let sidecar = target
                             .with_extension(sidecar_extension_for(&target, &sidecar_payload));
                         let kind = sidecar_payload.kind_label();
@@ -4575,6 +4623,8 @@ pub async fn execute(
                             kind = %kind,
                             "wrote SBOM signature sidecar"
                         );
+                        signed_artifacts
+                            .push((fmt.clone(), sidecar.display().to_string()));
                     }
                     Ok(None) => {
                         // Unreachable — is_enabled() gate already checked.
@@ -4590,6 +4640,24 @@ pub async fn execute(
                 }
             }
         }
+    }
+
+    // Milestone 778 FR-016 / SC-010 — signing summary.
+    if !signed_artifacts.is_empty() {
+        tracing::info!(
+            signed_formats = %signed_artifacts
+                .iter()
+                .map(|(f, _)| f.as_str())
+                .collect::<Vec<_>>()
+                .join(","),
+            artifacts = %signed_artifacts
+                .iter()
+                .map(|(f, p)| format!("{f}={p}"))
+                .collect::<Vec<_>>()
+                .join(" "),
+            count = signed_artifacts.len(),
+            "detached signature artifacts written"
+        );
     }
 
     if args.json {
@@ -5046,6 +5114,59 @@ fn cleanup_written_files(files: &[PathBuf]) {
 /// Delegates to
 /// the `Sidecar::sidecar_suffix()` method so DSSE gets `.sig.json` and
 /// Sigstore Bundle gets `.sig.bundle.json` per FR-004.
+/// Milestone 778 US2 (FR-012, FR-012a) — record inside a CycloneDX
+/// document where its detached signature lives.
+///
+/// Adds one document-level external reference of type `attestation`
+/// naming the companion artifact by **bare filename**, with no
+/// directory component, so the reference stays correct wherever the
+/// document and its artifact are stored together.
+///
+/// Three things this deliberately does NOT do:
+///
+/// - It carries no hash of the artifact. CycloneDX permits hashes on an
+///   external reference and one looks attractive here, but it is
+///   circular: the artifact signs the document, so the document cannot
+///   contain the artifact's hash.
+/// - It is not emitted on the static-key path, whose signature already
+///   lives inside the document, nor on unsigned output, which must stay
+///   byte-identical (FR-011).
+/// - It does not make the document self-verifying, and signature-aware
+///   quality scorers will still report it as unsigned — they look for an
+///   in-document signature. Its purpose is discovery.
+///
+/// Distinct from the `attestation`-typed reference the `attestation:`
+/// identifier scheme emits onto `metadata.component` (catalog row C47):
+/// that one binds an identifier, this one locates a signature, and they
+/// sit at different levels of the document.
+fn inject_signature_reference(
+    cdx_bytes: &[u8],
+    sidecar_filename: &str,
+) -> anyhow::Result<Vec<u8>> {
+    use anyhow::Context;
+    let mut doc: serde_json::Value =
+        serde_json::from_slice(cdx_bytes).context("parsing CycloneDX document to record its signature location")?;
+    let root = doc
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("CycloneDX document root is not a JSON object"))?;
+    let refs = root
+        .entry("externalReferences")
+        .or_insert_with(|| serde_json::Value::Array(Vec::new()))
+        .as_array_mut()
+        .ok_or_else(|| anyhow::anyhow!("document `externalReferences` is not an array"))?;
+    refs.push(serde_json::json!({
+        "type": "attestation",
+        "url": sidecar_filename,
+        "comment": "Detached signature for this document. Resolve relative to \
+                    the document's own directory; verify with a Sigstore-aware \
+                    verifier against this document's bytes as written.",
+    }));
+    let mut out = serde_json::to_vec_pretty(&doc)
+        .context("re-serializing CycloneDX document after recording its signature location")?;
+    out.push(b'\n');
+    Ok(out)
+}
+
 fn sidecar_extension_for(
     target: &Path,
     sidecar: &crate::sbom::signer::Sidecar,
@@ -5083,6 +5204,62 @@ mod tests {
 
     fn reg() -> SerializerRegistry {
         SerializerRegistry::with_defaults()
+    }
+
+    // ----- Milestone 778 US2 — signature-location reference -----
+
+    #[test]
+    fn m778_reference_uses_a_bare_filename_with_no_directory_component() {
+        // FR-012a / SC-009: the reference must resolve wherever the
+        // document and its artifact are stored together, which an
+        // absolute path or any directory component would break.
+        let doc = br#"{"bomFormat":"CycloneDX","specVersion":"1.6","components":[]}"#;
+        let out = inject_signature_reference(doc, "signed.cdx.json.sig.bundle.json").unwrap();
+        let parsed: serde_json::Value = serde_json::from_slice(&out).unwrap();
+        let url = parsed["externalReferences"][0]["url"].as_str().unwrap();
+
+        assert_eq!(url, "signed.cdx.json.sig.bundle.json");
+        assert!(
+            !url.contains('/') && !url.contains('\\'),
+            "reference MUST carry no directory component (FR-012a); got {url}"
+        );
+        assert_eq!(parsed["externalReferences"][0]["type"], "attestation");
+    }
+
+    #[test]
+    fn m778_reference_carries_no_hash_of_the_artifact() {
+        // The artifact signs the document; a hash of the artifact inside
+        // the document would make each depend on the other. Excluded by
+        // construction, not preference — pinned so nobody "improves" it.
+        let doc = br#"{"bomFormat":"CycloneDX","specVersion":"1.6"}"#;
+        let out = inject_signature_reference(doc, "x.sig.bundle.json").unwrap();
+        let parsed: serde_json::Value = serde_json::from_slice(&out).unwrap();
+        assert!(
+            parsed["externalReferences"][0].get("hashes").is_none(),
+            "a checksum here is circular and MUST NOT be added"
+        );
+    }
+
+    #[test]
+    fn m778_reference_preserves_existing_document_content() {
+        let doc = br#"{"bomFormat":"CycloneDX","specVersion":"1.6","components":[{"name":"a"}]}"#;
+        let out = inject_signature_reference(doc, "x.sig.bundle.json").unwrap();
+        let parsed: serde_json::Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(parsed["bomFormat"], "CycloneDX");
+        assert_eq!(parsed["components"][0]["name"], "a");
+        assert_eq!(parsed["externalReferences"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn m778_reference_appends_to_existing_external_references() {
+        let doc = br#"{"bomFormat":"CycloneDX","specVersion":"1.6",
+                       "externalReferences":[{"type":"website","url":"https://example.test"}]}"#;
+        let out = inject_signature_reference(doc, "x.sig.bundle.json").unwrap();
+        let parsed: serde_json::Value = serde_json::from_slice(&out).unwrap();
+        let refs = parsed["externalReferences"].as_array().unwrap();
+        assert_eq!(refs.len(), 2, "must append, not replace");
+        assert_eq!(refs[0]["type"], "website");
+        assert_eq!(refs[1]["type"], "attestation");
     }
 
     // ----- Milestone 221 US2a (FR-008a) — stdout+signing rejection helpers -----

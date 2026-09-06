@@ -105,7 +105,7 @@ pub enum SbomSignatureEnvelope {
     // Keyless(SigstoreBundle),
 }
 
-/// Return type for `sign_spdx_bytes_to_sidecar`. SPDX outputs get a
+/// Return type for `sign_sbom_bytes_to_sidecar`. SPDX outputs get a
 /// separate on-disk sidecar (SPDX has no in-document signature slot);
 /// the shape depends on the `SigningMode` variant.
 ///
@@ -193,6 +193,28 @@ pub struct JsfPublicKey {
     pub x: String,
     /// EC point Y coordinate, base64url without padding.
     pub y: String,
+}
+
+impl SigningMode {
+    /// The sidecar suffix this mode will produce, knowable *before*
+    /// signing runs.
+    ///
+    /// Milestone 778 needs this because the CycloneDX document records
+    /// where its companion artifact lives, and that reference must be
+    /// part of the content that gets signed (FR-013). Deriving the name
+    /// from the resulting [`Sidecar`] would be too late — the document
+    /// is already signed by then. Returns `None` for `Unsigned`, which
+    /// produces no sidecar at all.
+    ///
+    /// Kept adjacent to [`Sidecar::sidecar_suffix`] so the two cannot
+    /// drift silently; the write path cross-checks them.
+    pub fn sidecar_suffix(&self) -> Option<&'static str> {
+        match self {
+            SigningMode::Unsigned => None,
+            SigningMode::StaticKey { .. } => Some(".sig.json"),
+            SigningMode::Keyless { .. } => Some(".sig.bundle.json"),
+        }
+    }
 }
 
 /// Tagged failure modes for the SBOM-signing pipeline. Every variant
@@ -285,6 +307,13 @@ pub fn sign_cdx_document_in_place(
     // unconditionally true for every document this function returns,
     // rather than true only for callers who happen to route through the
     // CLI guard.
+    //
+    // Milestone 778 note: this guard STAYS. m778 gives keyless CycloneDX
+    // a working path, but that path is a detached sidecar — it routes
+    // around this function rather than through it. This remains the
+    // *in-document* signer, and keyless still has no conformant
+    // in-document form, so refusing here is still correct for any caller
+    // that reaches it directly.
     if matches!(mode, SigningMode::Keyless { .. }) {
         return Err(SbomSigningError::NotImplemented {
             operation: "Sigstore keyless signing of CycloneDX documents \
@@ -350,8 +379,21 @@ pub fn sign_cdx_document_in_place(
     Ok(())
 }
 
-/// Produce a signature sidecar for the given SPDX bytes. Returns
-/// `Ok(None)` when `mode == Unsigned` (no sidecar file written).
+/// Produce a signature sidecar for the given emitted-SBOM bytes.
+/// Returns `Ok(None)` when `mode == Unsigned` (no sidecar file written).
+///
+/// **Format-neutral.** Despite its original SPDX-only name (renamed in
+/// milestone 778), nothing here is SPDX-specific: the caller hands over
+/// whatever bytes it just wrote and gets back a detached signature over
+/// exactly those bytes. Both the SPDX formats and — as of milestone 778
+/// — the keyless CycloneDX path use it.
+///
+/// The payload is the caller's bytes verbatim. Do NOT canonicalize
+/// before calling: a detached signature is verified against the file as
+/// it sits on disk, so any transformation here would force every
+/// verifier to reproduce it first. That is the distinction from
+/// `sign_cdx_document_in_place`, which signs a canonical form because
+/// its signature lives *inside* the document it covers.
 ///
 /// - `SigningMode::StaticKey{..}` → `Sidecar::Dsse(SignedEnvelope)`
 ///   with `payloadType = SBOM_DSSE_PAYLOAD_TYPE`.
@@ -364,8 +406,8 @@ pub fn sign_cdx_document_in_place(
 /// to reflect the Sidecar shape shift; a thin backwards-compatible
 /// alias is preserved for the m221 US2a call site until the CLI
 /// migrates to the new return type.
-pub fn sign_spdx_bytes_to_sidecar(
-    spdx_bytes: &[u8],
+pub fn sign_sbom_bytes_to_sidecar(
+    sbom_bytes: &[u8],
     mode: &SigningMode,
 ) -> Result<Option<Sidecar>, SbomSigningError> {
     if !mode.is_enabled() {
@@ -380,7 +422,7 @@ pub fn sign_spdx_bytes_to_sidecar(
     } = mode
     {
         let success = crate::attestation::signer::sign_keyless_sbom(
-            spdx_bytes,
+            sbom_bytes,
             fulcio_url,
             rekor_url,
             *rekor_timeout,
@@ -403,7 +445,7 @@ pub fn sign_spdx_bytes_to_sidecar(
     let scheme = SigningScheme::ECDSA_P256_SHA256_ASN1;
     let public_key_pem = export_public_key_pem(&keypair)?;
 
-    let pae = dsse_pae(SBOM_DSSE_PAYLOAD_TYPE, spdx_bytes);
+    let pae = dsse_pae(SBOM_DSSE_PAYLOAD_TYPE, sbom_bytes);
     let signer = keypair
         .to_sigstore_signer(&scheme)
         .map_err(|e| SbomSigningError::SignFailed {
@@ -415,7 +457,7 @@ pub fn sign_spdx_bytes_to_sidecar(
 
     Ok(Some(Sidecar::Dsse(SignedEnvelope {
         payload_type: SBOM_DSSE_PAYLOAD_TYPE.to_string(),
-        payload: BASE64_STD.encode(spdx_bytes),
+        payload: BASE64_STD.encode(sbom_bytes),
         signatures: vec![Signature {
             keyid: None,
             sig: BASE64_STD.encode(&sig_bytes),
@@ -429,20 +471,20 @@ pub fn sign_spdx_bytes_to_sidecar(
 
 /// Milestone 221 US2a legacy alias — returns just the DSSE envelope,
 /// or `Err(NotImplemented)` for the m222 US2b Keyless variant (that
-/// path must go through `sign_spdx_bytes_to_sidecar` for the correct
+/// path must go through `sign_sbom_bytes_to_sidecar` for the correct
 /// Bundle return type). Kept during the m222 transition; delete once
 /// the CLI's SPDX sidecar-writer is fully on `Sidecar`.
 pub fn sign_spdx_bytes_to_dsse(
     spdx_bytes: &[u8],
     mode: &SigningMode,
 ) -> Result<Option<SignedEnvelope>, SbomSigningError> {
-    match sign_spdx_bytes_to_sidecar(spdx_bytes, mode)? {
+    match sign_sbom_bytes_to_sidecar(spdx_bytes, mode)? {
         None => Ok(None),
         Some(Sidecar::Dsse(env)) => Ok(Some(env)),
         Some(Sidecar::SigstoreBundle(_)) => Err(SbomSigningError::NotImplemented {
             operation: "sign_spdx_bytes_to_dsse called with SigningMode::Keyless — \
                         Sigstore keyless signing produces a Bundle sidecar, not DSSE. \
-                        Callers must migrate to sign_spdx_bytes_to_sidecar."
+                        Callers must migrate to sign_sbom_bytes_to_sidecar."
                 .to_string(),
         }),
     }
