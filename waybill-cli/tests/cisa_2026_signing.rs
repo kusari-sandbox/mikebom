@@ -13,6 +13,10 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use base64::engine::general_purpose::STANDARD as BASE64_STD;
+// CycloneDX/JSF signature values are base64url (FR-020); the DSSE
+// sidecar assertions below stay on BASE64_STD, which its envelope
+// format requires. Both alphabets are exercised in this one file.
+use base64::engine::general_purpose::URL_SAFE_NO_PAD as BASE64_URL;
 use base64::Engine;
 use sigstore::crypto::signing_key::SigStoreKeyPair;
 use sigstore::crypto::verification_key::CosignVerificationKey;
@@ -82,7 +86,143 @@ fn run_scan(
 }
 
 // ---------------------------------------------------------------------------
-// US2a — static-key JSF sign into CDX metadata.signature
+// ---------------------------------------------------------------------------
+// Milestone 777 — CycloneDX conformance of signed documents (FR-004, FR-008,
+// FR-017, SC-001). Validates against the vendored upstream CDX 1.6 schema with
+// the JSF reference resolved for real (see common::cdx_schema).
+// ---------------------------------------------------------------------------
+
+/// Verifying that this gate has teeth (milestone 777 SC-003).
+///
+/// A conformance gate that cannot fail is worse than none, and this
+/// one was in exactly that state before m777: the CDX schema's JSON
+/// Signature Format reference was stubbed with `{}`, so every
+/// signature object validated. Both defects were re-introduced
+/// deliberately and confirmed to fail this test:
+///
+/// 1. **Placement.** In `sign_cdx_document_in_place`, insert the
+///    placeholder into `metadata` instead of the document root.
+///    Result: `/metadata: Additional properties are not allowed
+///    ('signature' was unexpected)`.
+///
+/// 2. **Public-key shape.** Add `#[serde(rename = "ktyMUTATED")]` to
+///    `JsfPublicKey::kty`, so the emitted key lacks `kty`. Result:
+///    `/signature: ... is not valid under any of the schemas listed in
+///    the 'oneOf' keyword`.
+///
+/// Mutation 2 is the one that matters most: under the pre-m777 stub it
+/// passed silently. If it ever stops failing, the JSF reference has
+/// been re-stubbed and this gate is blind again — check
+/// `common::cdx_schema::CdxRefRetriever`.
+#[test]
+fn m777_signed_cdx_validates_against_schema() {
+    let (pem_file, _public_pem) = ephemeral_keypair();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let output = tmp.path().join("signed.cdx.json");
+
+    let sign_flag = format!("--sign-key={}", pem_file.path().display());
+    let out = run_scan(&scan_target(), &output, &[&sign_flag]);
+    assert!(
+        out.status.success(),
+        "signed scan failed (FR-017: the static-key path must not be refused): stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    let raw = std::fs::read(&output).expect("read signed cdx");
+    let doc: serde_json::Value = serde_json::from_slice(&raw).expect("parse cdx");
+
+    let errors = common::cdx_schema::cdx_validation_errors(&doc);
+    assert!(
+        errors.is_empty(),
+        "signed CDX document must validate against the CycloneDX 1.6 schema \
+         (FR-004); {} error(s):\n  {}",
+        errors.len(),
+        errors.join("\n  ")
+    );
+}
+
+#[test]
+fn m777_non_p256_key_is_refused_with_named_type() {
+    // Milestone 777 FR-007 / SC-009. Before this, the algorithm was
+    // hardcoded to ES256 regardless of the key supplied, so a non-P-256
+    // key could not be reported honestly. JSF requires a key-type-
+    // specific public-key representation, so emitting one that does not
+    // match the key in use would misdescribe the signature.
+    let scheme = SigningScheme::ED25519;
+    let signer = scheme.create_signer().expect("ed25519 signer");
+    let keypair: SigStoreKeyPair = signer.to_sigstore_keypair().expect("keypair");
+    let private_pem = keypair.private_key_to_pem().expect("private pem");
+    let key_file = tempfile::NamedTempFile::new().expect("tempfile");
+    std::fs::write(key_file.path(), private_pem).expect("write ed25519 key");
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let output = tmp.path().join("signed.cdx.json");
+    let sign_flag = format!("--sign-key={}", key_file.path().display());
+    let out = run_scan(&scan_target(), &output, &[&sign_flag]);
+
+    assert!(
+        !out.status.success(),
+        "an Ed25519 key MUST be refused rather than signed as if it were P-256"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("Ed25519"),
+        "the diagnostic MUST name the unsupported key type; got: {stderr}"
+    );
+    assert!(
+        !output.exists(),
+        "a refused signing attempt MUST leave no output file (SC-009)"
+    );
+}
+
+#[test]
+fn m777_keyless_with_cyclonedx_is_refused_and_writes_nothing() {
+    // Milestone 777 US3 (FR-014, FR-015, SC-007). Refuses rather than
+    // emitting a document that is invalid while advertising itself as
+    // signed. No OIDC token is needed: the refusal fires from the
+    // arguments alone, before any scan or signing work.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let output = tmp.path().join("keyless.cdx.json");
+    let out = run_scan(&scan_target(), &output, &["--sign"]);
+
+    assert!(
+        !out.status.success(),
+        "keyless + CycloneDX MUST be refused (FR-014)"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("--sign-key"),
+        "the diagnostic MUST name the conformant alternative; got: {stderr}"
+    );
+    assert!(
+        !output.exists(),
+        "a refused invocation MUST leave no CycloneDX file (FR-015)"
+    );
+}
+
+#[test]
+fn m777_keyless_with_spdx_only_is_not_refused() {
+    // Milestone 777 FR-016 / SC-008: the refusal is scoped to
+    // CycloneDX. SPDX signing is a detached sidecar with no in-document
+    // signature slot and must be unaffected. Without a real OIDC token
+    // the keyless sign itself still fails downstream — what this pins
+    // is that it fails for that reason and NOT via the m777 refusal.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let output = tmp.path().join("keyless.spdx.json");
+    let out = run_scan(
+        &scan_target(),
+        &output,
+        &["--sign", "--format", "spdx-2.3-json"],
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        !stderr.contains("cannot currently produce a conformant"),
+        "SPDX-only keyless MUST NOT hit the CycloneDX refusal (FR-016); got: {stderr}"
+    );
+}
+
+// US2a — static-key JSF sign into the CDX root `signature` slot
+// (relocated from `metadata.signature` by milestone 777)
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -103,31 +243,31 @@ fn us2a_static_key_jsf_sign_and_verify() {
     // Extract the signature slot.
     let raw = std::fs::read(&output).expect("read signed cdx");
     let mut doc: serde_json::Value = serde_json::from_slice(&raw).expect("parse cdx");
+    assert!(
+        doc.pointer("/metadata/signature").is_none(),
+        "milestone 777: the signature MUST NOT be under metadata (FR-002)"
+    );
     let sig_slot = doc
-        .pointer("/metadata/signature")
-        .expect("metadata.signature slot populated")
+        .pointer("/signature")
+        .expect("root signature slot populated (FR-001)")
         .clone();
     assert_eq!(
         sig_slot["algorithm"], "ES256",
         "signature.algorithm must be ES256 for ECDSA-P256"
     );
+    let pk = &sig_slot["publicKey"];
+    assert_eq!(pk["kty"], "EC", "JSF requires a JWK public key (FR-003)");
+    assert_eq!(pk["crv"], "P-256");
     assert!(
-        sig_slot["publicKey"]["pem"]
-            .as_str()
-            .unwrap()
-            .contains("BEGIN PUBLIC KEY"),
-        "signature.publicKey.pem must contain a PEM header"
+        pk.get("pem").is_none(),
+        "JSF's EC branch forbids additional properties such as `pem` (FR-003)"
     );
     let sig_b64 = sig_slot["value"].as_str().expect("signature value string");
-    let sig_bytes = BASE64_STD.decode(sig_b64).expect("base64 sig decode");
+    let sig_bytes = BASE64_URL.decode(sig_b64).expect("base64url sig decode");
 
     // Reset value → recanonicalize → verify against the pubkey we
     // handed waybill.
     let meta = doc
-        .as_object_mut()
-        .unwrap()
-        .get_mut("metadata")
-        .unwrap()
         .as_object_mut()
         .unwrap();
     let sig = meta.get_mut("signature").unwrap().as_object_mut().unwrap();
@@ -155,11 +295,11 @@ fn us2a_signature_covers_document_mutation_flips_verify() {
     let raw = std::fs::read(&output).expect("read");
     let mut doc: serde_json::Value = serde_json::from_slice(&raw).expect("parse");
     let sig_b64 = doc
-        .pointer("/metadata/signature/value")
+        .pointer("/signature/value")
         .and_then(|v| v.as_str())
         .expect("signature value")
         .to_string();
-    let sig_bytes = BASE64_STD.decode(&sig_b64).expect("base64");
+    let sig_bytes = BASE64_URL.decode(&sig_b64).expect("base64url");
 
     // Mutate: append a component to `components[]` — any byte-level
     // change to the signed document MUST invalidate verify.
@@ -172,13 +312,7 @@ fn us2a_signature_covers_document_mutation_flips_verify() {
     comps.push(serde_json::json!({"name": "post-sign-tampered", "type": "library"}));
 
     // Reset value → recanonicalize the MUTATED doc → verify MUST fail.
-    let meta = doc
-        .as_object_mut()
-        .unwrap()
-        .get_mut("metadata")
-        .unwrap()
-        .as_object_mut()
-        .unwrap();
+    let meta = doc.as_object_mut().unwrap();
     let sig = meta.get_mut("signature").unwrap().as_object_mut().unwrap();
     sig.insert("value".to_string(), serde_json::json!(""));
     let canonical = canonical_json_bytes(&doc).expect("canonicalize");
@@ -341,6 +475,7 @@ fn us2a_spdx23_dsse_sidecar_written_and_verifies() {
 fn run_scan_with_sign_env(
     target: &std::path::Path,
     output: &std::path::Path,
+    format: &str,
     extra_args: &[&str],
     extra_env_set: &[(&str, &str)],
     extra_env_unset: &[&str],
@@ -352,7 +487,7 @@ fn run_scan_with_sign_env(
         .arg("--path")
         .arg(target)
         .arg("--format")
-        .arg("cyclonedx-json")
+        .arg(format)
         .arg("--output")
         .arg(output)
         .arg("--no-deep-hash")
@@ -380,10 +515,15 @@ fn run_scan_with_sign_env(
 #[test]
 fn us2b_keyless_signing_failure_cleans_up_output_m222() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let output = tmp.path().join("should-not-persist.cdx.json");
+    // Milestone 777 retargeted this from CycloneDX to SPDX for the same
+    // reason as the no-OIDC test above: the fail-close cleanup this
+    // pins (FR-009a) is unchanged, but it must be reached through a
+    // format where keyless signing still runs.
+    let output = tmp.path().join("should-not-persist.spdx.json");
     let out = run_scan_with_sign_env(
         &scan_target(),
         &output,
+        "spdx-2.3-json",
         &[
             "--fulcio-url",
             "https://fulcio.invalid.example.test",
@@ -447,10 +587,17 @@ fn us2b_keyless_signing_failure_cleans_up_output_m222() {
 #[test]
 fn us2b_keyless_no_oidc_token_fails_close_m222() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let output = tmp.path().join("no-token.cdx.json");
+    // Milestone 777 retargeted this from CycloneDX to SPDX. What it
+    // pins — the m222 OIDC fail-close diagnostic — is unchanged and
+    // still valuable, but keyless signing of CycloneDX is now refused
+    // before the OIDC path is reached (FR-014), so exercising it
+    // through CDX would assert the refusal instead. SPDX keyless still
+    // runs and still reaches the OIDC failure.
+    let output = tmp.path().join("no-token.spdx.json");
     let out = run_scan_with_sign_env(
         &scan_target(),
         &output,
+        "spdx-2.3-json",
         &[],
         &[],
         &[
@@ -513,6 +660,24 @@ fn us2b_keyless_stdout_output_is_rejected_at_parse_m222() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// SUPERSEDED BY MILESTONE 777 — the three CycloneDX keyless tests below assert
+// that `--sign` embeds a Sigstore bundle at `metadata.signature`. m777 refuses
+// keyless signing for CycloneDX output entirely (FR-014), because a bundle has
+// no conformant JSON Signature Format representation, so that behaviour no
+// longer exists and these tests would fail if executed.
+//
+// They are NOT updated here: each requires a live OIDC identity to run, which
+// was not available, and rewriting them blind would be guesswork. Their
+// underlying coverage — Fulcio/Rekor round-trip, bundle shape, log fields,
+// mutation detection — remains valuable and should be retargeted to an SPDX
+// format, where keyless signing still applies and emits a detached sidecar.
+// Tracked with the keyless-conformance follow-up.
+//
+// The refusal itself IS covered, and runs in the normal gate without any OIDC
+// token: see `m777_keyless_with_cyclonedx_is_refused_and_writes_nothing`.
+// ---------------------------------------------------------------------------
+
 /// T010 + T024 (feature 222 US2b) — happy-path sign-and-verify
 /// against Sigstore staging. Requires WAYBILL_TEST_KEYLESS=1 AND a
 /// GitHub-Actions-ambient OIDC endpoint (or an equivalent explicit
@@ -521,7 +686,7 @@ fn us2b_keyless_stdout_output_is_rejected_at_parse_m222() {
 /// `lint-and-test-keyless-sbom` sets the env var + provides the
 /// ambient OIDC path.
 #[test]
-#[ignore = "US2b: Sigstore keyless requires WAYBILL_TEST_KEYLESS=1 + OIDC + Sigstore staging network access; run by the dedicated CI job only"]
+#[ignore = "SUPERSEDED by m777: asserts CDX keyless embedding, which is now refused (FR-014); needs retargeting to SPDX. Also requires WAYBILL_TEST_KEYLESS=1 + OIDC"]
 fn us2b_keyless_bundle_sign_and_verify() {
     if std::env::var("WAYBILL_TEST_KEYLESS").is_err() {
         eprintln!(
@@ -587,7 +752,7 @@ fn us2b_keyless_bundle_sign_and_verify() {
 /// staging and greps stderr for `rekor_log_index=`, `fulcio_cert_subject=`,
 /// `oidc_provider=`. Gated on `WAYBILL_TEST_KEYLESS=1`.
 #[test]
-#[ignore = "US2b FR-016 requires WAYBILL_TEST_KEYLESS=1 + OIDC + Sigstore staging network access; run by the dedicated CI job only"]
+#[ignore = "SUPERSEDED by m777: asserts CDX keyless embedding, which is now refused (FR-014); needs retargeting to SPDX. Also requires WAYBILL_TEST_KEYLESS=1 + OIDC"]
 fn us2b_keyless_fr016_info_log_fields_m222() {
     if std::env::var("WAYBILL_TEST_KEYLESS").is_err() {
         eprintln!(
@@ -649,7 +814,7 @@ fn us2b_keyless_fr016_info_log_fields_m222() {
 /// Bundle, verify it against the mutated payload — expect Err.
 /// Gated on `WAYBILL_TEST_KEYLESS=1`.
 #[test]
-#[ignore = "US2b: mutation-flip test requires WAYBILL_TEST_KEYLESS=1 + OIDC + Sigstore staging network access; run by the dedicated CI job only"]
+#[ignore = "SUPERSEDED by m777: asserts CDX keyless embedding, which is now refused (FR-014); needs retargeting to SPDX. Also requires WAYBILL_TEST_KEYLESS=1 + OIDC"]
 fn us2b_keyless_signature_covers_document_mutation_m222() {
     if std::env::var("WAYBILL_TEST_KEYLESS").is_err() {
         eprintln!(

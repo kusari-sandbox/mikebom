@@ -2971,6 +2971,38 @@ pub async fn execute(
     let registry = SerializerRegistry::with_defaults();
     let plan = resolve_dispatch(&registry, &args.format, &args.output)?;
 
+    // Milestone 777 US3 (FR-014 / FR-015 / FR-016) — the Sigstore
+    // keyless path cannot currently produce a CycloneDX signature that
+    // conforms to the CycloneDX 1.6 schema: it embeds a whole Sigstore
+    // bundle as the signature value, where JSON Signature Format
+    // expresses certificate and transparency-log material through
+    // dedicated properties. Rather than emit a document that is invalid
+    // while advertising itself as signed, refuse.
+    //
+    // Sited here, after dispatch resolution and before any scan work,
+    // for two reasons: the resolved plan accounts for the default
+    // format (omitting `--format` still requests CycloneDX), and
+    // failing pre-scan means no partial output can exist even when
+    // several formats were requested in one invocation (FR-015). The
+    // m221 fail-close cleanup tracker downstream remains as defence in
+    // depth rather than the mechanism relied upon.
+    //
+    // Scoped to CycloneDX only: SPDX signing is a detached sidecar with
+    // no in-document signature slot and is unaffected (FR-016).
+    if args.sign && plan.formats.iter().any(|f| f == DEFAULT_FORMAT) {
+        anyhow::bail!(
+            "--sign (Sigstore keyless) cannot currently produce a conformant \
+             CycloneDX signature, so waybill will not emit one.\n  \
+             The keyless path embeds a Sigstore bundle where the CycloneDX \
+             signature format expects JSON Signature Format fields; the \
+             resulting document does not validate against the CycloneDX 1.6 \
+             schema and is reported as unsigned by conforming consumers.\n  \
+             conformant alternative: --sign-key <PATH> (static ECDSA P-256 key)\n  \
+             or request a non-CycloneDX format, e.g. --format spdx-2.3-json, \
+             where keyless signing emits a detached sidecar and is unaffected.",
+        );
+    }
+
     // Milestone 186 (#442) — OCI Referrers API SBOM discovery.
     //
     // FR-011 input-type guard: the `--sbom-source` flag applies ONLY to
