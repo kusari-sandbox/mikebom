@@ -5017,16 +5017,30 @@ func TestX(t *testing.T) { _ = testonly.X() }
         // but a runaway (e.g., spawn-per-workspace-count) would blow
         // it. Watch for the summary log's parallel_workers_used field
         // instead if this bound needs tightening.
-        // Raised 2s -> 8s during m776: the 2s bound proved too tight
-        // under full-suite parallel load (it passed in isolation and
-        // failed in the gate). The assertion's value was never the
-        // absolute number — it is catching a runaway where the
-        // degenerate arm stops firing and a thread pool is spawned per
-        // scan. That failure mode is orders of magnitude, not
-        // milliseconds, so a looser bound loses nothing and stops the
-        // test from failing on machine load.
+        // Bound history: 2s originally; raised to 8s during m776 after
+        // one gate failure; measured and set to 3s.
+        //
+        // Measurement (18-core macOS, debug build, wall time of the
+        // isolated test binary, which is an over-estimate since it
+        // includes process startup that `elapsed` excludes):
+        //   unloaded:              1.77s cold, then 0.36-0.74s warm
+        //   2x CPU oversubscribe:  0.44-1.34s, 5/5 pass
+        //   CPU + I/O load (load
+        //   average 95):          0.40-0.67s, 6/6 pass
+        // The 8s raise was an over-correction: contention does not push
+        // this test anywhere near 2s. The one gate failure that
+        // prompted it is better explained by a bloated target/ tree on
+        // the host (131 GB at the time) stalling test-binary startup
+        // than by the bound being wrong.
+        //
+        // 3s keeps margin over the cold-cache case while still catching
+        // the failure mode this assert exists for: the degenerate arm
+        // stopping and a thread pool being spawned per scan, which costs
+        // ~10s on the root workspace — orders of magnitude, not
+        // milliseconds. Watch the summary log's parallel_workers_used
+        // field for a tighter signal.
         assert!(
-            elapsed < std::time::Duration::from_millis(8000),
+            elapsed < std::time::Duration::from_millis(3000),
             "single-workspace scan took {elapsed:?}, degenerate short-circuit may not be firing",
         );
     }
