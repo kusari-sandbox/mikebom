@@ -1426,11 +1426,6 @@ fn cdx_native_annotations_emit_correctly() {
 // each format's official JSON schema.
 // ---------------------------------------------------------------------
 
-fn cdx_schema_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/schemas/cyclonedx-1.6.json")
-}
-
 fn spdx23_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/schemas/spdx-2.3.json")
@@ -1439,58 +1434,6 @@ fn spdx23_schema_path() -> PathBuf {
 fn spdx3_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/schemas/spdx-3.0.1.json")
-}
-
-/// Custom retriever for the CDX 1.6 schema's two external `$ref`s
-/// (`spdx.schema.json` for the licenses field, `jsf-0.82.schema.json`
-/// for `metadata.signature`). Waybill's emitted output doesn't use
-/// either feature, so the safest stubs are permissive empty schemas
-/// (`{}` validates anything). This avoids depending on the
-/// `resolve-http` feature flag (not enabled in our workspace dep).
-struct CdxStubRetriever;
-
-impl jsonschema::Retrieve for CdxStubRetriever {
-    fn retrieve(
-        &self,
-        uri: &jsonschema::Uri<String>,
-    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
-        let s = uri.as_str();
-        if s.ends_with("spdx.schema.json") {
-            // SPDX schema is referenced as a top-level $ref for the
-            // license-expression string type. Permissive stub: accept
-            // any string. Waybill's emitted CDX uses literal SPDX-
-            // listed-license IDs which the official schema would
-            // accept anyway.
-            return Ok(serde_json::json!({"type": "string"}));
-        }
-        if s.ends_with("jsf-0.82.schema.json") {
-            // jsf-0.82 is referenced via `#/definitions/signature` for
-            // optional BOM signing. Waybill never emits signed BOMs so
-            // the slot is structurally absent. Provide an inner
-            // `definitions/signature` that's permissive (`{}`) so the
-            // JSON-pointer dereference resolves.
-            return Ok(serde_json::json!({
-                "definitions": {
-                    "signature": {}
-                }
-            }));
-        }
-        Err(format!("unexpected external schema reference: {s}").into())
-    }
-}
-
-fn cdx_validator() -> &'static jsonschema::Validator {
-    static CELL: OnceLock<jsonschema::Validator> = OnceLock::new();
-    CELL.get_or_init(|| {
-        let raw = std::fs::read_to_string(cdx_schema_path())
-            .expect("read CDX 1.6 schema");
-        let schema: serde_json::Value =
-            serde_json::from_str(&raw).expect("parse CDX schema");
-        jsonschema::options()
-            .with_retriever(CdxStubRetriever)
-            .build(&schema)
-            .expect("compile CDX 1.6 schema")
-    })
 }
 
 fn spdx23_validator() -> &'static jsonschema::Validator {
@@ -1549,7 +1492,7 @@ fn schema_validation_passes_with_full_metadata_per_format() {
         "cyclonedx-json",
         "out.cdx.json",
     );
-    let cdx_errors: Vec<String> = cdx_validator()
+    let cdx_errors: Vec<String> = common::cdx_schema::cdx_validator()
         .iter_errors(&cdx)
         .map(|e| format!("{}: {}", e.instance_path(), e))
         .collect();

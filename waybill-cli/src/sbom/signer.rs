@@ -6,11 +6,15 @@
 //!
 //! Two emission paths:
 //! - **CycloneDX**: sign in-place. The signature JSON object lands at
-//!   `metadata.signature` inside the emitted document (native CDX 1.6
-//!   slot). Uses the JSF (JSON Signature Format,
+//!   the document root (`$.signature`) — the slot CDX 1.6 actually
+//!   defines for a document-level enveloped signature. Milestone 777
+//!   moved it there: it previously sat at `metadata.signature`, which
+//!   the schema rejects outright, since `metadata` is
+//!   `additionalProperties: false` and declares no `signature`
+//!   property. Uses the JSF (JSON Signature Format,
 //!   draft-cyberphone-jsf-00) empty-value trick: canonicalize with
-//!   `value = ""`, sign the canonical bytes, fill the actual base64
-//!   signature back into `value`.
+//!   `value = ""`, sign the canonical bytes, fill the actual
+//!   base64url signature back into `value`.
 //! - **SPDX 2.3 / SPDX 3**: emit a companion DSSE envelope alongside
 //!   the primary artifact at `<output>.sig.json`. Neither SPDX
 //!   version has a native in-document envelope-signature slot.
@@ -31,6 +35,11 @@
 use std::path::PathBuf;
 
 use base64::engine::general_purpose::STANDARD as BASE64_STD;
+// CycloneDX/JSF signature values use the base64url alphabet without
+// padding (JSF defers the binary representation to JWA / RFC 7518).
+// BASE64_STD above stays in use for the DSSE sidecar, whose envelope
+// format mandates the standard alphabet — do not merge these two.
+use base64::engine::general_purpose::URL_SAFE_NO_PAD as BASE64_URL;
 use base64::Engine;
 use serde::Serialize;
 use sigstore::crypto::signing_key::SigStoreKeyPair;
@@ -89,7 +98,7 @@ impl SigningMode {
 #[serde(untagged)]
 pub enum SbomSignatureEnvelope {
     /// JSF (JSON Signature Format) object — the CDX-native shape,
-    /// destined for the `metadata.signature` slot of an emitted CDX
+    /// destined for the root `signature` slot of an emitted CDX
     /// document.
     StaticKeyJsf(JsfSignature),
     // Reserved for US2b:
@@ -161,17 +170,29 @@ pub struct JsfSignature {
     pub value: String,
 }
 
-/// JWK-shaped public key material. Held as a PEM string for v1 —
-/// verifier tooling can re-parse into a full JWK if needed. This
-/// shape is intentionally simple; full JWK parameter split (kty/crv/
-/// x/y for EC, kty/x for OKP) is a US2b enhancement.
+/// JWK public key material, per JSON Signature Format.
+///
+/// Milestone 777 landed the JWK parameter split that milestone 221
+/// deferred. The previous shape (`{ pem, algorithmHint }`) is not
+/// merely unconventional but schema-invalid: JSF's elliptic-curve
+/// branch is `additionalProperties: false` and requires exactly
+/// `kty`, `crv`, `x`, `y`, so both former fields were rejected.
+///
+/// Only P-256 is produced; see `resolve_signing_key`. The PEM form is
+/// dropped rather than relocated — the JWK carries the same key
+/// material, and preserving the PEM under a vendor-prefixed property
+/// would violate the standards-native-first rule (Constitution
+/// Principle V).
 #[derive(Clone, Debug, Serialize)]
 pub struct JsfPublicKey {
-    /// PEM-encoded SubjectPublicKeyInfo.
-    pub pem: String,
-    /// Human-readable algorithm hint (matches `JsfSignature.algorithm`).
-    #[serde(rename = "algorithmHint")]
-    pub algorithm_hint: String,
+    /// Key type. `"EC"` for the supported curve.
+    pub kty: &'static str,
+    /// Curve name. `"P-256"`.
+    pub crv: &'static str,
+    /// EC point X coordinate, base64url without padding (RFC 7518 §6.2.1).
+    pub x: String,
+    /// EC point Y coordinate, base64url without padding.
+    pub y: String,
 }
 
 /// Tagged failure modes for the SBOM-signing pipeline. Every variant
@@ -183,9 +204,11 @@ pub enum SbomSigningError {
     KeyLoadFailed(#[from] SigningError),
 
     #[error(
-        "unsupported signing key algorithm: {algorithm} \
-         (US2a supports ECDSA-P256 and Ed25519; other algorithms are \
-         deferred to a follow-up milestone)"
+        "unsupported signing key type: {algorithm}. CycloneDX signing \
+         supports ECDSA P-256 only; the signature format requires a \
+         key-type-specific public-key representation, and emitting one \
+         that does not match the key in use would produce a document \
+         that misdescribes its own signature. Re-run with a P-256 key."
     )]
     AlgorithmUnsupported { algorithm: String },
 
@@ -212,9 +235,25 @@ pub enum SbomSigningError {
 // Top-level signing entrypoints
 // ---------------------------------------------------------------------------
 
-/// Sign the CycloneDX document's `metadata.signature` slot **in place**.
+/// Remove any pre-existing signature before re-signing (FR-006).
 ///
-/// Reads the `metadata.signature` slot, sets its `value` to `""`,
+/// Clears the conformant root slot *and* the pre-milestone-777
+/// `metadata.signature` location. Clearing the legacy slot matters
+/// because a document signed by an older waybill carries its signature
+/// there; leaving it would produce a document with two conflicting
+/// signature claims, one of them in a slot the schema rejects.
+fn strip_existing_signature(doc: &mut serde_json::Value) {
+    if let Some(root) = doc.as_object_mut() {
+        root.remove("signature");
+    }
+    if let Some(meta) = doc.get_mut("metadata").and_then(|m| m.as_object_mut()) {
+        meta.remove("signature");
+    }
+}
+
+/// Sign the CycloneDX document's root `signature` slot **in place**.
+///
+/// Reads the root `signature` slot, sets its `value` to `""`,
 /// canonicalizes the entire document via `canonical_json_bytes`, signs
 /// the canonical bytes with the key referenced by `mode`, and writes
 /// the actual base64 signature back into `value`.
@@ -229,96 +268,80 @@ pub fn sign_cdx_document_in_place(
         return Ok(());
     }
 
-    // Milestone 222 US2b — Sigstore keyless dispatch. Per
-    // `specs/222-sigstore-keyless-signing/contracts/keyless-signing-flow.md`
-    // §CDX-embedded Bundle canonical-bytes contract, we canonicalize
-    // the CDX doc WITHOUT `metadata.signature` populated (unlike the
-    // JSF empty-value trick below), sign those bytes, then insert the
-    // Bundle at `metadata.signature`. Verifiers reproduce the signed
-    // bytes by parsing the doc, REMOVING `metadata.signature`, and
-    // re-canonicalizing.
-    if let SigningMode::Keyless {
-        fulcio_url,
-        rekor_url,
-        rekor_timeout,
-    } = mode
-    {
-        // Ensure metadata.signature is absent before canonicalizing.
-        if let Some(meta) = doc.get_mut("metadata").and_then(|m| m.as_object_mut()) {
-            meta.remove("signature");
-        } else {
-            return Err(SbomSigningError::SignFailed {
-                detail: "CDX document has no `metadata` object; cannot insert signature slot"
-                    .to_string(),
-            });
-        }
-        let canonical = canonical_json_bytes(doc)?;
-        let success = crate::attestation::signer::sign_keyless_sbom(
-            &canonical,
-            fulcio_url,
-            rekor_url,
-            *rekor_timeout,
-        )
-        .map_err(|e| SbomSigningError::SignFailed {
-            detail: format!("Sigstore keyless sign failed: {e}"),
-        })?;
-        let bundle_json =
-            serde_json::to_value(&success.bundle).map_err(SbomSigningError::from)?;
-        let meta = doc
-            .get_mut("metadata")
-            .and_then(|m| m.as_object_mut())
-            .expect("metadata presence verified above");
-        meta.insert("signature".to_string(), bundle_json);
-        return Ok(());
+    // Milestone 777 US3 (FR-014) — the Sigstore keyless path cannot
+    // currently produce a conformant CycloneDX signature, so it is
+    // refused here as well as at the CLI.
+    //
+    // The keyless flow embeds a whole Sigstore bundle as the signature
+    // payload. That is not a JSON Signature Format `signer` object, so
+    // relocating it to the conformant root slot would be strictly worse
+    // than leaving it where it was: the schema does validate the root
+    // slot, and a bundle there fails it. Expressing the bundle through
+    // JSF's certificate-path and key-identifier properties may be
+    // possible, but determining that requires exercising the path
+    // against a live signing identity and is tracked as follow-up work.
+    //
+    // Refusing in the library as well as the CLI keeps FR-001/FR-002
+    // unconditionally true for every document this function returns,
+    // rather than true only for callers who happen to route through the
+    // CLI guard.
+    if matches!(mode, SigningMode::Keyless { .. }) {
+        return Err(SbomSigningError::NotImplemented {
+            operation: "Sigstore keyless signing of CycloneDX documents \
+                        (the bundle payload has no conformant JSON Signature \
+                        Format representation; use --sign-key for CycloneDX, \
+                        or keyless with an SPDX format, which signs to a \
+                        detached sidecar)"
+                .to_string(),
+        });
     }
 
     let keypair = load_key(mode)?;
-    let algorithm = KeyAlgorithm::EcdsaP256; // See note on scheme in load_key.
-    let scheme = signing_scheme_for(algorithm);
-    let public_key_pem = export_public_key_pem(&keypair)?;
+    // Derived from the key material, never assumed (FR-007, FR-019).
+    let resolved = resolve_signing_key(&keypair)?;
 
-    // JSF empty-value trick: populate metadata.signature with the fully-
-    // shaped envelope EXCEPT `value = ""`, canonicalize, sign, then
-    // fill the real base64 value in.
-    let jwa = jwa_alg(algorithm);
+    // Re-signing must not leave residue in either slot (FR-006).
+    strip_existing_signature(doc);
+
+    // JSF empty-value trick: populate the root signature slot with the
+    // fully-shaped envelope EXCEPT `value = ""`, canonicalize, sign,
+    // then fill the real base64url value in.
     let placeholder = JsfSignature {
-        algorithm: jwa.to_string(),
-        public_key: JsfPublicKey {
-            pem: public_key_pem.clone(),
-            algorithm_hint: jwa.to_string(),
-        },
+        algorithm: resolved.jwa_alg.to_string(),
+        public_key: resolved.public_key.clone(),
         value: String::new(),
     };
 
-    // Insert placeholder under metadata.signature. Requires that a
-    // `metadata` object exists — every CDX emit path creates one.
+    // Insert the placeholder at the document root. CDX 1.6 declares
+    // `signature` there; `metadata` is `additionalProperties: false`
+    // and rejects it (milestone 777).
     let placeholder_json = serde_json::to_value(&placeholder)?;
-    let meta = doc
-        .get_mut("metadata")
-        .and_then(|m| m.as_object_mut())
+    let root = doc
+        .as_object_mut()
         .ok_or_else(|| SbomSigningError::SignFailed {
-            detail: "CDX document has no `metadata` object; cannot insert signature slot"
+            detail: "CDX document root is not a JSON object; cannot insert signature slot"
                 .to_string(),
         })?;
-    meta.insert("signature".to_string(), placeholder_json);
+    root.insert("signature".to_string(), placeholder_json);
 
     let canonical = canonical_json_bytes(doc)?;
     let signer = keypair
-        .to_sigstore_signer(&scheme)
+        .to_sigstore_signer(&resolved.scheme)
         .map_err(|e| SbomSigningError::SignFailed {
             detail: format!("cannot build signer from key: {e}"),
         })?;
     let sig_bytes = signer.sign(&canonical).map_err(|e| SbomSigningError::SignFailed {
         detail: format!("signature computation failed: {e}"),
     })?;
-    let sig_b64 = BASE64_STD.encode(&sig_bytes);
+    // base64url per JSF/JWA — NOT BASE64_STD, which the DSSE sidecar
+    // below still requires.
+    let sig_b64 = BASE64_URL.encode(&sig_bytes);
 
     // Fill in the real value.
-    let meta = doc
-        .get_mut("metadata")
-        .and_then(|m| m.as_object_mut())
-        .expect("metadata inserted above still present");
-    let sig = meta
+    let root = doc
+        .as_object_mut()
+        .expect("document root object still present");
+    let sig = root
         .get_mut("signature")
         .and_then(|s| s.as_object_mut())
         .expect("signature inserted above still present");
@@ -369,8 +392,15 @@ pub fn sign_spdx_bytes_to_sidecar(
     }
 
     let keypair = load_key(mode)?;
+    // The DSSE sidecar path is deliberately untouched by milestone 777
+    // (FR-013): SPDX has no in-document signature slot, and the DSSE
+    // envelope format mandates standard-alphabet base64 for its payload
+    // and signature. `scheme` is what `signing_scheme_for` returned for
+    // the hardcoded P-256 algorithm before that helper was removed, and
+    // `algorithm` still rides in the envelope's identity metadata — both
+    // preserved verbatim so the emitted sidecar is byte-identical.
     let algorithm = KeyAlgorithm::EcdsaP256;
-    let scheme = signing_scheme_for(algorithm);
+    let scheme = SigningScheme::ECDSA_P256_SHA256_ASN1;
     let public_key_pem = export_public_key_pem(&keypair)?;
 
     let pae = dsse_pae(SBOM_DSSE_PAYLOAD_TYPE, spdx_bytes);
@@ -448,24 +478,95 @@ fn load_key(mode: &SigningMode) -> Result<SigStoreKeyPair, SbomSigningError> {
     }
 }
 
-fn signing_scheme_for(alg: KeyAlgorithm) -> SigningScheme {
-    match alg {
-        KeyAlgorithm::EcdsaP256 => SigningScheme::ECDSA_P256_SHA256_ASN1,
-        KeyAlgorithm::Ed25519 => SigningScheme::ED25519,
-        // RSA falls back to ECDSA-P256 for now — matches
-        // m006 `scheme_for_algorithm` behavior. US2b may split this
-        // out when the JSF vocabulary grows.
-        KeyAlgorithm::RsaPkcs1 => SigningScheme::ECDSA_P256_SHA256_ASN1,
+/// Everything the CycloneDX signing path needs about the operator's
+/// key, derived from the key itself rather than assumed.
+struct ResolvedSigningKey {
+    scheme: SigningScheme,
+    /// JWA identifier (RFC 7518) that JSF's `algorithm` enum accepts.
+    jwa_alg: &'static str,
+    public_key: JsfPublicKey,
+}
+
+/// Determine the key type from the supplied key material and produce
+/// the matching signing scheme, declared algorithm, and JWK.
+///
+/// Milestone 777 (FR-007, FR-019). Before this, the algorithm was
+/// hardcoded to `ES256` regardless of the key supplied, and the
+/// mapping helpers it replaced could label an RSA key `RS256` while
+/// signing it with an ECDSA scheme. Deriving all three from one match
+/// makes that disagreement unrepresentable rather than merely
+/// unreached.
+///
+/// P-256 only, deliberately. JSF requires a key-type-specific public
+/// key representation, and its `algorithm` enum further requires
+/// explicit `Ed*` names rather than the generic `"EdDSA"` the old
+/// mapping emitted — so the other arms were not merely unimplemented,
+/// they were wrong. Refusing is the honest behaviour.
+fn resolve_signing_key(
+    keypair: &SigStoreKeyPair,
+) -> Result<ResolvedSigningKey, SbomSigningError> {
+    use sigstore::crypto::signing_key::ecdsa::ECDSAKeys;
+
+    match keypair {
+        SigStoreKeyPair::ECDSA(ECDSAKeys::P256(_)) => {
+            let der = keypair.public_key_to_der().map_err(|e| {
+                SbomSigningError::PublicKeyExportFailed {
+                    detail: format!("cannot export SubjectPublicKeyInfo DER: {e}"),
+                }
+            })?;
+            Ok(ResolvedSigningKey {
+                scheme: SigningScheme::ECDSA_P256_SHA256_ASN1,
+                jwa_alg: "ES256",
+                public_key: p256_jwk_from_spki(&der)?,
+            })
+        }
+        SigStoreKeyPair::ECDSA(ECDSAKeys::P384(_)) => {
+            Err(SbomSigningError::AlgorithmUnsupported {
+                algorithm: "ECDSA P-384".to_string(),
+            })
+        }
+        SigStoreKeyPair::ED25519(_) => Err(SbomSigningError::AlgorithmUnsupported {
+            algorithm: "Ed25519".to_string(),
+        }),
+        SigStoreKeyPair::RSA(_) => Err(SbomSigningError::AlgorithmUnsupported {
+            algorithm: "RSA".to_string(),
+        }),
     }
 }
 
-fn jwa_alg(alg: KeyAlgorithm) -> &'static str {
-    // JWA identifiers per RFC 7518 — the JSF spec references these.
-    match alg {
-        KeyAlgorithm::EcdsaP256 => "ES256",
-        KeyAlgorithm::Ed25519 => "EdDSA",
-        KeyAlgorithm::RsaPkcs1 => "RS256",
+/// Build a JSF/JWK public key from a P-256 SubjectPublicKeyInfo DER.
+///
+/// The SPKI's subject public key is an uncompressed EC point —
+/// `0x04 || X(32) || Y(32)` — and `x`/`y` are those halves encoded
+/// base64url without padding per RFC 7518 §6.2.1.
+fn p256_jwk_from_spki(der: &[u8]) -> Result<JsfPublicKey, SbomSigningError> {
+    use x509_parser::prelude::FromDer;
+
+    let (_, spki) = x509_parser::x509::SubjectPublicKeyInfo::from_der(der).map_err(|e| {
+        SbomSigningError::PublicKeyExportFailed {
+            detail: format!("cannot parse SubjectPublicKeyInfo: {e}"),
+        }
+    })?;
+
+    let point: &[u8] = &spki.subject_public_key.data;
+    // 1 tag byte + two 32-byte coordinates.
+    if point.len() != 65 || point[0] != 0x04 {
+        return Err(SbomSigningError::PublicKeyExportFailed {
+            detail: format!(
+                "expected a 65-byte uncompressed P-256 point (0x04 || X || Y), \
+                 got {} byte(s) starting with 0x{:02x}",
+                point.len(),
+                point.first().copied().unwrap_or(0)
+            ),
+        });
     }
+
+    Ok(JsfPublicKey {
+        kty: "EC",
+        crv: "P-256",
+        x: BASE64_URL.encode(&point[1..33]),
+        y: BASE64_URL.encode(&point[33..65]),
+    })
 }
 
 fn export_public_key_pem(keypair: &SigStoreKeyPair) -> Result<String, SbomSigningError> {
@@ -569,17 +670,46 @@ mod tests {
         };
         sign_cdx_document_in_place(&mut doc, &mode).expect("static-key sign");
 
-        let sig = doc.pointer("/metadata/signature").expect("signature slot exists");
-        assert_eq!(sig["algorithm"], "ES256");
-        assert!(sig["publicKey"]["pem"].as_str().unwrap().contains("BEGIN PUBLIC KEY"));
+        // Milestone 777: the signature lives at the document root, and
+        // the public key is a JWK. Both were previously asserted in
+        // their schema-invalid forms by this very test.
         assert!(
-            !sig["value"].as_str().unwrap().is_empty(),
-            "signature value must be non-empty base64"
+            doc.pointer("/metadata/signature").is_none(),
+            "signature MUST NOT be written under metadata (FR-002)"
+        );
+        let sig = doc.pointer("/signature").expect("root signature slot exists");
+        assert_eq!(sig["algorithm"], "ES256");
+        let pk = &sig["publicKey"];
+        assert_eq!(pk["kty"], "EC", "JSF requires a JWK key type (FR-003)");
+        assert_eq!(pk["crv"], "P-256");
+        assert!(
+            pk["x"].as_str().is_some_and(|v| !v.is_empty())
+                && pk["y"].as_str().is_some_and(|v| !v.is_empty()),
+            "EC coordinates must be present (FR-003)"
+        );
+        assert!(
+            pk.get("pem").is_none() && pk.get("algorithmHint").is_none(),
+            "JSF's EC branch forbids additional properties (FR-003)"
+        );
+        let value = sig["value"].as_str().unwrap();
+        assert!(!value.is_empty(), "signature value must be non-empty");
+        assert!(
+            !value.contains('+') && !value.contains('/') && !value.contains('='),
+            "signature value must use the base64url alphabet without padding (FR-020)"
         );
     }
 
+    /// Milestone 777 replaced `sign_cdx_document_in_place_rejects_missing_metadata_m221`.
+    ///
+    /// That test asserted signing FAILS on a document with no
+    /// `metadata` object — a requirement that existed only because the
+    /// signature was being inserted into `metadata`. The signature now
+    /// goes at the document root, so `metadata` is irrelevant to
+    /// signing and the old expectation is obsolete rather than merely
+    /// relocated. Pinning the new behaviour so the dependency cannot
+    /// creep back.
     #[test]
-    fn sign_cdx_document_in_place_rejects_missing_metadata_m221() {
+    fn sign_cdx_document_in_place_no_longer_requires_metadata_m777() {
         let (pem_file, _keypair) = ephemeral_p256_pem_file();
         let mut doc = json!({
             "bomFormat": "CycloneDX",
@@ -590,10 +720,11 @@ mod tests {
             key_ref: pem_file.path().to_path_buf(),
             passphrase_env: "WAYBILL_UNSET_TEST_ENV_M221".to_string(),
         };
-        let err = sign_cdx_document_in_place(&mut doc, &mode).unwrap_err();
+        sign_cdx_document_in_place(&mut doc, &mode)
+            .expect("signing must not depend on a metadata object");
         assert!(
-            matches!(err, SbomSigningError::SignFailed { .. }),
-            "missing metadata should surface as SignFailed, got {err:?}"
+            doc.pointer("/signature").is_some(),
+            "signature lands at the root regardless of metadata"
         );
     }
 
@@ -645,16 +776,18 @@ mod tests {
         sign_cdx_document_in_place(&mut doc, &mode).expect("sign ok");
 
         let sig_b64 = doc
-            .pointer("/metadata/signature/value")
+            .pointer("/signature/value")
             .and_then(|v| v.as_str())
             .expect("signature value populated")
             .to_string();
-        let sig_bytes = BASE64_STD.decode(&sig_b64).expect("base64 decode");
+        // base64url on the CycloneDX side (FR-020). The DSSE sidecar
+        // test below still decodes with BASE64_STD — the two paths use
+        // different alphabets on purpose and must not be unified.
+        let sig_bytes = BASE64_URL.decode(&sig_b64).expect("base64url decode");
 
         // Reset value → recanonicalize (matches sign-side JCS input).
-        let meta = doc.as_object_mut().unwrap().get_mut("metadata").unwrap()
-            .as_object_mut().unwrap();
-        let sig = meta.get_mut("signature").unwrap().as_object_mut().unwrap();
+        let root = doc.as_object_mut().unwrap();
+        let sig = root.get_mut("signature").unwrap().as_object_mut().unwrap();
         sig.insert("value".to_string(), json!(""));
         let canonical = canonical_json_bytes(&doc).expect("canonicalize");
 

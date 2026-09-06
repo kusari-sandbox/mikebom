@@ -563,11 +563,6 @@ fn spdx3_conformance_with_native_sbomtype() {
 // JSON-schema validation per format
 // ---------------------------------------------------------------------
 
-fn cdx_schema_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/schemas/cyclonedx-1.6.json")
-}
-
 fn spdx23_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/schemas/spdx-2.3.json")
@@ -576,43 +571,6 @@ fn spdx23_schema_path() -> PathBuf {
 fn spdx3_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/schemas/spdx-3.0.1.json")
-}
-
-/// Permissive stub for the CDX 1.6 schema's external `$ref`s.
-/// Mirrors `sbom_user_metadata.rs::CdxStubRetriever`.
-struct CdxStubRetriever;
-
-impl jsonschema::Retrieve for CdxStubRetriever {
-    fn retrieve(
-        &self,
-        uri: &jsonschema::Uri<String>,
-    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>>
-    {
-        let s = uri.as_str();
-        if s.ends_with("spdx.schema.json") {
-            return Ok(serde_json::json!({"type": "string"}));
-        }
-        if s.ends_with("jsf-0.82.schema.json") {
-            return Ok(serde_json::json!({
-                "definitions": { "signature": {} }
-            }));
-        }
-        Err(format!("unexpected external schema reference: {s}").into())
-    }
-}
-
-fn cdx_validator() -> &'static jsonschema::Validator {
-    static CELL: OnceLock<jsonschema::Validator> = OnceLock::new();
-    CELL.get_or_init(|| {
-        let raw = std::fs::read_to_string(cdx_schema_path())
-            .expect("read CDX 1.6 schema");
-        let schema: serde_json::Value =
-            serde_json::from_str(&raw).expect("parse CDX schema");
-        jsonschema::options()
-            .with_retriever(CdxStubRetriever)
-            .build(&schema)
-            .expect("compile CDX 1.6 schema")
-    })
 }
 
 fn spdx23_validator() -> &'static jsonschema::Validator {
@@ -655,7 +613,7 @@ fn schema_validation_passes_per_format() {
             "cyclonedx-json",
             "out.cdx.json",
         );
-        let cdx_errors: Vec<String> = cdx_validator()
+        let cdx_errors: Vec<String> = common::cdx_schema::cdx_validator()
             .iter_errors(&cdx.parsed)
             .map(|e| format!("{}: {}", e.instance_path(), e))
             .collect();

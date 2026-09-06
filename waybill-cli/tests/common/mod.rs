@@ -38,6 +38,7 @@
 
 #![allow(dead_code)]
 
+pub mod cdx_schema;
 pub mod normalize;
 
 use std::path::PathBuf;
