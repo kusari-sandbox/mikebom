@@ -176,27 +176,112 @@ fn m777_non_p256_key_is_refused_with_named_type() {
 }
 
 #[test]
-fn m777_keyless_with_cyclonedx_is_refused_and_writes_nothing() {
-    // Milestone 777 US3 (FR-014, FR-015, SC-007). Refuses rather than
-    // emitting a document that is invalid while advertising itself as
-    // signed. No OIDC token is needed: the refusal fires from the
-    // arguments alone, before any scan or signing work.
+fn m778_keyless_with_cyclonedx_reaches_signing_not_refusal() {
+    // Milestone 778 (FR-001) replaced m777's argument-time refusal of
+    // keyless + CycloneDX. The combination is now routed to the detached
+    // sidecar path, exactly as SPDX is.
+    //
+    // Without an OIDC identity the run still fails — but it must fail at
+    // *signing*, not at argument validation, and the diagnostic must name
+    // the sidecar path. That distinction is what this test pins, and it
+    // is checkable with no identity available.
     let tmp = tempfile::tempdir().expect("tempdir");
     let output = tmp.path().join("keyless.cdx.json");
     let out = run_scan(&scan_target(), &output, &["--sign"]);
 
-    assert!(
-        !out.status.success(),
-        "keyless + CycloneDX MUST be refused (FR-014)"
-    );
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
-        stderr.contains("--sign-key"),
-        "the diagnostic MUST name the conformant alternative; got: {stderr}"
+        !stderr.contains("cannot currently produce a conformant"),
+        "the m777 argument-time refusal MUST be gone (FR-001); got: {stderr}"
+    );
+    assert!(
+        stderr.contains("sidecar"),
+        "keyless CycloneDX MUST route to the sidecar path, not the in-document \
+         signer — the diagnostic should name it; got: {stderr}"
     );
     assert!(
         !output.exists(),
-        "a refused invocation MUST leave no CycloneDX file (FR-015)"
+        "a failed signing attempt MUST leave no document behind (FR-008, SC-004)"
+    );
+}
+
+#[test]
+fn m778_signature_reference_shape_is_schema_valid() {
+    // Milestone 778 US2 acceptance scenario 3 / FR-003: a document
+    // carrying the signature reference must still validate against the
+    // CycloneDX 1.6 schema.
+    //
+    // Scope note: this validates the *shape* of the reference against a
+    // real emitted document. Verifying that the keyless path actually
+    // emits it end-to-end requires a signing identity and lives in the
+    // WAYBILL_TEST_KEYLESS-gated tests. Splitting it this way means the
+    // schema question — the one with a real chance of being wrong, since
+    // a document-level `attestation` reference is new here — is answered
+    // now rather than deferred behind credentials.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let output = tmp.path().join("plain.cdx.json");
+    let out = run_scan(&scan_target(), &output, &[]);
+    assert!(out.status.success(), "unsigned scan must succeed");
+
+    let raw = std::fs::read(&output).expect("read cdx");
+    let mut doc: serde_json::Value = serde_json::from_slice(&raw).expect("parse cdx");
+
+    doc.as_object_mut()
+        .expect("document root is an object")
+        .entry("externalReferences")
+        .or_insert_with(|| serde_json::Value::Array(Vec::new()))
+        .as_array_mut()
+        .expect("externalReferences is an array")
+        .push(serde_json::json!({
+            "type": "attestation",
+            "url": "plain.cdx.json.sig.bundle.json",
+            "comment": "Detached signature for this document.",
+        }));
+
+    let errors = common::cdx_schema::cdx_validation_errors(&doc);
+    assert!(
+        errors.is_empty(),
+        "a document carrying the signature reference must validate against \
+         CycloneDX 1.6; {} error(s):\n  {}",
+        errors.len(),
+        errors.join("\n  ")
+    );
+}
+
+#[test]
+fn m778_static_key_cyclonedx_is_untouched() {
+    // Milestone 778 FR-009 / SC-006: the static-key path keeps its
+    // in-document signature and gains nothing from this feature — no
+    // companion artifact, no signature reference.
+    let (pem_file, _public_pem) = ephemeral_keypair();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let output = tmp.path().join("signed.cdx.json");
+
+    let sign_flag = format!("--sign-key={}", pem_file.path().display());
+    let out = run_scan(&scan_target(), &output, &[&sign_flag]);
+    assert!(out.status.success(), "static-key signing must still succeed");
+
+    let raw = std::fs::read(&output).expect("read signed cdx");
+    let doc: serde_json::Value = serde_json::from_slice(&raw).expect("parse cdx");
+    assert!(
+        doc.pointer("/signature").is_some(),
+        "static-key CycloneDX keeps its in-document signature (FR-009)"
+    );
+
+    let sidecar = output.with_extension("json.sig.bundle.json");
+    assert!(
+        !sidecar.exists(),
+        "static-key CycloneDX MUST NOT emit a companion artifact (FR-009)"
+    );
+
+    let doc_refs = doc
+        .get("externalReferences")
+        .and_then(|v| v.as_array())
+        .map(|a| a.len())
+        .unwrap_or(0);
+    assert_eq!(
+        doc_refs, 0,
+        "static-key CycloneDX MUST NOT carry a signature reference (FR-009, SC-006)"
     );
 }
 
@@ -661,21 +746,26 @@ fn us2b_keyless_stdout_output_is_rejected_at_parse_m222() {
 }
 
 // ---------------------------------------------------------------------------
-// SUPERSEDED BY MILESTONE 777 — the three CycloneDX keyless tests below assert
-// that `--sign` embeds a Sigstore bundle at `metadata.signature`. m777 refuses
-// keyless signing for CycloneDX output entirely (FR-014), because a bundle has
-// no conformant JSON Signature Format representation, so that behaviour no
-// longer exists and these tests would fail if executed.
+// STILL AWAITING RETARGET — updated by milestone 778.
 //
-// They are NOT updated here: each requires a live OIDC identity to run, which
-// was not available, and rewriting them blind would be guesswork. Their
-// underlying coverage — Fulcio/Rekor round-trip, bundle shape, log fields,
-// mutation detection — remains valuable and should be retargeted to an SPDX
-// format, where keyless signing still applies and emits a detached sidecar.
-// Tracked with the keyless-conformance follow-up.
+// These three tests assert that `--sign` embeds a Sigstore bundle at
+// `metadata.signature`. Milestone 777 refused keyless CycloneDX outright, so
+// they were disabled. Milestone 778 gives keyless CycloneDX a working path
+// again — but as a DETACHED SIDECAR, not an embedded signature. So the
+// behaviour these tests assert still does not happen, and they still fail if
+// executed. Only the reason changed: from "refused" to "emitted elsewhere".
 //
-// The refusal itself IS covered, and runs in the normal gate without any OIDC
-// token: see `m777_keyless_with_cyclonedx_is_refused_and_writes_nothing`.
+// They remain un-retargeted because each requires a live OIDC identity to run,
+// which was not available during either milestone, and rewriting them blind
+// would be guesswork. What they cover — Fulcio/Rekor round-trip, bundle shape,
+// log fields, mutation detection — is still worth having against the sidecar
+// path.
+//
+// Everything about the sidecar path that CAN be checked without an identity is
+// already covered and runs in the normal gate:
+//   m778_keyless_with_cyclonedx_reaches_signing_not_refusal
+//   m778_signature_reference_shape_is_schema_valid
+//   m778_static_key_cyclonedx_is_untouched
 // ---------------------------------------------------------------------------
 
 /// T010 + T024 (feature 222 US2b) — happy-path sign-and-verify
@@ -686,7 +776,7 @@ fn us2b_keyless_stdout_output_is_rejected_at_parse_m222() {
 /// `lint-and-test-keyless-sbom` sets the env var + provides the
 /// ambient OIDC path.
 #[test]
-#[ignore = "SUPERSEDED by m777: asserts CDX keyless embedding, which is now refused (FR-014); needs retargeting to SPDX. Also requires WAYBILL_TEST_KEYLESS=1 + OIDC"]
+#[ignore = "AWAITING RETARGET (m778): asserts CDX keyless EMBEDDING; keyless CDX now signs to a detached sidecar, so this still does not hold. Needs retargeting to the sidecar path + WAYBILL_TEST_KEYLESS=1 + OIDC"]
 fn us2b_keyless_bundle_sign_and_verify() {
     if std::env::var("WAYBILL_TEST_KEYLESS").is_err() {
         eprintln!(
@@ -752,7 +842,7 @@ fn us2b_keyless_bundle_sign_and_verify() {
 /// staging and greps stderr for `rekor_log_index=`, `fulcio_cert_subject=`,
 /// `oidc_provider=`. Gated on `WAYBILL_TEST_KEYLESS=1`.
 #[test]
-#[ignore = "SUPERSEDED by m777: asserts CDX keyless embedding, which is now refused (FR-014); needs retargeting to SPDX. Also requires WAYBILL_TEST_KEYLESS=1 + OIDC"]
+#[ignore = "AWAITING RETARGET (m778): asserts CDX keyless EMBEDDING; keyless CDX now signs to a detached sidecar, so this still does not hold. Needs retargeting to the sidecar path + WAYBILL_TEST_KEYLESS=1 + OIDC"]
 fn us2b_keyless_fr016_info_log_fields_m222() {
     if std::env::var("WAYBILL_TEST_KEYLESS").is_err() {
         eprintln!(
@@ -814,7 +904,7 @@ fn us2b_keyless_fr016_info_log_fields_m222() {
 /// Bundle, verify it against the mutated payload — expect Err.
 /// Gated on `WAYBILL_TEST_KEYLESS=1`.
 #[test]
-#[ignore = "SUPERSEDED by m777: asserts CDX keyless embedding, which is now refused (FR-014); needs retargeting to SPDX. Also requires WAYBILL_TEST_KEYLESS=1 + OIDC"]
+#[ignore = "AWAITING RETARGET (m778): asserts CDX keyless EMBEDDING; keyless CDX now signs to a detached sidecar, so this still does not hold. Needs retargeting to the sidecar path + WAYBILL_TEST_KEYLESS=1 + OIDC"]
 fn us2b_keyless_signature_covers_document_mutation_m222() {
     if std::env::var("WAYBILL_TEST_KEYLESS").is_err() {
         eprintln!(
